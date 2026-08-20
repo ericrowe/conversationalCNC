@@ -158,7 +158,15 @@ Generate test programs from Conversational CNC UI with workpiece origin set to $
   - Perimeter toolpath generates valid cutter-compensated contouring paths (Left/Climb) with smooth tangential arc lead-in and lead-out.
   - Drilling operation converts circle entities into accurate $(X, Y)$ plunge or peck drilling coordinate points.
 
+### Test 3.9: SVG Vector CAD Importer & Grayscale Depth Verification
+- **Parameters**: Upload standard 2D SVG vector badge with multi-layer grayscale shading: 100% black perimeter ($Z = -6.0\text{mm}$), 50% gray pocket cavity ($Z = -3.0\text{mm}$), 25% gray detail ($Z = -1.5\text{mm}$), and mounting holes.
+- **Verification**:
+  - SVG XML parsing correctly tokenizes vector geometry and converts Bezier spline curves into smooth line segments.
+  - BT.601 luminance evaluates fill/stroke colors into exact percentage depths.
+  - Multi-pass G-code cuts each element to its respective proportional target depth with safe retracts between shapes.
+
 ---
+
 
 
 

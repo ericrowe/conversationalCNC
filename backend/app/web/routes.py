@@ -58,9 +58,14 @@ def nesting_page():
 def dxf_page():
     return render_template("operations/dxf_importer.html")
 
+@web_bp.route("/svg")
+def svg_page():
+    return render_template("operations/svg_importer.html")
+
 @web_bp.route("/transformations")
 def transformations_page():
     return render_template("operations/transformations.html")
+
 
 
 

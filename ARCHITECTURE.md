@@ -250,9 +250,17 @@ Implemented in `app/generators/dxf_importer.py` and `app/static/js/dxf_importer.
 3. **Endpoint Stitching & Loop Closure**: Automatically chains collinear and matching geometric vertices within tolerance ($\epsilon = 0.05\text{mm}$) to detect closed perimeter loops and open profile paths.
 4. **Direct Toolpath Generation**: Bridges DXF vector chains directly into the 2.5D Contouring and Straight/Peck Drilling generator engines with cutter radius compensation and lead-in/out arcs.
 
+## 15. SVG 2D Vector CAD Importer with Grayscale Depth Mapping Architecture
+
+Implemented in `app/generators/svg_importer.py` and `app/static/js/svg_importer.js`:
+1. **Pure Python SVG XML Parser**: Parses vector paths (`<path>`, `<rect>`, `<circle>`, `<ellipse>`, `<line>`, `<polyline>`, `<polygon>`) with viewBox coordinate transformations and Cartesian $(+Y\text{ Up})$ flip.
+2. **Cubic & Quadratic Bezier Curve Subdivider**: Smoothly interpolates spline curve commands (`C/c`, `S/s`, `Q/q`, `T/t`) into segmented toolpath motion vectors.
+3. **Grayscale Shading to Depth Mapping**: Analyzes fill and stroke colors using ITU-R BT.601 luminance ($L = 0.299R + 0.587G + 0.114B$), mapping $0\%$ luminance (pure black) to $100\%$ material cut depth, with options for color inversion and stroke mode.
+4. **Multi-Depth Stepped Synthesis**: Automatically slices each path to its individual target depth $Z_i$ using multi-pass depth stepdowns, and routes circles to plunge/peck drilling operations.
+
 ---
 
-## 15. Development Status & Roadmap
+## 16. Development Status & Roadmap
 
 - **Phase 1 (Completed)**: Core architecture, SQLite schema, Straight Plunge drilling, Grbl post-processor, DeWalt DWP611 dial mapping.
 - **Phase 2 (Completed)**: Helical Thread Milling, Peck Drilling (G73/G83), Circular Pocketing, Surfacing/Facing, Single-Line Vector Text Engraving with 5 fonts and spline smoothing, 2D vector toolpath visualizer.
@@ -267,7 +275,9 @@ Implemented in `app/generators/dxf_importer.py` and `app/static/js/dxf_importer.
 - **Phase 11 (Completed)**: 2.5D Arbitrary Profile & Contour Milling with cutter compensation and lead-in/out arcs.
 - **Phase 12 (Completed)**: Step-and-Repeat Array Nesting & Soft Jaw Fixturing Wizard.
 - **Phase 13 (Completed)**: DXF 2D Vector CAD Importer & Direct-to-GCode Wizard.
-- **Phase 14 (Planned)**: Adaptive Trochoidal High-Speed Milling.
+- **Phase 14 (Completed)**: SVG 2D Vector CAD Importer with Grayscale Depth Mapping.
+- **Phase 15 (Planned)**: Adaptive Trochoidal High-Speed Milling.
+
 
 
 

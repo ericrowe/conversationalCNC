@@ -569,7 +569,92 @@ Converts parsed DXF chains or circle centers directly into CNC G-code toolpaths 
 
 ---
 
-## 7. Feeds & Speeds Physics Engine
+## 7. SVG 2D Vector CAD Importer with Grayscale Depth Mapping
+
+### `POST /api/generate/svg/parse`
+Parses raw SVG XML files, extracting vector paths (`<path>`, `<rect>`, `<circle>`, `<ellipse>`, `<line>`, `<polyline>`, `<polygon>`), transforms, and evaluates fill/stroke color into normalized ITU-R BT.601 luminance ($L = 0.299R + 0.587G + 0.114B$), mapping grayscale percentage into proportional Z cut depths ($Z_{\text{cut}} = Z_{\text{max}} \times \text{shading}\%$).
+
+#### Request Payload
+```json
+{
+  "svg_text": "<svg width='100mm' height='60mm' viewBox='0 0 100 60'><rect x='10' y='10' width='80' height='40' fill='#000000'/><circle cx='30' cy='30' r='10' fill='#808080'/></svg>",
+  "max_cut_depth": -6.0,
+  "default_dpi": 96.0,
+  "flip_y": true,
+  "invert_shading": false,
+  "shading_mode": "fill"
+}
+```
+
+#### Response Payload
+```json
+{
+  "success": true,
+  "data": {
+    "entity_count": 2,
+    "chains": [
+      {
+        "id": 1,
+        "tag": "rect",
+        "fill": "#000000",
+        "luminance": 0.0,
+        "shading_percent": 100.0,
+        "target_depth_z": -6.0,
+        "is_closed": true,
+        "start_point": [10.0, 50.0],
+        "segments": [ ... ]
+      }
+    ],
+    "circles": [
+      {
+        "x": 30.0,
+        "y": 30.0,
+        "radius": 10.0,
+        "diameter": 20.0,
+        "fill": "#808080",
+        "luminance": 0.5,
+        "shading_percent": 50.0,
+        "target_depth_z": -3.0
+      }
+    ],
+    "bounding_box": {
+      "min_x": 10.0,
+      "max_x": 90.0,
+      "min_y": 10.0,
+      "max_y": 50.0,
+      "width": 80.0,
+      "height": 40.0
+    }
+  }
+}
+```
+
+---
+
+### `POST /api/generate/svg/toolpath`
+Generates CNC G-code toolpaths from parsed SVG chains and circles, automatically applying multi-pass depth stepdowns down to each path's individual grayscale-calculated target depth.
+
+#### Request Payload
+```json
+{
+  "chains": [ ... ],
+  "circles": [ ... ],
+  "operation_type": "auto",
+  "side": "left",
+  "use_grayscale_depths": true,
+  "stepdown_z": 1.5,
+  "tool_diameter": 3.175,
+  "feed_rate_xy": 800.0,
+  "plunge_feed": 250.0,
+  "spindle_speed": 16000,
+  "safe_z_retract": 5.0
+}
+```
+
+---
+
+## 8. Feeds & Speeds Physics Engine
+
 
 
 

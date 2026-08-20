@@ -17,6 +17,8 @@ from ..schemas import (
     SoftJawFixturePayloadSchema,
     DXFParsePayloadSchema,
     DXFToGCodePayloadSchema,
+    SVGParsePayloadSchema,
+    SVGToGCodePayloadSchema,
 )
 from ..postprocessors import get_postprocessor, DIALECT_REGISTRY
 from ..generators import (
@@ -35,11 +37,14 @@ from ..generators import (
     generate_soft_jaw_fixture,
     parse_dxf_ascii,
     generate_dxf_toolpath,
+    parse_svg,
+    generate_svg_toolpath,
     get_available_fonts,
     FONTS,
     THREAD_STANDARDS,
     WorkEnvelope,
 )
+
 
 
 
@@ -944,6 +949,78 @@ def api_generate_dxf_toolpath():
         "machine_profile": ctx["machine"].to_dict() if ctx["machine"] else None,
         "dialect_used": ctx["postprocessor"].dialect_name,
     }), 200
+
+
+@generate_bp.route("/svg/parse", methods=["POST"])
+def api_parse_svg():
+    data = request.get_json(silent=True) or {}
+    try:
+        payload = SVGParsePayloadSchema(**data)
+    except ValidationError as e:
+        error_details = [{"loc": err.get("loc"), "msg": err.get("msg"), "type": err.get("type")} for err in e.errors()]
+        return jsonify({"error": "Validation error", "details": error_details}), 400
+
+    try:
+        parsed = parse_svg(
+            svg_text=payload.svg_text,
+            default_dpi=payload.default_dpi,
+            flip_y=payload.flip_y,
+            max_cut_depth=payload.max_cut_depth,
+            invert_shading=payload.invert_shading,
+            shading_mode=payload.shading_mode,
+        )
+    except Exception as err:
+        return jsonify({"error": "SVG parsing failed", "message": str(err)}), 400
+
+    return jsonify({
+        "success": True,
+        "data": parsed,
+    }), 200
+
+
+@generate_bp.route("/svg/toolpath", methods=["POST"])
+def api_generate_svg_toolpath():
+    data = request.get_json(silent=True) or {}
+    try:
+        payload = SVGToGCodePayloadSchema(**data)
+    except ValidationError as e:
+        error_details = [{"loc": err.get("loc"), "msg": err.get("msg"), "type": err.get("type")} for err in e.errors()]
+        return jsonify({"error": "Validation error", "details": error_details}), 400
+
+    ctx = _resolve_context(payload)
+
+    try:
+        result = generate_svg_toolpath(
+            chains=payload.chains,
+            circles=payload.circles,
+            operation_type=payload.operation_type,
+            side=payload.side,
+            target_depth_z=payload.target_depth_z,
+            stepdown_z=payload.stepdown_z,
+            finish_allowance=payload.finish_allowance,
+            spring_pass=payload.spring_pass,
+            lead_in_type=payload.lead_in_type,
+            use_grayscale_depths=payload.use_grayscale_depths,
+            tool_diameter=payload.tool_diameter or ctx["tool_diameter"],
+            tool_number=payload.tool_number or ctx["tool_number"],
+            tool_name=payload.tool_name or ctx["tool_name"],
+            feed_rate_xy=payload.feed_rate_xy or ctx["feed_rate_xy"],
+            plunge_feed=payload.plunge_feed or ctx["plunge_feed"],
+            spindle_speed=payload.spindle_speed or ctx["spindle_speed"],
+            safe_z_retract=payload.safe_z_retract or ctx["safe_z_default"],
+            units=payload.units,
+            dialect=ctx["postprocessor"].dialect_name,
+        )
+    except Exception as err:
+        return jsonify({"error": "SVG Toolpath Generation failed", "message": str(err)}), 400
+
+    return jsonify({
+        "success": True,
+        "data": result,
+        "machine_profile": ctx["machine"].to_dict() if ctx["machine"] else None,
+        "dialect_used": ctx["postprocessor"].dialect_name,
+    }), 200
+
 
 
 

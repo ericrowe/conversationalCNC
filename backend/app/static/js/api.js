@@ -427,8 +427,31 @@ const API = {
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || data.error || "DXF Toolpath generation failed");
     return data;
+  },
+
+  async parseSVG(payload) {
+    const res = await fetch("/api/generate/svg/parse", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || data.error || "SVG parsing failed");
+    return data;
+  },
+
+  async generateSVGToolpath(payload) {
+    const res = await fetch("/api/generate/svg/toolpath", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || data.error || "SVG Toolpath generation failed");
+    return data;
   }
 };
+
 
 
 

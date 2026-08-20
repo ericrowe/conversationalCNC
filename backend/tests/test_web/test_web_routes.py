@@ -78,6 +78,13 @@ def test_dxf_page_renders(client):
     assert b"DXF 2D Vector CAD Importer" in response.data
     assert b"toolpathCanvas" in response.data
 
+def test_svg_page_renders(client):
+    response = client.get("/svg")
+    assert response.status_code == 200
+    assert b"SVG Vector CAD Importer" in response.data
+    assert b"toolpathCanvas" in response.data
+
+
 
 
 

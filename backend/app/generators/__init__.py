@@ -16,6 +16,7 @@ from .chamfering import generate_rectangular_chamfer, calculate_chamfer_depth_an
 from .contouring import generate_contour_profile
 from .nesting import generate_step_and_repeat_grid, generate_soft_jaw_fixture
 from .dxf_importer import parse_dxf_ascii, generate_dxf_toolpath
+from .svg_importer import parse_svg, generate_svg_toolpath
 
 __all__ = [
     "BoundingBox",
@@ -39,10 +40,13 @@ __all__ = [
     "generate_soft_jaw_fixture",
     "parse_dxf_ascii",
     "generate_dxf_toolpath",
+    "parse_svg",
+    "generate_svg_toolpath",
     "get_available_fonts",
     "FONTS",
     "THREAD_STANDARDS",
 ]
+
 
 
 

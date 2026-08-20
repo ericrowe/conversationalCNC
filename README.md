@@ -2,7 +2,7 @@
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![Flask 3.0+](https://img.shields.io/badge/flask-3.0+-green.svg)](https://flask.palletsprojects.com/)
-[![Tests](https://img.shields.io/badge/tests-142%20passed-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-150%20passed-brightgreen.svg)]()
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 A web-based, locally executing **Conversational CNC Controller** designed for rapid, on-the-fly machining without launching heavyweight CAD/CAM software. Built with a zero-build-step architecture optimized for offline Raspberry Pi 4/5 setups and desktop workstations driving Grbl-based CNCs (such as the Inventables X-Carve, Shapeoko, PrintNC) and standard CNC controllers.
@@ -24,6 +24,8 @@ A web-based, locally executing **Conversational CNC Controller** designed for ra
 - **📐 2.5D Arbitrary Profile & Contour Milling**: Mill open profiles and closed perimeter cutouts along chained lines and circular arcs. Features automatic tool radius compensation (Climb/Left, Conventional/Right, or Centerline), 90° tangential circular arc or 45° linear lead-ins and lead-outs, multi-depth stepdowns with wall finishing stock allowance, and spring passes.
 - **📦 Step-and-Repeat Array Nesting & Soft Jaw Fixturing Wizard**: Array multi-part production jobs across $N_x \times N_y$ rectangular grids or staggered honeycomb patterns with serpentine zig-zag rapids. Generate precision negative clamping pockets for vise soft jaws to hold irregular parts for secondary Op 2 operations with 45° corner dogbone reliefs.
 - **📐 DXF 2D Vector CAD Importer & Direct-to-GCode Wizard**: Drag-and-drop standard 2D AutoCAD `.dxf` CAD drawings. Automatically parses entity geometry (`LINE`, `ARC`, `CIRCLE`, `LWPOLYLINE`), chains perimeter loops, detects bolt circle drill points, and converts directly into profile contouring and drilling toolpaths.
+- **🖼️ SVG 2D Vector CAD Importer with Grayscale Depth Mapping**: Import standard 2D SVG vector artwork. Evaluates fill/stroke grayscale percentage (% luminance) to cut depth ($Z_{\text{cut}} = Z_{\text{max}} \times \text{shading}\%$), with multi-depth stepdowns and automatic drill hole detection.
+
 
 
 ### 2. 3D WebGL / Isometric Backplotter & Simulation
@@ -124,7 +126,7 @@ conversationalCNC/
 │   │   ├── static/          # CSS stylesheets and client JavaScript modules
 │   │   ├── templates/       # Jinja2 HTML templates
 │   │   └── web/             # Web frontend routing blueprint
-│   └── tests/               # 142 automated pytest unit and integration tests
+│   └── tests/               # 150 automated pytest unit and integration tests
 └── docs/
     └── API_DOCUMENTATION.md # Comprehensive REST API reference
 ```
@@ -171,10 +173,11 @@ PYTHONPATH=backend python backend/seed.py
 ```
 
 ### Step 5: Run Automated Tests
-Verify that all 142 tests pass on your machine:
+Verify that all 150 tests pass on your machine:
 ```bash
 PYTHONPATH=backend pytest backend/tests -v
 ```
+
 
 
 

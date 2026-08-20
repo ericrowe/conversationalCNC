@@ -20,6 +20,7 @@ from .chamfering_schema import RectangularChamferPayloadSchema
 from .contouring_schema import ContourProfilePayloadSchema, ContourSegmentItemSchema
 from .nesting_schema import StepAndRepeatPayloadSchema, SoftJawFixturePayloadSchema
 from .dxf_schema import DXFParsePayloadSchema, DXFToGCodePayloadSchema
+from .svg_schema import SVGParsePayloadSchema, SVGToGCodePayloadSchema
 
 __all__ = [
     "MachineProfileCreateSchema",
@@ -44,7 +45,10 @@ __all__ = [
     "SoftJawFixturePayloadSchema",
     "DXFParsePayloadSchema",
     "DXFToGCodePayloadSchema",
+    "SVGParsePayloadSchema",
+    "SVGToGCodePayloadSchema",
 ]
+
 
 
 
