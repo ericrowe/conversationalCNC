@@ -136,8 +136,9 @@ document.addEventListener("DOMContentLoaded", async () => {
       spindleRpmInput.value = preset.spindle_speed;
       feedRateXyInput.value = preset.feed_rate_xy;
       plungeFeedInput.value = preset.plunge_rate_z;
-      if (preset.max_stepdown_z) stepdownZInput.value = preset.max_stepdown_z;
+      if (preset.pass_depth !== undefined) stepdownZInput.value = preset.pass_depth;
       syncDialFromRpm(preset.spindle_speed);
+
     }
   }
 

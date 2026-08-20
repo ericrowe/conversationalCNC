@@ -3,10 +3,11 @@
  * Supports 3D Isometric Orbit, 2D Plan View, Step-by-Step Playback, Animated Cutter Tool, and Bi-Directional Sync.
  */
 class ToolpathVisualizer {
-  constructor(canvasId) {
-    this.canvas = document.getElementById(canvasId);
+  constructor(canvasOrId) {
+    this.canvas = typeof canvasOrId === "string" ? document.getElementById(canvasOrId) : canvasOrId;
     if (!this.canvas) return;
     this.ctx = this.canvas.getContext("2d");
+
 
     this.opType = "drilling";
     this.holes = [];
@@ -238,7 +239,12 @@ class ToolpathVisualizer {
     let allX = [0];
     let allY = [0];
 
-    if (this.opType === "surfacing" && this.surfacing) {
+    if (this.gcodeToolpath && this.gcodeToolpath.length > 0) {
+      for (let seg of this.gcodeToolpath) {
+        allX.push(seg.x1, seg.x2);
+        allY.push(seg.y1, seg.y2);
+      }
+    } else if (this.opType === "surfacing" && this.surfacing) {
       const s = this.surfacing;
       if (s.originMode === "center") {
         allX.push(s.originX - s.lengthX / 2, s.originX + s.lengthX / 2);
@@ -247,7 +253,8 @@ class ToolpathVisualizer {
         allX.push(s.originX, s.originX + s.lengthX);
         allY.push(s.originY, s.originY + s.widthY);
       }
-    } else if (this.opType === "engraving" && this.engraving) {
+    }
+ else if (this.opType === "engraving" && this.engraving) {
       const e = this.engraving;
       if (e.layoutMode === "arc") {
         allX.push(e.centerX - e.arcRadius - 10, e.centerX + e.arcRadius + 10);
@@ -498,11 +505,12 @@ class ToolpathVisualizer {
         else if (t === "G1" || t === "G01") curMotion = "G1";
         else if (t === "G2" || t === "G02") curMotion = "G2";
         else if (t === "G3" || t === "G03") curMotion = "G3";
-        else if (t.startsWith("X")) { newX = parseFloat(t.slice(1)) || curX; hasMove = true; }
-        else if (t.startsWith("Y")) { newY = parseFloat(t.slice(1)) || curY; hasMove = true; }
-        else if (t.startsWith("Z")) { newZ = parseFloat(t.slice(1)) || curZ; hasMove = true; }
-        else if (t.startsWith("F")) { curFeed = parseFloat(t.slice(1)) || curFeed; }
+        else if (t.startsWith("X")) { const v = parseFloat(t.slice(1)); if (!isNaN(v)) { newX = v; hasMove = true; } }
+        else if (t.startsWith("Y")) { const v = parseFloat(t.slice(1)); if (!isNaN(v)) { newY = v; hasMove = true; } }
+        else if (t.startsWith("Z")) { const v = parseFloat(t.slice(1)); if (!isNaN(v)) { newZ = v; hasMove = true; } }
+        else if (t.startsWith("F")) { const v = parseFloat(t.slice(1)); if (!isNaN(v)) { curFeed = v; } }
       }
+
 
       if (hasMove) {
         segments.push({

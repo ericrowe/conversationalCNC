@@ -257,8 +257,10 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
       }
 
-      toolsList = await API.getTools();
+      const rawTools = await API.getTools();
+      toolsList = Array.isArray(rawTools) ? rawTools : (rawTools.data || []);
       toolSelect.innerHTML = '<option value="">-- Select Tool --</option>';
+
       let endmillDefault = null;
       toolsList.forEach((t) => {
         const opt = document.createElement("option");

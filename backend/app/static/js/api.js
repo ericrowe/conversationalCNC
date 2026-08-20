@@ -405,8 +405,31 @@ const API = {
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || data.error || "Soft jaw fixture generation failed");
     return data;
+  },
+
+  async parseDXF(payload) {
+    const res = await fetch("/api/generate/dxf/parse", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || data.error || "DXF Parsing failed");
+    return data;
+  },
+
+  async generateDXFToolpath(payload) {
+    const res = await fetch("/api/generate/dxf/toolpath", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || data.error || "DXF Toolpath generation failed");
+    return data;
   }
 };
+
 
 
 

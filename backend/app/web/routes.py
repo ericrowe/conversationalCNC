@@ -54,9 +54,14 @@ def contouring_page():
 def nesting_page():
     return render_template("operations/nesting.html")
 
+@web_bp.route("/dxf")
+def dxf_page():
+    return render_template("operations/dxf_importer.html")
+
 @web_bp.route("/transformations")
 def transformations_page():
     return render_template("operations/transformations.html")
+
 
 
 

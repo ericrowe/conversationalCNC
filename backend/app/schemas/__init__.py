@@ -19,6 +19,7 @@ from .slotting_schema import LinearSlotPayloadSchema
 from .chamfering_schema import RectangularChamferPayloadSchema
 from .contouring_schema import ContourProfilePayloadSchema, ContourSegmentItemSchema
 from .nesting_schema import StepAndRepeatPayloadSchema, SoftJawFixturePayloadSchema
+from .dxf_schema import DXFParsePayloadSchema, DXFToGCodePayloadSchema
 
 __all__ = [
     "MachineProfileCreateSchema",
@@ -41,7 +42,10 @@ __all__ = [
     "ContourSegmentItemSchema",
     "StepAndRepeatPayloadSchema",
     "SoftJawFixturePayloadSchema",
+    "DXFParsePayloadSchema",
+    "DXFToGCodePayloadSchema",
 ]
+
 
 
 

@@ -72,6 +72,13 @@ def test_nesting_page_renders(client):
     assert b"Soft Jaw" in response.data
     assert b"toolpathCanvas" in response.data
 
+def test_dxf_page_renders(client):
+    response = client.get("/dxf")
+    assert response.status_code == 200
+    assert b"DXF 2D Vector CAD Importer" in response.data
+    assert b"toolpathCanvas" in response.data
+
+
 
 
 

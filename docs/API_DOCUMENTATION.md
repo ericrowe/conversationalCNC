@@ -491,7 +491,86 @@ Generates negative clamping cavities into vise soft jaws for secondary machining
 
 ---
 
-## 6. Feeds & Speeds Physics Engine
+## 6. DXF 2D Vector CAD Importer & Direct-to-GCode
+
+### `POST /api/generate/dxf/parse`
+Parses raw 2D ASCII DXF files (AutoCAD R12 to 2018), extracting entity primitives (`LINE`, `ARC`, `CIRCLE`, `LWPOLYLINE`), chaining matching vertices into continuous loops/paths, and detecting circle drill points and bounding boxes.
+
+#### Request Payload
+```json
+{
+  "dxf_text": "0\nSECTION\n2\nENTITIES\n0\nLINE\n8\n0\n10\n0.0\n20\n0.0\n11\n50.0\n21\n0.0\n0\nCIRCLE\n8\nHOLES\n10\n25.0\n20\n15.0\n40\n3.0\n0\nENDSEC\n0\nEOF"
+}
+```
+
+#### Response Payload
+```json
+{
+  "success": true,
+  "data": {
+    "entity_count": 2,
+    "layers": ["0", "HOLES"],
+    "circles": [
+      {
+        "x": 25.0,
+        "y": 15.0,
+        "radius": 3.0,
+        "diameter": 6.0,
+        "layer": "HOLES"
+      }
+    ],
+    "chains": [
+      {
+        "id": 1,
+        "layer": "0",
+        "is_closed": false,
+        "start_point": [0.0, 0.0],
+        "segments": [
+          { "type": "line", "x": 50.0, "y": 0.0, "i": 0.0, "j": 0.0, "cw": false }
+        ],
+        "segment_count": 1
+      }
+    ],
+    "bounding_box": {
+      "min_x": 0.0,
+      "max_x": 50.0,
+      "min_y": 0.0,
+      "max_y": 15.0,
+      "width": 50.0,
+      "height": 15.0
+    }
+  }
+}
+```
+
+---
+
+### `POST /api/generate/dxf/toolpath`
+Converts parsed DXF chains or circle centers directly into CNC G-code toolpaths (contouring or drilling) with full dialect compliance and cutter compensation.
+
+#### Request Payload
+```json
+{
+  "chains": [ ... ],
+  "circles": [ ... ],
+  "operation_type": "contour",
+  "side": "left",
+  "target_depth_z": -6.0,
+  "stepdown_z": 1.5,
+  "finish_allowance": 0.2,
+  "spring_pass": true,
+  "tool_diameter": 3.175,
+  "feed_rate_xy": 800.0,
+  "plunge_feed": 250.0,
+  "spindle_speed": 16000,
+  "safe_z_retract": 5.0
+}
+```
+
+---
+
+## 7. Feeds & Speeds Physics Engine
+
 
 
 ### `GET /api/calculator/materials-catalog`

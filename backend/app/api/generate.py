@@ -15,6 +15,8 @@ from ..schemas import (
     ContourProfilePayloadSchema,
     StepAndRepeatPayloadSchema,
     SoftJawFixturePayloadSchema,
+    DXFParsePayloadSchema,
+    DXFToGCodePayloadSchema,
 )
 from ..postprocessors import get_postprocessor, DIALECT_REGISTRY
 from ..generators import (
@@ -31,11 +33,14 @@ from ..generators import (
     generate_contour_profile,
     generate_step_and_repeat_grid,
     generate_soft_jaw_fixture,
+    parse_dxf_ascii,
+    generate_dxf_toolpath,
     get_available_fonts,
     FONTS,
     THREAD_STANDARDS,
     WorkEnvelope,
 )
+
 
 
 
@@ -877,6 +882,69 @@ def generate_soft_jaw_fixture_gcode():
         "machine_profile": ctx["machine"].to_dict() if ctx["machine"] else None,
         "dialect_used": ctx["postprocessor"].dialect_name,
     }), 200
+
+
+@generate_bp.route("/dxf/parse", methods=["POST"])
+def api_parse_dxf():
+    data = request.get_json(silent=True) or {}
+    try:
+        payload = DXFParsePayloadSchema(**data)
+    except ValidationError as e:
+        error_details = [{"loc": err.get("loc"), "msg": err.get("msg"), "type": err.get("type")} for err in e.errors()]
+        return jsonify({"error": "Validation error", "details": error_details}), 400
+
+    try:
+        parsed = parse_dxf_ascii(payload.dxf_text)
+    except Exception as err:
+        return jsonify({"error": "DXF parsing failed", "message": str(err)}), 400
+
+    return jsonify({
+        "success": True,
+        "data": parsed,
+    }), 200
+
+
+@generate_bp.route("/dxf/toolpath", methods=["POST"])
+def api_generate_dxf_toolpath():
+    data = request.get_json(silent=True) or {}
+    try:
+        payload = DXFToGCodePayloadSchema(**data)
+    except ValidationError as e:
+        error_details = [{"loc": err.get("loc"), "msg": err.get("msg"), "type": err.get("type")} for err in e.errors()]
+        return jsonify({"error": "Validation error", "details": error_details}), 400
+
+    ctx = _resolve_context(payload)
+
+    try:
+        result = generate_dxf_toolpath(
+            chains=payload.chains,
+            operation_type=payload.operation_type,
+            circles=payload.circles,
+            side=payload.side,
+            target_depth_z=payload.target_depth_z,
+            stepdown_z=payload.stepdown_z,
+            finish_allowance=payload.finish_allowance,
+            spring_pass=payload.spring_pass,
+            tool_diameter=payload.tool_diameter or ctx["tool_diameter"],
+            tool_number=payload.tool_number or ctx["tool_number"],
+            tool_name=payload.tool_name or ctx["tool_name"],
+            feed_rate_xy=payload.feed_rate_xy or ctx["feed_rate_xy"],
+            plunge_feed=payload.plunge_feed or ctx["plunge_feed"],
+            spindle_speed=payload.spindle_speed or ctx["spindle_speed"],
+            safe_z_retract=payload.safe_z_retract or ctx["safe_z_default"],
+            units=payload.units,
+            dialect=ctx["postprocessor"].dialect_name,
+        )
+    except Exception as err:
+        return jsonify({"error": "DXF Toolpath Generation failed", "message": str(err)}), 400
+
+    return jsonify({
+        "success": True,
+        "data": result,
+        "machine_profile": ctx["machine"].to_dict() if ctx["machine"] else None,
+        "dialect_used": ctx["postprocessor"].dialect_name,
+    }), 200
+
 
 
 

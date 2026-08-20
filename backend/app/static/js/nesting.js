@@ -112,7 +112,8 @@ G0 Z5.000`;
         }
       }
 
-      toolsList = await API.getTools();
+      const rawTools = await API.getTools();
+      toolsList = Array.isArray(rawTools) ? rawTools : (rawTools.data || []);
       toolSelect.innerHTML = '<option value="">-- Select Tool --</option>';
       let endmillDefault = null;
       toolsList.forEach((t) => {
@@ -132,6 +133,7 @@ G0 Z5.000`;
         populatePresets(selected);
       }
     } catch (err) {
+
       console.error("Initialization error:", err);
     }
   }

@@ -15,6 +15,7 @@ from .slotting import generate_linear_slot
 from .chamfering import generate_rectangular_chamfer, calculate_chamfer_depth_and_offset
 from .contouring import generate_contour_profile
 from .nesting import generate_step_and_repeat_grid, generate_soft_jaw_fixture
+from .dxf_importer import parse_dxf_ascii, generate_dxf_toolpath
 
 __all__ = [
     "BoundingBox",
@@ -36,10 +37,13 @@ __all__ = [
     "generate_contour_profile",
     "generate_step_and_repeat_grid",
     "generate_soft_jaw_fixture",
+    "parse_dxf_ascii",
+    "generate_dxf_toolpath",
     "get_available_fonts",
     "FONTS",
     "THREAD_STANDARDS",
 ]
+
 
 
 

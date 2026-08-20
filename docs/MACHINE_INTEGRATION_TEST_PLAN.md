@@ -151,7 +151,15 @@ Generate test programs from Conversational CNC UI with workpiece origin set to $
   - Each part instance is preceded by safe Z-retract to avoid clamp collisions during high-speed transit.
   - Soft jaw pocket machines clean cavity across the vise centerline with 45° corner dogbone relief passes clearing corner radius interference for sharp parts.
 
+### Test 3.8: DXF 2D Vector CAD Importer & Direct Toolpath Verification
+- **Parameters**: Upload standard 2D DXF bracket geometry with perimeter outline (`LWPOLYLINE` or chained `LINE`/`ARC`) and 2 interior bolt holes (`CIRCLE`).
+- **Verification**:
+  - DXF parsing correctly extracts layer topology, chain contours, hole centers, and bounding envelope.
+  - Perimeter toolpath generates valid cutter-compensated contouring paths (Left/Climb) with smooth tangential arc lead-in and lead-out.
+  - Drilling operation converts circle entities into accurate $(X, Y)$ plunge or peck drilling coordinate points.
+
 ---
+
 
 
 
