@@ -235,41 +235,40 @@
 
     <div class="card" style="margin-top: 1rem;">
       <!-- Quick Metrics Grid -->
-      <div class="stat-grid">
-        <div class="stat-card">
+      <div class="stats-grid">
+        <div class="stat-box">
           <div class="stat-value" id="statSegments">4</div>
           <div class="stat-label">Segments</div>
         </div>
-        <div class="stat-card">
+        <div class="stat-box">
           <div class="stat-value" id="statZPasses">4</div>
           <div class="stat-label">Depth Passes</div>
         </div>
-        <div class="stat-card">
+        <div class="stat-box">
           <div class="stat-value" id="statTime">--</div>
           <div class="stat-label">Est. Time</div>
         </div>
-        <div class="stat-card">
+        <div class="stat-box">
           <div class="stat-value" id="statDialect">GRBL</div>
-          <div class="stat-label">Post Dialect</div>
+          <div class="stat-label">Controller</div>
         </div>
       </div>
 
-      <!-- Interactive G-Code Editor & Modal State -->
-      <div class="form-group" style="margin-top: 1rem;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-          <label style="margin: 0; font-weight: 600;">G-Code Output</label>
-          <div style="display: flex; gap: 0.5rem;">
-            <button type="button" class="btn btn-secondary btn-sm" id="copyGcodeBtn" disabled>📋 Copy</button>
-            <button type="button" class="btn btn-primary btn-sm" id="downloadGcodeBtn" disabled>💾 Download .nc</button>
-          </div>
-        </div>
+      <div id="warningBanner" style="display: none; margin-top: 0.75rem; background: #7f1d1d; border: 1px solid #ef4444; border-radius: 4px; padding: 0.5rem; color: #fecaca; font-size: 0.85rem;"></div>
 
-        <div id="modalStateBar"></div>
-        <div id="gcodeOutput"></div>
+      <!-- Generated G-Code Viewer -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; margin-top: 1rem;">
+        <label style="margin: 0; font-weight: 600;">Interactive G-Code Program</label>
+        <div style="display: flex; gap: 0.5rem;">
+          <button type="button" class="btn btn-secondary btn-sm" id="copyGcodeBtn" disabled>📋 Copy</button>
+          <button type="button" class="btn btn-secondary btn-sm" id="downloadGcodeBtn" disabled>💾 Download .nc</button>
+        </div>
       </div>
+      <div class="gcode-editor-container" id="gcodeOutput">Click "Generate Contour G-Code & Preview" to calculate toolpaths...</div>
     </div>
   </div>
 </div>
+
 {% endblock %}
 
 {% block scripts %}

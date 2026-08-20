@@ -2,7 +2,7 @@
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![Flask 3.0+](https://img.shields.io/badge/flask-3.0+-green.svg)](https://flask.palletsprojects.com/)
-[![Tests](https://img.shields.io/badge/tests-127%20passed-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-135%20passed-brightgreen.svg)]()
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 A web-based, locally executing **Conversational CNC Controller** designed for rapid, on-the-fly machining without launching heavyweight CAD/CAM software. Built with a zero-build-step architecture optimized for offline Raspberry Pi 4/5 setups and desktop workstations driving Grbl-based CNCs (such as the Inventables X-Carve, Shapeoko, PrintNC) and standard CNC controllers.
@@ -22,6 +22,7 @@ A web-based, locally executing **Conversational CNC Controller** designed for ra
 - **🪚 Workpiece & Spoilboard Surfacing / Facing**: Flatten rough stock or resurface spoilboards with bidirectional Zig-Zag or unidirectional Climb One-Way raster passes, customizable cutter overtravel past edges, and corner/center datum origins.
 - **✍️ Single-Line Vector Text Engraving**: High-speed CNC text engraving supporting multi-line rotated linear layouts and curved circular arc layouts (clockwise/counter-clockwise). Features 5 single-line stroke font styles (*Simplex Sans, Duplex Bold Sans, Roman Serif, Cursive Script, Industrial Block*), configurable cubic Catmull-Rom spline curve interpolation smoothing ($1\times$ to $12\times$ sampling) with sharp-corner preservation, and live tool tip flat cut width calculation.
 - **📐 2.5D Arbitrary Profile & Contour Milling**: Mill open profiles and closed perimeter cutouts along chained lines and circular arcs. Features automatic tool radius compensation (Climb/Left, Conventional/Right, or Centerline), 90° tangential circular arc or 45° linear lead-ins and lead-outs, multi-depth stepdowns with wall finishing stock allowance, and spring passes.
+- **📦 Step-and-Repeat Array Nesting & Soft Jaw Fixturing Wizard**: Array multi-part production jobs across $N_x \times N_y$ rectangular grids or staggered honeycomb patterns with serpentine zig-zag rapids. Generate precision negative clamping pockets for vise soft jaws to hold irregular parts for secondary Op 2 operations with 45° corner dogbone reliefs.
 
 ### 2. 3D WebGL / Isometric Backplotter & Simulation
 - **Interactive 3D Toolpath Simulation**: Real-time 3D orbital canvas with pitch/yaw mouse drag, camera presets (Isometric, Top XY, Front XZ, Right YZ), prominent WCS $(0,0,0)$ Part Datum crosshair target, and auto-fit bounding box.
@@ -56,10 +57,11 @@ A web-based, locally executing **Conversational CNC Controller** designed for ra
 - **Live Digital Readout (DRO)**: Real-time high-visibility coordinates display and manual spindle on/off toggle.
 
 ### 8. Multi-Operation Job Program Sequencer & Builder
-- **Complete Part Machining Assembler**: Queue multiple conversational operations (facing $\to$ pocketing $\to$ drilling $\to$ contouring $\to$ chamfering $\to$ engraving) into a single cohesive `.nc` job file.
+- **Complete Part Machining Assembler**: Queue multiple conversational operations (facing $\to$ pocketing $\to$ drilling $\to$ contouring $\to$ chamfering $\to$ engraving $\to$ soft jaws) into a single cohesive `.nc` job file.
 - **Intelligent Tool Change Optimization**: Tracks active tools and eliminates redundant tool changes when consecutive operations share the same tool.
 - **Safe Inter-Op Retracts & Coordinate Continuity**: Enforces safe Z-retracts and G54 coordinate continuity throughout the entire job run.
 - **Slide-Over Job Builder Drawer**: Reorder operations with up/down controls, group by tool, preview combined toolpaths, and export full `.nc` programs with 1-click.
+
 
 
 
@@ -120,7 +122,7 @@ conversationalCNC/
 │   │   ├── static/          # CSS stylesheets and client JavaScript modules
 │   │   ├── templates/       # Jinja2 HTML templates
 │   │   └── web/             # Web frontend routing blueprint
-│   └── tests/               # 127 automated pytest unit and integration tests
+│   └── tests/               # 135 automated pytest unit and integration tests
 └── docs/
     └── API_DOCUMENTATION.md # Comprehensive REST API reference
 ```
@@ -167,10 +169,11 @@ PYTHONPATH=backend python backend/seed.py
 ```
 
 ### Step 5: Run Automated Tests
-Verify that all 127 tests pass on your machine:
+Verify that all 135 tests pass on your machine:
 ```bash
 PYTHONPATH=backend pytest backend/tests -v
 ```
+
 
 
 

@@ -235,7 +235,16 @@ Implemented in `app/generators/contouring.py` and `app/static/js/contouring.js`:
 
 ---
 
-## 13. Development Status & Roadmap
+## 13. Step-and-Repeat Array Nesting & Soft Jaw Fixturing Architecture
+
+Implemented in `app/generators/nesting.py` and `app/static/js/nesting.js`:
+1. **2D Matrix Grid & Staggered Nesting**: Transforms single-part G-code snippets across $N_x \times N_y$ rectangular arrays or honeycomb staggered layouts with serpentine zig-zag rapid motion planning.
+2. **Vise Soft Jaw Fixturing Wizard**: Machines custom negative clamping pockets directly into standard machine vise soft jaws for secondary operations (Op 2).
+3. **Corner Dogbone Relief Overcuts**: Emits 45° corner relief drill passes allowing sharp rectangular parts to seat flush without corner fillet interference.
+
+---
+
+## 14. Development Status & Roadmap
 
 - **Phase 1 (Completed)**: Core architecture, SQLite schema, Straight Plunge drilling, Grbl post-processor, DeWalt DWP611 dial mapping.
 - **Phase 2 (Completed)**: Helical Thread Milling, Peck Drilling (G73/G83), Circular Pocketing, Surfacing/Facing, Single-Line Vector Text Engraving with 5 fonts and spline smoothing, 2D vector toolpath visualizer.
@@ -248,8 +257,9 @@ Implemented in `app/generators/contouring.py` and `app/static/js/contouring.js`:
 - **Phase 9 (Completed)**: Manual Jog Controller & Live DRO Pendant with keyboard hotkeys and quick-zero actions.
 - **Phase 10 (Completed)**: Multi-Operation Job Program Sequencer / Builder with tool change optimization.
 - **Phase 11 (Completed)**: 2.5D Arbitrary Profile & Contour Milling with cutter compensation and lead-in/out arcs.
-- **Phase 12 (Planned)**: Step-and-Repeat Array Nesting & Soft Jaw Fixturing Wizard.
+- **Phase 12 (Completed)**: Step-and-Repeat Array Nesting & Soft Jaw Fixturing Wizard.
 - **Phase 13 (Planned)**: DXF / 2D Vector CAD Importer.
+
 
 
 

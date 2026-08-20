@@ -13,6 +13,8 @@ from ..schemas import (
     LinearSlotPayloadSchema,
     RectangularChamferPayloadSchema,
     ContourProfilePayloadSchema,
+    StepAndRepeatPayloadSchema,
+    SoftJawFixturePayloadSchema,
 )
 from ..postprocessors import get_postprocessor, DIALECT_REGISTRY
 from ..generators import (
@@ -27,11 +29,14 @@ from ..generators import (
     generate_linear_slot,
     generate_rectangular_chamfer,
     generate_contour_profile,
+    generate_step_and_repeat_grid,
+    generate_soft_jaw_fixture,
     get_available_fonts,
     FONTS,
     THREAD_STANDARDS,
     WorkEnvelope,
 )
+
 
 
 
@@ -794,6 +799,85 @@ def generate_contour_milling_gcode():
         "machine_profile": ctx["machine"].to_dict() if ctx["machine"] else None,
         "dialect_used": ctx["postprocessor"].dialect_name,
     }), 200
+
+
+@generate_bp.route("/nesting/grid", methods=["POST"])
+def generate_step_and_repeat_grid_gcode():
+    data = request.get_json() or {}
+    try:
+        payload = StepAndRepeatPayloadSchema(**data)
+    except ValidationError as e:
+        error_details = [{"loc": err.get("loc"), "msg": err.get("msg"), "type": err.get("type")} for err in e.errors()]
+        return jsonify({"error": "Validation error", "details": error_details}), 400
+
+    ctx = _resolve_context(payload)
+
+    try:
+        result = generate_step_and_repeat_grid(
+            gcode_snippet=payload.gcode,
+            cols_x=payload.cols_x,
+            rows_y=payload.rows_y,
+            spacing_x=payload.spacing_x,
+            spacing_y=payload.spacing_y,
+            layout_pattern=payload.layout_pattern,
+            order_strategy=payload.order_strategy,
+            safe_z_retract=payload.safe_z_retract,
+            units=payload.units,
+            dialect=ctx["postprocessor"].dialect_name,
+        )
+    except Exception as err:
+        return jsonify({"error": "Generation error", "message": str(err)}), 400
+
+    return jsonify({
+        "success": True,
+        "data": result,
+        "machine_profile": ctx["machine"].to_dict() if ctx["machine"] else None,
+        "dialect_used": ctx["postprocessor"].dialect_name,
+    }), 200
+
+
+@generate_bp.route("/nesting/soft-jaw", methods=["POST"])
+def generate_soft_jaw_fixture_gcode():
+    data = request.get_json() or {}
+    try:
+        payload = SoftJawFixturePayloadSchema(**data)
+    except ValidationError as e:
+        error_details = [{"loc": err.get("loc"), "msg": err.get("msg"), "type": err.get("type")} for err in e.errors()]
+        return jsonify({"error": "Validation error", "details": error_details}), 400
+
+    ctx = _resolve_context(payload)
+
+    try:
+        result = generate_soft_jaw_fixture(
+            jaw_type=payload.jaw_type,
+            part_length_x=payload.part_length_x,
+            part_width_y=payload.part_width_y,
+            part_diameter=payload.part_diameter,
+            step_depth_z=payload.step_depth_z,
+            jaw_gap=payload.jaw_gap,
+            dogbone_relief=payload.dogbone_relief,
+            tool_diameter=payload.tool_diameter or ctx["tool_diameter"],
+            tool_number=payload.tool_number or ctx["tool_number"],
+            tool_name=payload.tool_name or ctx["tool_name"],
+            stepdown_z=payload.stepdown_z,
+            stepover_percent=payload.stepover_percent,
+            feed_rate_xy=payload.feed_rate_xy or ctx["feed_rate_xy"],
+            plunge_feed=payload.plunge_feed or ctx["plunge_feed"],
+            spindle_speed=payload.spindle_speed or ctx["spindle_speed"],
+            safe_z_retract=payload.safe_z_retract or ctx["safe_z_default"],
+            units=payload.units,
+            dialect=ctx["postprocessor"].dialect_name,
+        )
+    except Exception as err:
+        return jsonify({"error": "Generation error", "message": str(err)}), 400
+
+    return jsonify({
+        "success": True,
+        "data": result,
+        "machine_profile": ctx["machine"].to_dict() if ctx["machine"] else None,
+        "dialect_used": ctx["postprocessor"].dialect_name,
+    }), 200
+
 
 
 

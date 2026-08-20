@@ -19,7 +19,9 @@ from .chamfering import generate_rectangular_chamfer
 from .surfacing import generate_surfacing
 from .engraving import generate_text_engraving
 from .contouring import generate_contour_profile
+from .base import strip_header_and_footer
 
+_strip_header_and_footer = strip_header_and_footer
 
 GENERATOR_MAP = {
     "drilling": generate_straight_plunge,
@@ -38,6 +40,8 @@ GENERATOR_MAP = {
     "contouring": generate_contour_profile,
     "profile": generate_contour_profile,
 }
+
+
 
 
 
@@ -153,6 +157,9 @@ def generate_job_sequence(
             op_lines = _strip_header_and_footer(op["raw_gcode"])
         else:
             gen_func = GENERATOR_MAP.get(op_type)
+            if not gen_func and op_type in ("soft_jaw", "soft_jaw_fixture"):
+                from .nesting import generate_soft_jaw_fixture
+                gen_func = generate_soft_jaw_fixture
             if gen_func:
                 # Merge top-level params with op params
                 call_params = dict(params)

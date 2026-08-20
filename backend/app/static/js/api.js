@@ -383,8 +383,31 @@ const API = {
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || data.error || "Contour milling generation failed");
     return data;
+  },
+
+  async generateStepAndRepeatGrid(payload) {
+    const res = await fetch("/api/generate/nesting/grid", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || data.error || "Step-and-repeat generation failed");
+    return data;
+  },
+
+  async generateSoftJawFixture(payload) {
+    const res = await fetch("/api/generate/nesting/soft-jaw", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || data.error || "Soft jaw fixture generation failed");
+    return data;
   }
 };
+
 
 
 

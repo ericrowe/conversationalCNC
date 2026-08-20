@@ -144,7 +144,15 @@ Generate test programs from Conversational CNC UI with workpiece origin set to $
   - Roughing passes respect the $0.2\text{mm}$ wall stock allowance, followed by a dedicated full-depth finish pass and optional spring pass.
   - Tangential arc lead-out departs cleanly before retracting to safe clearance.
 
+### Test 3.7: Step-and-Repeat Array Nesting & Soft Jaw Fixturing Verification
+- **Parameters**: $2 \times 2$ matrix array of circular pocket part program with $60\text{mm} \times 50\text{mm}$ spacing pitch, and rectangular soft jaw clamping cavity ($60 \times 40\text{mm}$, depth $3\text{mm}$) with 45° dogbone corner relief overcuts.
+- **Verification**:
+  - Array toolpaths execute 4 distinct part instances with serpentine zig-zag rapid traversal without redundant tool changes.
+  - Each part instance is preceded by safe Z-retract to avoid clamp collisions during high-speed transit.
+  - Soft jaw pocket machines clean cavity across the vise centerline with 45° corner dogbone relief passes clearing corner radius interference for sharp parts.
+
 ---
+
 
 
 

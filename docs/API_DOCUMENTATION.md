@@ -447,7 +447,52 @@ Splits a multi-tool program (`M6 T...`) into standalone `.nc` files for each too
 
 ---
 
-## 5. Feeds & Speeds Physics Engine
+## 5. Step-and-Repeat Array Nesting & Soft Jaw Fixturing
+
+### `POST /api/generate/nesting/grid`
+Arrays any base single-part G-code snippet across an $N_x \times N_y$ matrix grid or staggered honeycomb layout with serpentine rapid traversal.
+
+#### Request Payload
+```json
+{
+  "gcode": "G0 X0 Y0\nG1 Z-3.0 F200\nG1 X20 Y0 F800\nG1 X20 Y20\nG1 X0 Y20\nG1 X0 Y0\nG0 Z5.0",
+  "cols_x": 3,
+  "rows_y": 2,
+  "spacing_x": 50.0,
+  "spacing_y": 40.0,
+  "layout_pattern": "grid",
+  "order_strategy": "zigzag",
+  "safe_z_retract": 5.0
+}
+```
+
+---
+
+### `POST /api/generate/nesting/soft-jaw`
+Generates negative clamping cavities into vise soft jaws for secondary machining operations (Op 2), with optional 45° dogbone corner relief overcuts.
+
+#### Request Payload
+```json
+{
+  "jaw_type": "rectangular",
+  "part_length_x": 60.0,
+  "part_width_y": 40.0,
+  "step_depth_z": 3.0,
+  "jaw_gap": 10.0,
+  "dogbone_relief": true,
+  "tool_diameter": 6.35,
+  "stepdown_z": 1.5,
+  "stepover_percent": 50.0,
+  "feed_rate_xy": 1000.0,
+  "plunge_feed": 250.0,
+  "spindle_speed": 16000
+}
+```
+
+---
+
+## 6. Feeds & Speeds Physics Engine
+
 
 ### `GET /api/calculator/materials-catalog`
 Returns the material cutting constants, recommended surface speed ranges (SMM), baseline chip loads, and specific cutting energy ($K_p$).

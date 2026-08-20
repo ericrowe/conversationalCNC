@@ -50,9 +50,14 @@ def engraving_page():
 def contouring_page():
     return render_template("operations/contouring.html")
 
+@web_bp.route("/nesting")
+def nesting_page():
+    return render_template("operations/nesting.html")
+
 @web_bp.route("/transformations")
 def transformations_page():
     return render_template("operations/transformations.html")
+
 
 
 @web_bp.route("/machines")
