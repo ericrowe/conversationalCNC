@@ -264,9 +264,17 @@ class ToolpathVisualizer {
         allY.push(s.originY, s.originY + s.widthY);
       }
     }
- else if (this.opType === "engraving" && this.engraving) {
+    else if (this.opType === "engraving" && this.engraving) {
       const e = this.engraving;
-      if (e.layoutMode === "arc") {
+      const polys = this.computeEngravingPolylines(e);
+      if (polys && polys.length > 0) {
+        for (let poly of polys) {
+          for (let pt of poly) {
+            allX.push(pt[0]);
+            allY.push(pt[1]);
+          }
+        }
+      } else if (e.layoutMode === "arc") {
         allX.push(e.centerX - e.arcRadius - 10, e.centerX + e.arcRadius + 10);
         allY.push(e.centerY - e.arcRadius - 10, e.centerY + e.arcRadius + 10);
       } else {
@@ -490,7 +498,18 @@ class ToolpathVisualizer {
     ctx.setLineDash([]);
   }
 
+  clearGCode() {
+    this.gcodeToolpath = null;
+    this.simIndex = 0;
+    const scrubber = document.getElementById("simScrubber");
+    if (scrubber) {
+      scrubber.max = 0;
+      scrubber.value = 0;
+    }
+  }
+
   loadGCode(gcodeText) {
+
     if (!gcodeText) return;
     this.gcodeToolpath = this.parseGCode(gcodeText);
     this.simIndex = 0;
@@ -862,13 +881,215 @@ class ToolpathVisualizer {
   }
 
 
+  getEngravingGlyph(c, fontName = "simplex_sans") {
+    if (this.engravingGlyphs) {
+      const font = this.engravingGlyphs[fontName] || this.engravingGlyphs["simplex_sans"] || Object.values(this.engravingGlyphs)[0];
+      if (font) {
+        if (font[c]) return font[c];
+        if (font[c.toUpperCase()]) return font[c.toUpperCase()];
+        if (font["?"]) return font["?"];
+      }
+    }
+
+    // Built-in fallback stroke vectors (grid: cap height = 10.0, baseline = 0.0)
+    const C = c.toUpperCase();
+    const FALLBACK_GLYPHS = {
+      " ": { w: 4.0, strokes: [] },
+      "-": { w: 4.0, strokes: [[[0.5, 5.0], [3.5, 5.0]]] },
+      ".": { w: 2.0, strokes: [[[1.0, 0.0], [1.0, 0.5]]] },
+      ":": { w: 2.0, strokes: [[[1.0, 2.0], [1.0, 2.5]], [[1.0, 6.0], [1.0, 6.5]]] },
+      "/": { w: 5.0, strokes: [[[0.5, 0.0], [4.5, 10.0]]] },
+      "+": { w: 6.0, strokes: [[[1.0, 5.0], [5.0, 5.0]], [[3.0, 2.0], [3.0, 8.0]]] },
+      "0": { w: 6.0, strokes: [[[1.0, 0.0], [5.0, 0.0], [5.0, 10.0], [1.0, 10.0], [1.0, 0.0], [5.0, 10.0]]] },
+      "1": { w: 4.0, strokes: [[[1.0, 7.0], [3.0, 10.0], [3.0, 0.0], [1.0, 0.0], [5.0, 0.0]]] },
+      "2": { w: 6.0, strokes: [[[1.0, 8.0], [2.0, 10.0], [4.0, 10.0], [5.0, 8.0], [1.0, 0.0], [5.0, 0.0]]] },
+      "3": { w: 6.0, strokes: [[[1.0, 9.0], [2.0, 10.0], [4.0, 10.0], [5.0, 8.0], [3.0, 5.0], [5.0, 2.0], [4.0, 0.0], [2.0, 0.0], [1.0, 1.0]]] },
+      "4": { w: 6.0, strokes: [[[4.5, 0.0], [4.5, 10.0], [1.0, 3.0], [5.5, 3.0]]] },
+      "5": { w: 6.0, strokes: [[[5.0, 10.0], [1.0, 10.0], [1.0, 5.0], [4.0, 5.0], [5.0, 3.0], [5.0, 1.0], [4.0, 0.0], [1.0, 0.0]]] },
+      "6": { w: 6.0, strokes: [[[5.0, 9.0], [3.0, 10.0], [1.0, 6.0], [1.0, 2.0], [3.0, 0.0], [5.0, 2.0], [5.0, 4.0], [3.0, 5.0], [1.0, 4.0]]] },
+      "7": { w: 6.0, strokes: [[[1.0, 10.0], [5.0, 10.0], [2.0, 0.0]]] },
+      "8": { w: 6.0, strokes: [[[3.0, 5.0], [1.0, 7.0], [1.0, 9.0], [3.0, 10.0], [5.0, 9.0], [5.0, 7.0], [3.0, 5.0], [1.0, 3.0], [1.0, 1.0], [3.0, 0.0], [5.0, 1.0], [5.0, 3.0], [3.0, 5.0]]] },
+      "9": { w: 6.0, strokes: [[[5.0, 5.0], [3.0, 6.0], [1.0, 6.0], [1.0, 8.0], [3.0, 10.0], [5.0, 8.0], [5.0, 2.0], [3.0, 0.0], [1.0, 1.0]]] },
+      "A": { w: 6.0, strokes: [[[1.0, 0.0], [3.0, 10.0], [5.0, 0.0]], [[1.8, 4.0], [4.2, 4.0]]] },
+      "B": { w: 6.0, strokes: [[[1.0, 0.0], [1.0, 10.0], [4.0, 10.0], [5.0, 8.0], [4.0, 5.0], [1.0, 5.0]], [[4.0, 5.0], [5.0, 2.5], [4.0, 0.0], [1.0, 0.0]]] },
+      "C": { w: 6.0, strokes: [[[5.0, 8.0], [4.0, 10.0], [2.0, 10.0], [1.0, 8.0], [1.0, 2.0], [2.0, 0.0], [4.0, 0.0], [5.0, 2.0]]] },
+      "D": { w: 6.0, strokes: [[[1.0, 0.0], [1.0, 10.0], [4.0, 10.0], [5.0, 7.0], [5.0, 3.0], [4.0, 0.0], [1.0, 0.0]]] },
+      "E": { w: 5.5, strokes: [[[1.0, 0.0], [1.0, 10.0], [4.5, 10.0]], [[1.0, 5.0], [3.5, 5.0]], [[1.0, 0.0], [4.5, 0.0]]] },
+      "F": { w: 5.5, strokes: [[[1.0, 0.0], [1.0, 10.0], [4.5, 10.0]], [[1.0, 5.0], [3.5, 5.0]]] },
+      "G": { w: 6.0, strokes: [[[5.0, 8.0], [4.0, 10.0], [2.0, 10.0], [1.0, 8.0], [1.0, 2.0], [2.0, 0.0], [4.0, 0.0], [5.0, 2.0], [5.0, 5.0], [3.5, 5.0]]] },
+      "H": { w: 6.0, strokes: [[[1.0, 0.0], [1.0, 10.0]], [[5.0, 0.0], [5.0, 10.0]], [[1.0, 5.0], [5.0, 5.0]]] },
+      "I": { w: 3.0, strokes: [[[1.5, 0.0], [1.5, 10.0]], [[0.5, 10.0], [2.5, 10.0]], [[0.5, 0.0], [2.5, 0.0]]] },
+      "J": { w: 5.0, strokes: [[[3.5, 10.0], [3.5, 2.0], [2.5, 0.0], [1.0, 0.0], [0.5, 1.5]]] },
+      "K": { w: 6.0, strokes: [[[1.0, 0.0], [1.0, 10.0]], [[5.0, 10.0], [1.0, 4.5]], [[2.5, 6.0], [5.0, 0.0]]] },
+      "L": { w: 5.0, strokes: [[[1.0, 10.0], [1.0, 0.0], [4.5, 0.0]]] },
+      "M": { w: 7.0, strokes: [[[1.0, 0.0], [1.0, 10.0], [3.5, 4.0], [6.0, 10.0], [6.0, 0.0]]] },
+      "N": { w: 6.0, strokes: [[[1.0, 0.0], [1.0, 10.0], [5.0, 0.0], [5.0, 10.0]]] },
+      "O": { w: 6.0, strokes: [[[3.0, 10.0], [1.0, 8.0], [1.0, 2.0], [3.0, 0.0], [4.5, 0.0], [5.5, 2.0], [5.5, 8.0], [4.5, 10.0], [3.0, 10.0]]] },
+      "P": { w: 5.5, strokes: [[[1.0, 0.0], [1.0, 10.0], [4.0, 10.0], [5.0, 8.0], [4.0, 5.0], [1.0, 5.0]]] },
+      "Q": { w: 6.0, strokes: [[[3.0, 10.0], [1.0, 8.0], [1.0, 2.0], [3.0, 0.0], [4.5, 0.0], [5.5, 2.0], [5.5, 8.0], [4.5, 10.0], [3.0, 10.0]], [[3.5, 3.0], [5.5, -1.0]]] },
+      "R": { w: 6.0, strokes: [[[1.0, 0.0], [1.0, 10.0], [4.0, 10.0], [5.0, 8.0], [4.0, 5.0], [1.0, 5.0]], [[3.5, 5.0], [5.0, 0.0]]] },
+      "S": { w: 5.5, strokes: [[[5.0, 8.5], [4.0, 10.0], [2.0, 10.0], [1.0, 8.5], [1.0, 6.5], [4.5, 4.5], [4.5, 1.5], [3.5, 0.0], [1.5, 0.0], [0.5, 1.5]]] },
+      "T": { w: 6.0, strokes: [[[3.0, 0.0], [3.0, 10.0]], [[0.5, 10.0], [5.5, 10.0]]] },
+      "U": { w: 6.0, strokes: [[[1.0, 10.0], [1.0, 2.0], [2.5, 0.0], [4.5, 0.0], [5.5, 2.0], [5.5, 10.0]]] },
+      "V": { w: 6.0, strokes: [[[1.0, 10.0], [3.0, 0.0], [5.0, 10.0]]] },
+      "W": { w: 7.0, strokes: [[[1.0, 10.0], [2.0, 0.0], [3.5, 6.0], [5.0, 0.0], [6.0, 10.0]]] },
+      "X": { w: 6.0, strokes: [[[1.0, 0.0], [5.0, 10.0]], [[1.0, 10.0], [5.0, 0.0]]] },
+      "Y": { w: 6.0, strokes: [[[1.0, 10.0], [3.0, 5.0], [5.0, 10.0]], [[3.0, 5.0], [3.0, 0.0]]] },
+      "Z": { w: 6.0, strokes: [[[1.0, 10.0], [5.0, 10.0], [1.0, 0.0], [5.0, 0.0]]] },
+    };
+
+    return FALLBACK_GLYPHS[C] || { w: 5.0, strokes: [[[0.5, 0.0], [0.5, 10.0], [4.5, 10.0], [4.5, 0.0], [0.5, 0.0]]] };
+  }
+
+  computeEngravingPolylines(e) {
+    if (!e || !e.text) return [];
+    const scale = (e.fontSize || 10.0) / 10.0;
+    const letterSpacing = e.letterSpacing !== undefined ? e.letterSpacing : 1.0;
+    const fontName = e.fontName || "simplex_sans";
+    const polylines = [];
+
+    if (e.layoutMode === "arc") {
+      const arcRadius = e.arcRadius || 30.0;
+      const startAngleRad = ((e.startAngleDeg !== undefined ? e.startAngleDeg : 90.0) * Math.PI) / 180.0;
+      const isCw = (e.arcDirection !== "counter_clockwise");
+      const arcText = (e.text || "").replace(/\n/g, " ").trim();
+      const align = e.align || "center";
+
+      const glyphs = [];
+      let totalArcLen = 0;
+      for (let c of arcText) {
+        const g = this.getEngravingGlyph(c, fontName);
+        glyphs.push(g);
+        totalArcLen += g.w * scale + letterSpacing;
+      }
+      if (glyphs.length > 0) totalArcLen -= letterSpacing;
+
+      const totalAngleRad = totalArcLen / Math.max(0.1, arcRadius);
+
+      let baseAngleRad = startAngleRad;
+      if (align === "center") {
+        baseAngleRad = startAngleRad + (isCw ? totalAngleRad / 2.0 : -totalAngleRad / 2.0);
+      } else if (align === "right") {
+        baseAngleRad = startAngleRad + (isCw ? totalAngleRad : -totalAngleRad);
+      }
+
+      let currDist = 0.0;
+      for (let i = 0; i < arcText.length; i++) {
+        const g = glyphs[i];
+        const charW = g.w * scale;
+        const charCenterDist = currDist + (charW / 2.0);
+        const charAngle = isCw
+          ? baseAngleRad - (charCenterDist / arcRadius)
+          : baseAngleRad + (charCenterDist / arcRadius);
+
+        for (let stroke of g.strokes) {
+          const poly = [];
+          for (let pt of stroke) {
+            const tOffset = (pt[0] - g.w / 2.0) * scale;
+            const tAngleDelta = isCw ? (-tOffset / arcRadius) : (tOffset / arcRadius);
+            const ptAngle = charAngle + tAngleDelta;
+            const ptRadius = arcRadius + (pt[1] * scale);
+
+            const px = (e.centerX || 0.0) + ptRadius * Math.cos(ptAngle);
+            const py = (e.centerY || 0.0) + ptRadius * Math.sin(ptAngle);
+            poly.push([px, py]);
+          }
+          if (poly.length > 0) polylines.push(poly);
+        }
+        currDist += charW + letterSpacing;
+      }
+    } else {
+      // Linear Layout with Full Rotation and Alignment
+      const radRot = ((e.rotationDeg || 0.0) * Math.PI) / 180.0;
+      const cosRot = Math.cos(radRot);
+      const sinRot = Math.sin(radRot);
+      const lineSpacing = (e.fontSize || 10.0) * (e.lineSpacingMult || 1.4);
+      const align = e.align || "left";
+
+      const linesText = (e.text || "").split("\n");
+      for (let lineIdx = 0; lineIdx < linesText.length; lineIdx++) {
+        const lineStr = linesText[lineIdx];
+        const glyphs = [];
+        let lineWidth = 0.0;
+
+        for (let c of lineStr) {
+          const g = this.getEngravingGlyph(c, fontName);
+          glyphs.push(g);
+          lineWidth += g.w * scale + letterSpacing;
+        }
+        if (glyphs.length > 0) lineWidth -= letterSpacing;
+
+        let alignXOffset = 0.0;
+        if (align === "center") alignXOffset = -lineWidth / 2.0;
+        else if (align === "right") alignXOffset = -lineWidth;
+
+        const lineYOffset = -lineIdx * lineSpacing;
+
+        let currCharX = 0.0;
+        for (let i = 0; i < lineStr.length; i++) {
+          const g = glyphs[i];
+          for (let stroke of g.strokes) {
+            const poly = [];
+            for (let pt of stroke) {
+              const lx = alignXOffset + currCharX + (pt[0] * scale);
+              const ly = lineYOffset + (pt[1] * scale);
+
+              const rx = (e.startX || 0.0) + (lx * cosRot - ly * sinRot);
+              const ry = (e.startY || 0.0) + (lx * sinRot + ly * cosRot);
+              poly.push([rx, ry]);
+            }
+            if (poly.length > 0) polylines.push(poly);
+          }
+          currCharX += (g.w * scale) + letterSpacing;
+        }
+      }
+    }
+
+    return polylines;
+  }
+
   drawEngraving(ctx) {
-    // 2D Engraving text outline
     const e = this.engraving;
     if (!e || !e.text) return;
-    const p = this.toScreen(e.startX || 0, e.startY || 0, 0);
-    ctx.fillStyle = "#38bdf8";
-    ctx.font = "14px sans-serif";
-    ctx.fillText(e.text, p.x, p.y);
+
+    const polylines = this.computeEngravingPolylines(e);
+    if (!polylines || polylines.length === 0) return;
+
+    // Draw reference datum/guideline
+    if (e.layoutMode === "arc") {
+      const centerPt = this.toScreen(e.centerX || 0, e.centerY || 0, 0);
+      ctx.strokeStyle = "rgba(168, 85, 247, 0.4)";
+      ctx.lineWidth = 1;
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath();
+      ctx.arc(centerPt.x, centerPt.y, (e.arcRadius || 30.0) * this.scale, 0, 2 * Math.PI);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    } else {
+      const startPt = this.toScreen(e.startX || 0, e.startY || 0, 0);
+      ctx.fillStyle = "#f59e0b";
+      ctx.beginPath();
+      ctx.arc(startPt.x, startPt.y, 3.5, 0, 2 * Math.PI);
+      ctx.fill();
+    }
+
+    // Draw Vector Font Strokes in 3D
+    ctx.strokeStyle = "#38bdf8";
+    ctx.lineWidth = Math.max(1.5, Math.min(4, (this.toolDiameter || 0.5) * this.scale));
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+
+    for (let poly of polylines) {
+      if (poly.length < 2) continue;
+      ctx.beginPath();
+      const p0 = this.toScreen(poly[0][0], poly[0][1], 0);
+      ctx.moveTo(p0.x, p0.y);
+      for (let i = 1; i < poly.length; i++) {
+        const pi = this.toScreen(poly[i][0], poly[i][1], 0);
+        ctx.lineTo(pi.x, pi.y);
+      }
+      ctx.stroke();
+    }
   }
 }
+

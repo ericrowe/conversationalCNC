@@ -76,7 +76,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
       }
 
-      // Fetch Fonts
+      // Fetch Fonts & Full Glyphs for real-time 3D vector preview
       try {
         const fontData = await API.getEngravingFonts();
         if (fontData && fontData.fonts) {
@@ -92,11 +92,17 @@ document.addEventListener("DOMContentLoaded", async () => {
             fontSelect.value = currentVal;
           }
         }
+
+        const glyphData = await API.getEngravingGlyphs();
+        if (glyphData && glyphData.fonts) {
+          visualizer.engravingGlyphs = glyphData.fonts;
+        }
       } catch (fErr) {
-        console.warn("Could not fetch font list, using defaults:", fErr);
+        console.warn("Could not fetch font/glyph list, using defaults:", fErr);
       }
 
       toolsList = await API.getTools();
+
       toolSelect.innerHTML = '<option value="">-- Select Tool --</option>';
       let vbitDefault = null;
       toolsList.forEach((t) => {
@@ -271,7 +277,12 @@ document.addEventListener("DOMContentLoaded", async () => {
       visualizer.clearGCode();
       updatePreview();
     });
+    el.addEventListener("change", () => {
+      visualizer.clearGCode();
+      updatePreview();
+    });
   });
+
 
   document.getElementById("zoomInBtn")?.addEventListener("click", () => visualizer.zoom(1.2));
   document.getElementById("zoomOutBtn")?.addEventListener("click", () => visualizer.zoom(0.8));

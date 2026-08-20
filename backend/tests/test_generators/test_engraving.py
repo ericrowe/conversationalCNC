@@ -125,3 +125,17 @@ def test_curve_subdivisions_sampling():
     assert prog_ultra.line_count > prog_smooth.line_count
     assert "Text Engraving" in prog_smooth.gcode
 
+
+def test_cursive_script_and_all_fonts_lowercase():
+    for f_id in ["simplex_sans", "duplex_sans", "roman_serif", "cursive_script", "block_stencil"]:
+        prog = generate_text_engraving(
+            text="The Quick Brown Fox 123!",
+            font_name=f_id,
+            font_size=10.0,
+            target_depth_z=-0.5,
+        )
+        assert prog.gcode is not None
+        assert "G1" in prog.gcode
+        assert prog.line_count > 50
+
+
