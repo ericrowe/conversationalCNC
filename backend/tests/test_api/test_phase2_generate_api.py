@@ -62,3 +62,31 @@ def test_surfacing_api(client):
     data = res.get_json()
     assert data["success"] is True
     assert "Surfacing / Facing" in data["data"]["gcode"]
+
+def test_text_engraving_api(client):
+    payload = {
+        "text": "SERIAL #1042",
+        "layout_mode": "linear",
+        "start_x": 15.0,
+        "start_y": 25.0,
+        "font_size": 8.0,
+        "font_name": "duplex_sans",
+        "target_depth_z": -0.3,
+        "stepdown_z": 0.3,
+    }
+    res = client.post("/api/generate/engraving/text", json=payload)
+    assert res.status_code == 200
+    data = res.get_json()
+    assert data["success"] is True
+    assert "Text Engraving" in data["data"]["gcode"]
+
+def test_engraving_fonts_api(client):
+    res = client.get("/api/generate/engraving/fonts")
+    assert res.status_code == 200
+    data = res.get_json()
+    assert "fonts" in data
+    assert "simplex_sans" in data["fonts"]
+    assert "roman_serif" in data["fonts"]
+    assert "cursive_script" in data["fonts"]
+
+

@@ -1,0 +1,279 @@
+{% extends "base.html" %}
+
+{% block title %}Text Engraving — Conversational CNC{% endblock %}
+
+{% block content %}
+<div class="page-title-row">
+  <div>
+    <h1 class="page-title">✏️ Text Engraving (Linear & Arc)</h1>
+    <div class="page-desc">Engrave clean single-line text, serial numbers, labels, badges, and dials along linear paths or wrapped around circular arcs.</div>
+  </div>
+</div>
+
+<!-- Soft limit warning banner -->
+<div id="warningBanner" class="alert alert-warning" style="display: none;"></div>
+
+<div class="two-col-grid">
+  <!-- Left Column: Form Controls -->
+  <div class="controls-col" id="engravingForm">
+
+    <!-- Text & Typography Card -->
+    <div class="card">
+      <div class="card-title">
+        <span>1. Text & Typography</span>
+      </div>
+
+      <div class="form-group">
+        <label for="engravingText">Text to Engrave</label>
+        <textarea id="engravingText" rows="3" style="width: 100%; background: var(--bg-input); color: var(--text-main); border: 1px solid var(--border-color); border-radius: 6px; padding: 0.5rem; font-family: var(--font-mono); font-size: 0.95rem; resize: vertical;">CNC MADE</textarea>
+      </div>
+
+      <div class="form-group">
+        <label for="fontSelect">Engraving Font Style</label>
+        <select id="fontSelect">
+          <option value="simplex_sans" selected>Simplex Sans (Clean Single-Stroke)</option>
+          <option value="duplex_sans">Duplex Bold Sans (Double-Stroke)</option>
+          <option value="roman_serif">Roman Serif (Classic Formal)</option>
+          <option value="cursive_script">Cursive Script (Flowing Elegance)</option>
+          <option value="block_stencil">Industrial Block (Technical / Chamfered)</option>
+        </select>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="fontSize">Font Height / Size (mm)</label>
+          <input type="number" id="fontSize" step="0.5" min="1" value="10.0">
+        </div>
+        <div class="form-group">
+          <label for="letterSpacing">Letter Spacing (mm)</label>
+          <input type="number" id="letterSpacing" step="0.2" min="0" value="1.0">
+        </div>
+      </div>
+    </div>
+
+
+    <!-- Layout & Placement Card -->
+    <div class="card">
+      <div class="card-title">
+        <span>2. Layout & Placement</span>
+      </div>
+
+      <div class="tab-group">
+        <button type="button" class="tab-btn layout-tab active" data-layout="linear">Linear Text</button>
+        <button type="button" class="tab-btn layout-tab" data-layout="arc">Arc / Circular Text</button>
+      </div>
+
+      <!-- Linear Layout Options -->
+      <div id="linearLayoutInputs">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="startX">Start X (mm)</label>
+            <input type="number" id="startX" step="0.5" value="20.0">
+          </div>
+          <div class="form-group">
+            <label for="startY">Start Y (mm)</label>
+            <input type="number" id="startY" step="0.5" value="30.0">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="rotationDeg">Rotation Angle (degrees)</label>
+            <input type="number" id="rotationDeg" step="5" value="0">
+          </div>
+          <div class="form-group">
+            <label for="alignSelect">Text Alignment</label>
+            <select id="alignSelect">
+              <option value="left" selected>Left Aligned</option>
+              <option value="center">Centered</option>
+              <option value="right">Right Aligned</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Arc Layout Options -->
+      <div id="arcLayoutInputs" style="display: none;">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="centerX">Arc Center X (mm)</label>
+            <input type="number" id="centerX" step="0.5" value="50.0">
+          </div>
+          <div class="form-group">
+            <label for="centerY">Arc Center Y (mm)</label>
+            <input type="number" id="centerY" step="0.5" value="50.0">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="arcRadius">Arc Radius (mm)</label>
+            <input type="number" id="arcRadius" step="0.5" min="1" value="35.0">
+          </div>
+          <div class="form-group">
+            <label for="startAngle">Start / Center Angle (°)</label>
+            <input type="number" id="startAngle" step="5" value="90">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="arcDirection">Arc Wrap Direction</label>
+            <select id="arcDirection">
+              <option value="clockwise" selected>Clockwise (Top of Arc)</option>
+              <option value="counter_clockwise">Counter-Clockwise (Bottom of Arc)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="arcAlign">Arc Alignment</label>
+            <select id="arcAlign">
+              <option value="center" selected>Center on Angle</option>
+              <option value="left">Start at Angle</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Depths & Cut Parameters -->
+    <div class="card">
+      <div class="card-title">
+        <span>3. Engraving Depth & Feeds</span>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="targetDepth">Engrave Depth Z (mm)</label>
+          <input type="number" id="targetDepth" step="0.1" value="-0.5">
+        </div>
+        <div class="form-group">
+          <label for="stepdownZ">Z Stepdown per Pass (mm)</label>
+          <input type="number" id="stepdownZ" step="0.1" min="0.1" value="0.5">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="retractZ">Safe Retract Z (mm)</label>
+        <input type="number" id="retractZ" step="0.5" value="2.0">
+      </div>
+    </div>
+
+    <!-- Tooling & Speeds Card -->
+    <div class="card">
+      <div class="card-title">
+        <span>4. Tool & Speeds</span>
+      </div>
+
+      <div class="form-group">
+        <label for="toolSelect">Engraving Bit / V-Bit</label>
+        <select id="toolSelect"></select>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="toolDiameter">Tool / Tip Diameter (mm)</label>
+          <input type="number" id="toolDiameter" step="0.05" value="3.175">
+        </div>
+        <div class="form-group">
+          <label for="presetSelect">Material Preset</label>
+          <select id="presetSelect"></select>
+        </div>
+      </div>
+
+      <!-- Router Dial Setting -->
+      <div id="routerDialGroup" class="form-group" style="background: rgba(2, 132, 199, 0.1); padding: 0.75rem; border-radius: 6px; border: 1px solid rgba(56, 189, 248, 0.3);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+          <label for="routerDialSelect" style="margin: 0; color: #38bdf8; font-weight: 600;">⚡ DeWalt Router Dial Setting</label>
+          <span id="routerModelBadge" class="badge" style="background: rgba(56, 189, 248, 0.2); color: #38bdf8; font-size: 0.7rem;">DWP611</span>
+        </div>
+        <select id="routerDialSelect">
+          <option value="1">Dial 1 — ~16,000 RPM</option>
+          <option value="2">Dial 2 — ~18,200 RPM</option>
+          <option value="3" selected>Dial 3 — ~20,400 RPM</option>
+          <option value="4">Dial 4 — ~22,600 RPM</option>
+          <option value="5">Dial 5 — ~24,800 RPM</option>
+          <option value="6">Dial 6 — ~27,000 RPM</option>
+        </select>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="spindleRpm">Spindle RPM</label>
+          <input type="number" id="spindleRpm" step="500" value="20000">
+        </div>
+        <div class="form-group">
+          <label for="feedRateXy">Engraving Feed XY (mm/min)</label>
+          <input type="number" id="feedRateXy" step="50" value="800">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="plungeFeed">Plunge Feed (mm/min)</label>
+        <input type="number" id="plungeFeed" step="25" value="300">
+      </div>
+
+      <button type="button" class="btn btn-primary" id="generateGCodeBtn">
+        ⚡ Generate Engraving G-Code & Preview
+      </button>
+    </div>
+  </div>
+
+  <!-- Right Column: Visualizer & G-Code Viewer -->
+  <div class="visualizer-col">
+    <div class="card visualizer-card">
+      <div class="card-title">
+        <span>Toolpath Preview (2D View)</span>
+        <div style="font-size: 0.8rem; color: var(--text-muted);">
+          Drag to Pan | Scroll to Zoom
+        </div>
+      </div>
+
+      <div class="canvas-container">
+        <canvas id="toolpathCanvas"></canvas>
+        <div class="canvas-toolbar">
+          <button type="button" class="canvas-btn" id="zoomInBtn" title="Zoom In">+</button>
+          <button type="button" class="canvas-btn" id="zoomOutBtn" title="Zoom Out">-</button>
+          <button type="button" class="canvas-btn" id="fitViewBtn" title="Reset View">Fit</button>
+        </div>
+        <div class="canvas-legend">
+          <div class="legend-item"><span class="legend-color" style="background: #10b981;"></span> Origin (0,0)</div>
+          <div class="legend-item"><span class="legend-color" style="background: #38bdf8;"></span> Text Stroke</div>
+          <div class="legend-item"><span class="legend-color" style="background: #f59e0b;"></span> Arc Center / Pitch</div>
+        </div>
+      </div>
+
+      <!-- Quick Metrics Grid -->
+      <div class="stats-grid">
+        <div class="stat-box">
+          <div class="stat-value" id="statCharCount">8</div>
+          <div class="stat-label">Characters</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value" id="statZPasses">1</div>
+          <div class="stat-label">Z Passes</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value" id="statTime">--</div>
+          <div class="stat-label">Est. Time</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value" id="statDialect">GRBL</div>
+          <div class="stat-label">Controller</div>
+        </div>
+      </div>
+
+      <!-- Generated G-Code Viewer -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+        <label style="margin: 0; font-weight: 600;">Generated G-Code</label>
+        <div style="display: flex; gap: 0.5rem;">
+          <button type="button" class="btn btn-secondary btn-sm" id="copyGcodeBtn" disabled>📋 Copy</button>
+          <button type="button" class="btn btn-secondary btn-sm" id="downloadGcodeBtn" disabled>💾 Download .nc</button>
+        </div>
+      </div>
+      <div class="gcode-container" id="gcodeOutput">Click "Generate Engraving G-Code & Preview" to calculate...</div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/visualizer.js') }}"></script>
+<script src="{{ url_for('static', filename='js/engraving.js') }}"></script>
+{% endblock %}

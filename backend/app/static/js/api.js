@@ -157,6 +157,26 @@ const API = {
       throw new Error(data.message || data.error || "Generation failed");
     }
     return data;
+  },
+
+  async getEngravingFonts() {
+    const res = await fetch("/api/generate/engraving/fonts");
+    return await res.json();
+  },
+
+  async generateTextEngraving(payload) {
+    const res = await fetch("/api/generate/engraving/text", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.message || data.error || "Generation failed");
+    }
+    return data;
   }
 };
+
+
 

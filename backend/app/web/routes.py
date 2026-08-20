@@ -37,9 +37,14 @@ def circular_pocket_page():
 def surfacing_page():
     return render_template("operations/surfacing.html")
 
+@web_bp.route("/engraving")
+def engraving_page():
+    return render_template("operations/engraving.html")
+
 @web_bp.route("/machines")
 def machines_page():
     return render_template("machines.html")
+
 
 @web_bp.route("/tools")
 def tools_page():

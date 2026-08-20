@@ -10,6 +10,7 @@ from .peck_drilling_schema import PeckDrillingPayloadSchema
 from .thread_milling_schema import HelicalThreadMillingPayloadSchema
 from .pocket_schema import CircularPocketPayloadSchema
 from .surfacing_schema import SurfacingPayloadSchema
+from .engraving_schema import TextEngravingPayloadSchema
 
 __all__ = [
     "MachineProfileCreateSchema",
@@ -23,5 +24,7 @@ __all__ = [
     "HelicalThreadMillingPayloadSchema",
     "CircularPocketPayloadSchema",
     "SurfacingPayloadSchema",
+    "TextEngravingPayloadSchema",
 ]
+
 

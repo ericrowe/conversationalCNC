@@ -7,6 +7,7 @@ from ..schemas import (
     HelicalThreadMillingPayloadSchema,
     CircularPocketPayloadSchema,
     SurfacingPayloadSchema,
+    TextEngravingPayloadSchema,
 )
 from ..postprocessors import get_postprocessor, DIALECT_REGISTRY
 from ..generators import (
@@ -15,9 +16,13 @@ from ..generators import (
     generate_helical_thread_milling,
     generate_circular_pocket,
     generate_surfacing,
+    generate_text_engraving,
+    get_available_fonts,
     THREAD_STANDARDS,
     WorkEnvelope,
 )
+
+
 
 generate_bp = Blueprint("generate", __name__, url_prefix="/api/generate")
 
@@ -422,3 +427,84 @@ def generate_surfacing_gcode():
         "machine_profile": ctx["machine"].to_dict() if ctx["machine"] else None,
         "dialect_used": ctx["postprocessor"].dialect_name,
     }), 200
+
+
+@generate_bp.route("/engraving/fonts", methods=["GET"])
+def get_engraving_fonts():
+    """Returns available single-line engraving font catalog."""
+    fonts = get_available_fonts()
+    return jsonify({
+        "fonts": fonts,
+        "default": "simplex_sans",
+    }), 200
+
+
+@generate_bp.route("/engraving/text", methods=["POST"])
+def generate_text_engraving_gcode():
+    data = request.get_json() or {}
+    try:
+        payload = TextEngravingPayloadSchema(**data)
+    except ValidationError as e:
+        error_details = [{"loc": err.get("loc"), "msg": err.get("msg"), "type": err.get("type")} for err in e.errors()]
+        return jsonify({"error": "Validation error", "details": error_details}), 400
+
+    ctx = _resolve_context(payload)
+
+    tool_dia = payload.tool_diameter or ctx["tool_diameter"]
+
+    try:
+        program = generate_text_engraving(
+            text=payload.text,
+            layout_mode=payload.layout_mode,
+            start_x=payload.start_x,
+            start_y=payload.start_y,
+            rotation_deg=payload.rotation_deg,
+            align=payload.align,
+            line_spacing_mult=payload.line_spacing_mult,
+            center_x=payload.center_x,
+            center_y=payload.center_y,
+            arc_radius=payload.arc_radius,
+            start_angle_deg=payload.start_angle_deg,
+            arc_direction=payload.arc_direction,
+            font_size=payload.font_size,
+            letter_spacing=payload.letter_spacing,
+            font_name=payload.font_name,
+            target_depth_z=payload.target_depth_z,
+            stepdown_z=payload.stepdown_z,
+            start_z=payload.start_z,
+            retract_z=payload.retract_z if payload.retract_z is not None else ctx["safe_z_default"],
+            feed_rate_xy=payload.feed_rate_xy or ctx["feed_rate_xy"],
+            plunge_feed=payload.plunge_feed or ctx["plunge_feed"],
+            rapid_feed=payload.rapid_feed or ctx["rapid_feed_default"],
+            spindle_speed=ctx["spindle_speed"],
+            spindle_dwell_seconds=(
+                payload.spindle_dwell_seconds
+                if payload.spindle_dwell_seconds is not None
+                else ctx["spindle_dwell_default"]
+            ),
+            units=payload.units,
+            tool_number=ctx["tool_number"],
+            tool_name=ctx["tool_name"],
+            tool_diameter=tool_dia,
+            spindle_type=ctx["spindle_type"],
+            router_model=ctx["router_model"],
+            router_dial=payload.router_dial,
+            min_spindle_rpm=ctx["min_rpm"],
+            max_spindle_rpm=ctx["max_rpm"],
+            postprocessor=ctx["postprocessor"],
+            work_envelope=ctx["work_envelope"],
+            park_x=payload.park_x,
+            park_y=payload.park_y,
+            park_z=payload.park_z,
+        )
+    except ValueError as val_err:
+        return jsonify({"error": "Generation error", "message": str(val_err)}), 400
+
+    return jsonify({
+        "success": True,
+        "data": program.to_dict(),
+        "machine_profile": ctx["machine"].to_dict() if ctx["machine"] else None,
+        "dialect_used": ctx["postprocessor"].dialect_name,
+    }), 200
+
+

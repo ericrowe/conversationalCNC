@@ -201,13 +201,41 @@ def seed_database():
             ),
             MaterialPreset(
                 tool_id=tool4.id,
+                material_name="Hardwood (Oak/Walnut)",
+                spindle_speed=18000,
+                feed_rate_xy=800.0,
+                plunge_rate_z=300.0,
+                pass_depth=0.5,
+                notes="Crisp text engraving in hardwood",
+            ),
+            MaterialPreset(
+                tool_id=tool4.id,
+                material_name="Cast Acrylic",
+                spindle_speed=16000,
+                feed_rate_xy=600.0,
+                plunge_rate_z=250.0,
+                pass_depth=0.3,
+                notes="Clean plastic sign engraving without melting",
+            ),
+            MaterialPreset(
+                tool_id=tool4.id,
                 material_name="360 Brass (Free-Cutting)",
                 spindle_speed=16000,
                 feed_rate_xy=450.0,
                 plunge_rate_z=120.0,
                 pass_depth=0.2,
-                notes="Chamfering and fine lettering in brass",
+                notes="Chamfering and fine lettering in brass plaques and badges",
             ),
+            MaterialPreset(
+                tool_id=tool4.id,
+                material_name="6061 Aluminum",
+                spindle_speed=16000,
+                feed_rate_xy=350.0,
+                plunge_rate_z=100.0,
+                pass_depth=0.15,
+                notes="Light engraving in aluminum plates",
+            ),
+
             # Tool 5 (Thread Mill) Presets
             MaterialPreset(
                 tool_id=tool5.id,

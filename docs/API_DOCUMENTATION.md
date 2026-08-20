@@ -16,7 +16,11 @@
    - [POST /api/generate/thread-milling](#post-apigeneratethread-milling)
    - [POST /api/generate/pocket/circular](#post-apigeneratepocketcircular)
    - [POST /api/generate/surfacing](#post-apigeneratesurfacing)
+   - [GET /api/generate/engraving/fonts](#get-apigenerateengravingfonts)
+   - [POST /api/generate/engraving/text](#post-apigenerateengravingtext)
 4. [Machine Profiles](#4-machine-profiles)
+
+
    - [GET /api/machines](#get-apimachines)
    - [GET /api/machines/active](#get-apimachinesactive)
    - [POST /api/machines/:id/activate](#post-apimachinesidactivate)
@@ -195,9 +199,53 @@ Generates workpiece and spoilboard surfacing/facing G-code.
 | `overtravel` | `number` | No | `2.0` | Distance cutter clears past edge (mm). |
 | `feed_rate_xy` | `number` | No | Preset / `2000.0` | Cutting feed rate. |
 
+### `GET /api/generate/engraving/fonts`
+Returns the available single-line vector fonts catalog for CNC text engraving.
+
+#### Response `200 OK`
+```json
+{
+  "fonts": {
+    "simplex_sans": "Simplex Sans (Clean Single-Stroke)",
+    "duplex_sans": "Duplex Bold Sans (Double-Stroke)",
+    "roman_serif": "Roman Serif (Classic Formal)",
+    "cursive_script": "Cursive Script (Flowing Elegance)",
+    "block_stencil": "Industrial Block (Technical / Chamfered)"
+  },
+  "default": "simplex_sans"
+}
+```
+
 ---
 
+### `POST /api/generate/engraving/text`
+Generates vector stroke G-code for text engraving along linear paths or wrapped around circular arcs.
+
+#### Request Body Schema
+| Field | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `text` | `string` | **Yes** | — | The text string to engrave (supports multi-line `\n`). |
+| `layout_mode` | `string` | No | `"linear"` | `"linear"` or `"arc"`. |
+| `start_x`, `start_y` | `number` | No | `0.0` | Linear text start/origin coordinate (mm). |
+| `rotation_deg` | `number` | No | `0.0` | Linear text rotation angle in degrees. |
+| `align` | `string` | No | `"left"` | `"left"`, `"center"`, or `"right"`. |
+| `center_x`, `center_y` | `number` | No | `0.0` | Arc center coordinate (mm) (arc mode). |
+| `arc_radius` | `number` | No | `30.0` | Pitch arc radius in mm (arc mode). |
+| `start_angle_deg` | `number` | No | `90.0` | Center/start angle on circle in degrees (arc mode). |
+| `arc_direction` | `string` | No | `"clockwise"` | `"clockwise"` or `"counter_clockwise"`. |
+| `font_name` | `string` | No | `"simplex_sans"` | Font style: `"simplex_sans"`, `"duplex_sans"`, `"roman_serif"`, `"cursive_script"`, `"block_stencil"`. |
+| `font_size` | `number` | No | `10.0` | Nominal font cap height in mm. |
+| `letter_spacing` | `number` | No | `1.0` | Extra spacing between characters in mm. |
+| `target_depth_z` | `number` | No | `-0.5` | Target engraving depth Z (mm). |
+| `stepdown_z` | `number` | No | `0.5` | Maximum depth per pass (mm). |
+| `retract_z` | `number` | No | Machine safe Z (`2.0`) | Retract clearance Z between strokes. |
+| `feed_rate_xy` | `number` | No | Preset / `800.0` | Engraving feed rate (mm/min). |
+
+---
+
+
 ## 4. Machine Profiles
+
 - `GET /api/machines`: List all machine profiles.
 - `GET /api/machines/active`: Get active machine profile.
 - `POST /api/machines/:id/activate`: Set active machine profile.

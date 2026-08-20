@@ -41,3 +41,9 @@ def test_surfacing_page_renders(client):
     assert response.status_code == 200
     assert b"Surfacing" in response.data
 
+def test_engraving_page_renders(client):
+    response = client.get("/engraving")
+    assert response.status_code == 200
+    assert b"Text Engraving" in response.data
+
+
