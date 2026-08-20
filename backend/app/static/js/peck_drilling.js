@@ -270,7 +270,22 @@ document.addEventListener("DOMContentLoaded", async () => {
     try {
       const result = await API.generatePeckDrilling(payload);
       currentGeneratedGCode = result.data.gcode;
-      gcodeOutput.textContent = currentGeneratedGCode;
+
+      // 1. Load G-Code into 3D Visualizer & Simulation
+      visualizer.loadGCode(currentGeneratedGCode);
+
+      // 2. Render Interactive G-Code Editor with Plain English Hints
+      const inspector = new GCodeInspector();
+      inspector.renderInteractiveEditor(
+        gcodeOutput,
+        currentGeneratedGCode,
+        (block, lineIdx) => {
+          const hintEl = document.getElementById("hintText");
+          if (hintEl) hintEl.textContent = block.explanation;
+          inspector.renderModalStateBar(document.getElementById("modalStateBar"), block);
+          visualizer.setHighlightedLine(lineIdx);
+        }
+      );
 
       statTime.textContent = `${result.data.estimated_time_seconds.toFixed(1)}s`;
       statDialect.textContent = result.dialect_used.toUpperCase();
@@ -285,6 +300,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       copyGcodeBtn.disabled = false;
       downloadGcodeBtn.disabled = false;
     } catch (err) {
+
       alert("Failed to generate Peck Drilling G-Code: " + err.message);
     } finally {
       generateBtn.disabled = false;

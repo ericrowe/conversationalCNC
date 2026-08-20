@@ -8,7 +8,7 @@
 ## Table of Contents
 1. [Overview & Conventions](#1-overview--conventions)
 2. [Health & System Info](#2-health--system-info)
-3. [G-Code Generation (Phase 1 & Phase 2 Operations)](#3-g-code-generation)
+3. [Conversational G-Code Generation](#3-g-code-generation)
    - [GET /api/generate/dialects](#get-apigeneratedialects)
    - [GET /api/generate/thread-standards](#get-apigeneratethread-standards)
    - [POST /api/generate/drilling/straight-plunge](#post-apigeneratedrillingstraight-plunge)
@@ -23,12 +23,16 @@
    - [GET /api/generate/engraving/fonts](#get-apigenerateengravingfonts)
    - [GET /api/generate/engraving/glyphs](#get-apigenerateengravingglyphs)
    - [POST /api/generate/engraving/text](#post-apigenerateengravingtext)
-4. [Machine Profiles](#4-machine-profiles)
-
-
-
-
-
+4. [G-Code Transformations & Multi-Tool Splitter](#4-g-code-transformations--program-splitter)
+   - [POST /api/transform/shift](#post-apitransformshift)
+   - [POST /api/transform/rotate](#post-apitransformrotate)
+   - [POST /api/transform/mirror](#post-apitransformmirror)
+   - [POST /api/transform/feed-speed-override](#post-apitransformfeed-speed-override)
+   - [POST /api/transform/split-tools](#post-apitransformsplit-tools)
+5. [Feeds & Speeds Physics Engine](#5-feeds--speeds-physics-engine)
+   - [GET /api/calculator/materials-catalog](#get-apicalculatormaterials-catalog)
+   - [POST /api/calculator/feeds-speeds](#post-apicalculatorfeeds-speeds)
+6. [Machine Profiles](#6-machine-profiles)
    - [GET /api/machines](#get-apimachines)
    - [GET /api/machines/active](#get-apimachinesactive)
    - [POST /api/machines/:id/activate](#post-apimachinesidactivate)
@@ -36,21 +40,22 @@
    - [GET /api/machines/:id](#get-apimachinesid)
    - [PUT /api/machines/:id](#put-apimachinesid)
    - [DELETE /api/machines/:id](#delete-apimachinesid)
-5. [Tool Library](#5-tool-library)
+7. [Tool Library](#7-tool-library)
    - [GET /api/tools](#get-apitools)
    - [GET /api/tools/:id](#get-apitoolsid)
    - [POST /api/tools](#post-apitools)
    - [PUT /api/tools/:id](#put-apitoolsid)
-   - [DELETE /api/tools/:id](#delete-apitoolsid)
-6. [Material Presets](#6-material-presets)
+   - [DELETE /api/tools/:id](#delete-apiposid)
+8. [Material Presets](#8-material-presets)
    - [GET /api/materials](#get-apimaterials)
    - [GET /api/materials/:id](#get-apimaterialsid)
    - [POST /api/materials/tool/:tool_id](#post-apimaterialstooltool_id)
    - [PUT /api/materials/:id](#put-apimaterialsid)
    - [DELETE /api/materials/:id](#delete-apimaterialsid)
-7. [Error Handling Format](#7-error-handling-format)
+9. [Error Handling Format](#9-error-handling-format)
 
 ---
+
 
 ## 1. Overview & Conventions
 
@@ -323,8 +328,107 @@ Generates G-code for 2D perimeter edge deburring and chamfering with conical V-b
 
 ---
 
-## 4. Machine Profiles
+## 4. G-Code Transformations & Program Splitter
 
+### `POST /api/transform/shift`
+Translates all coordinates by $(\Delta X, \Delta Y, \Delta Z)$.
+
+#### Request Payload
+```json
+{
+  "gcode": "G0 X10 Y20 Z5\nG1 X50 Y50 Z-2 F800",
+  "delta_x": 10.0,
+  "delta_y": -5.0,
+  "delta_z": 0.0
+}
+```
+
+---
+
+### `POST /api/transform/rotate`
+Rotates $X, Y$ coordinates and $I, J$ arc vectors around a pivot center $(X_c, Y_c)$ by an angle in degrees.
+
+#### Request Payload
+```json
+{
+  "gcode": "G1 X10 Y0 F500",
+  "angle_deg": 45.0,
+  "center_x": 0.0,
+  "center_y": 0.0
+}
+```
+
+---
+
+### `POST /api/transform/mirror`
+Mirrors coordinates across an axis (`x` or `y`) and automatically reverses arc directions ($G2 \leftrightarrow G3$).
+
+#### Request Payload
+```json
+{
+  "gcode": "G2 X10 Y20 I5 J0",
+  "mirror_axis": "x",
+  "origin_x": 0.0,
+  "origin_y": 0.0
+}
+```
+
+---
+
+### `POST /api/transform/feed-speed-override`
+Scales feed rates ($F$) and spindle speeds ($S$) across the entire program by percentage multipliers.
+
+#### Request Payload
+```json
+{
+  "gcode": "G1 X10 Y20 F1000\nS16000 M3",
+  "feed_percent": 80.0,
+  "speed_percent": 100.0
+}
+```
+
+---
+
+### `POST /api/transform/split-tools`
+Splits a multi-tool program (`M6 T...`) into standalone `.nc` files for each tool with safe headers and footers.
+
+#### Request Payload
+```json
+{
+  "gcode": "T1 M6\nG1 X0 Y0 Z-5\nT2 M6\nG1 X10 Y10 Z-2",
+  "safe_retract_z": 5.0
+}
+```
+
+---
+
+## 5. Feeds & Speeds Physics Engine
+
+### `GET /api/calculator/materials-catalog`
+Returns the material cutting constants, recommended surface speed ranges (SMM), baseline chip loads, and specific cutting energy ($K_p$).
+
+---
+
+### `POST /api/calculator/feeds-speeds`
+Calculates optimal spindle RPM, feed rate XY, plunge feed, Radial Chip Thinning Factor (RCTF) compensation, Material Removal Rate (MRR), and spindle cutting power (kW/HP).
+
+#### Request Payload
+```json
+{
+  "material_key": "aluminum_6061",
+  "tool_diameter_mm": 6.35,
+  "num_flutes": 2,
+  "stepover_mm": 1.5,
+  "stepdown_mm": 1.0,
+  "tool_stickout_mm": 20.0,
+  "max_spindle_rpm": 27000,
+  "min_spindle_rpm": 10000
+}
+```
+
+---
+
+## 6. Machine Profiles
 
 - `GET /api/machines`: List all machine profiles.
 - `GET /api/machines/active`: Get active machine profile.
@@ -336,7 +440,7 @@ Generates G-code for 2D perimeter edge deburring and chamfering with conical V-b
 
 ---
 
-## 5. Tool Library
+## 7. Tool Library
 - `GET /api/tools`: List all tools with material presets.
 - `GET /api/tools/:id`: Retrieve tool by ID.
 - `POST /api/tools`: Add a new tool.
@@ -345,7 +449,7 @@ Generates G-code for 2D perimeter edge deburring and chamfering with conical V-b
 
 ---
 
-## 6. Material Presets
+## 8. Material Presets
 - `GET /api/materials`: List all presets (optionally filtered with `?tool_id=1`).
 - `GET /api/materials/:id`: Retrieve preset by ID.
 - `POST /api/materials/tool/:tool_id`: Create preset attached to a tool.
@@ -354,7 +458,7 @@ Generates G-code for 2D perimeter edge deburring and chamfering with conical V-b
 
 ---
 
-## 7. Error Handling Format
+## 9. Error Handling Format
 
 Standard JSON error payload for validation failures (`400 Bad Request`):
 ```json
@@ -369,3 +473,4 @@ Standard JSON error payload for validation failures (`400 Bad Request`):
   ]
 }
 ```
+

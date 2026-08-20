@@ -325,7 +325,22 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       const { data, dialect_used } = result;
       currentGeneratedGCode = data.gcode;
-      gcodeOutput.textContent = data.gcode;
+
+      // 1. Load G-Code directly into 3D visualizer & simulation
+      visualizer.loadGCode(data.gcode);
+
+      // 2. Render Interactive G-Code Editor with Plain English Hints
+      const inspector = new GCodeInspector();
+      inspector.renderInteractiveEditor(
+        gcodeOutput,
+        data.gcode,
+        (block, lineIdx) => {
+          const hintEl = document.getElementById("hintText");
+          if (hintEl) hintEl.textContent = block.explanation;
+          inspector.renderModalStateBar(document.getElementById("modalStateBar"), block);
+          visualizer.setHighlightedLine(lineIdx);
+        }
+      );
 
       statTime.textContent = `${data.estimated_time_seconds}s`;
       statDialect.textContent = dialect_used ? dialect_used.toUpperCase() : "GRBL";
@@ -334,13 +349,11 @@ document.addEventListener("DOMContentLoaded", async () => {
         warningBanner.textContent = `⚠️ Machine Warning: ${data.warnings.join(" | ")}`;
         warningBanner.style.display = "block";
       }
-
-      // Load parsed G-Code directly into visualizer
-      visualizer.loadGCode(data.gcode);
     } catch (err) {
       gcodeOutput.textContent = `// Error: ${err.message}`;
       console.error(err);
     }
+
   });
 
   // Copy & Download

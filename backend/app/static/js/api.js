@@ -233,8 +233,64 @@ const API = {
       throw new Error(data.message || data.error || "Generation failed");
     }
     return data;
+  },
+
+  async transformShift(payload) {
+    const res = await fetch("/api/transform/shift", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || data.error || "Shift failed");
+    return data;
+  },
+
+  async transformRotate(payload) {
+    const res = await fetch("/api/transform/rotate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || data.error || "Rotate failed");
+    return data;
+  },
+
+  async transformMirror(payload) {
+    const res = await fetch("/api/transform/mirror", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || data.error || "Mirror failed");
+    return data;
+  },
+
+  async transformOverrideFeeds(payload) {
+    const res = await fetch("/api/transform/feed-speed-override", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || data.error || "Override failed");
+    return data;
+  },
+
+  async transformSplitTools(payload) {
+    const res = await fetch("/api/transform/split-tools", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || data.error || "Split failed");
+    return data;
   }
 };
+
 
 
 

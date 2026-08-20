@@ -238,28 +238,10 @@
 
   <!-- Right Column: Visualizer & G-Code Viewer -->
   <div class="visualizer-col">
-    <div class="card visualizer-card">
-      <div class="card-title">
-        <span>Toolpath Preview (2D View)</span>
-        <div style="font-size: 0.8rem; color: var(--text-muted);">
-          Drag to Pan | Scroll to Zoom
-        </div>
-      </div>
+    <!-- 3D Toolpath Visualizer & Simulation Panel -->
+    {% include 'components/visualizer_panel.html' %}
 
-      <div class="canvas-container">
-        <canvas id="toolpathCanvas"></canvas>
-        <div class="canvas-toolbar">
-          <button type="button" class="canvas-btn" id="zoomInBtn" title="Zoom In">+</button>
-          <button type="button" class="canvas-btn" id="zoomOutBtn" title="Zoom Out">-</button>
-          <button type="button" class="canvas-btn" id="fitViewBtn" title="Reset View">Fit</button>
-        </div>
-        <div class="canvas-legend">
-          <div class="legend-item"><span class="legend-color" style="background: #10b981;"></span> Origin (0,0)</div>
-          <div class="legend-item"><span class="legend-color" style="background: #38bdf8;"></span> Text Stroke</div>
-          <div class="legend-item"><span class="legend-color" style="background: #f59e0b;"></span> Arc Center / Pitch</div>
-        </div>
-      </div>
-
+    <div class="card" style="margin-top: 1rem;">
       <!-- Quick Metrics Grid -->
       <div class="stats-grid">
         <div class="stat-box">
@@ -281,17 +263,18 @@
       </div>
 
       <!-- Generated G-Code Viewer -->
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-        <label style="margin: 0; font-weight: 600;">Generated G-Code</label>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; margin-top: 1rem;">
+        <label style="margin: 0; font-weight: 600;">Interactive G-Code Program</label>
         <div style="display: flex; gap: 0.5rem;">
           <button type="button" class="btn btn-secondary btn-sm" id="copyGcodeBtn" disabled>📋 Copy</button>
           <button type="button" class="btn btn-secondary btn-sm" id="downloadGcodeBtn" disabled>💾 Download .nc</button>
         </div>
       </div>
-      <div class="gcode-container" id="gcodeOutput">Click "Generate Engraving G-Code & Preview" to calculate...</div>
+      <div class="gcode-editor-container" id="gcodeOutput">Click "Generate Engraving G-Code & Preview" to calculate...</div>
     </div>
   </div>
 </div>
+
 {% endblock %}
 
 {% block scripts %}

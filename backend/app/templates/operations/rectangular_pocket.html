@@ -220,54 +220,44 @@
   </div>
 
   <!-- Right Column: Visualizer & G-Code Output -->
-  <div class="preview-col">
-    <!-- Visualizer Canvas Card -->
-    <div class="card">
-      <div class="card-title">
-        <span>Toolpath Live Preview</span>
-        <button type="button" class="btn btn-secondary" id="resetViewBtn" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">Auto Fit</button>
-      </div>
-      <div class="canvas-container">
-        <canvas id="toolpathCanvas" width="600" height="420"></canvas>
-      </div>
-    </div>
+  <div class="visualizer-col">
+    <!-- 3D Toolpath Visualizer & Simulation Panel -->
+    {% include 'components/visualizer_panel.html' %}
 
-    <!-- Statistics Panel -->
-    <div class="stats-panel">
-      <div class="stat-box">
-        <span class="stat-label">Cavity Size</span>
-        <span class="stat-value" id="statPocketSize">60 x 40 mm</span>
-      </div>
-      <div class="stat-box">
-        <span class="stat-label">Passes</span>
-        <span class="stat-value" id="statPasses">4 passes</span>
-      </div>
-      <div class="stat-box">
-        <span class="stat-label">Est. Time</span>
-        <span class="stat-value" id="statTime">--</span>
-      </div>
-      <div class="stat-box">
-        <span class="stat-label">Dialect</span>
-        <span class="stat-value" id="statDialect">GRBL</span>
-      </div>
-    </div>
-
-    <!-- G-Code Output Card -->
-    <div class="card">
-      <div class="card-title">
-        <span>Generated G-Code</span>
-        <div style="display: flex; gap: 0.5rem;">
-          <button type="button" class="btn btn-secondary" id="copyGcodeBtn" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">📋 Copy</button>
-          <button type="button" class="btn btn-secondary" id="downloadGcodeBtn" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">💾 Download .nc</button>
+    <div class="card" style="margin-top: 1rem;">
+      <!-- Statistics Panel -->
+      <div class="stats-grid">
+        <div class="stat-box">
+          <span class="stat-label">Cavity Size</span>
+          <span class="stat-value" id="statPocketSize">60 x 40 mm</span>
+        </div>
+        <div class="stat-box">
+          <span class="stat-label">Passes</span>
+          <span class="stat-value" id="statPasses">4 passes</span>
+        </div>
+        <div class="stat-box">
+          <span class="stat-label">Est. Time</span>
+          <span class="stat-value" id="statTime">--</span>
+        </div>
+        <div class="stat-box">
+          <span class="stat-label">Dialect</span>
+          <span class="stat-value" id="statDialect">GRBL</span>
         </div>
       </div>
-      <div class="gcode-editor-container">
-        <pre id="gcodeOutput">// Configure rectangular pocket parameters and click "Generate Rectangular G-Code"</pre>
-      </div>
-    </div>
 
+      <!-- G-Code Output Card -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; margin-top: 1rem;">
+        <label style="margin: 0; font-weight: 600;">Interactive G-Code Program</label>
+        <div style="display: flex; gap: 0.5rem;">
+          <button type="button" class="btn btn-secondary btn-sm" id="copyGcodeBtn" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">📋 Copy</button>
+          <button type="button" class="btn btn-secondary btn-sm" id="downloadGcodeBtn" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">💾 Download .nc</button>
+        </div>
+      </div>
+      <div class="gcode-editor-container" id="gcodeOutput">Configure parameters and click "Generate Rectangular G-Code"...</div>
+    </div>
   </div>
 </div>
+
 {% endblock %}
 
 {% block scripts %}

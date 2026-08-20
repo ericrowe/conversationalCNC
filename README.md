@@ -2,7 +2,7 @@
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![Flask 3.0+](https://img.shields.io/badge/flask-3.0+-green.svg)](https://flask.palletsprojects.com/)
-[![Tests](https://img.shields.io/badge/tests-80%20passed-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-97%20passed-brightgreen.svg)]()
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 A web-based, locally executing **Conversational CNC Controller** designed for rapid, on-the-fly machining without launching heavyweight CAD/CAM software. Built with a zero-build-step architecture optimized for offline Raspberry Pi 4/5 setups and desktop workstations driving Grbl-based CNCs (such as the Inventables X-Carve, Shapeoko, PrintNC) and standard CNC controllers.
@@ -22,16 +22,27 @@ A web-based, locally executing **Conversational CNC Controller** designed for ra
 - **🪚 Workpiece & Spoilboard Surfacing / Facing**: Flatten rough stock or resurface spoilboards with bidirectional Zig-Zag or unidirectional Climb One-Way raster passes, customizable cutter overtravel past edges, and corner/center datum origins.
 - **✍️ Single-Line Vector Text Engraving**: High-speed CNC text engraving supporting multi-line rotated linear layouts and curved circular arc layouts (clockwise/counter-clockwise). Features 5 single-line stroke font styles (*Simplex Sans, Duplex Bold Sans, Roman Serif, Cursive Script, Industrial Block*), configurable cubic Catmull-Rom spline curve interpolation smoothing ($1\times$ to $12\times$ sampling) with sharp-corner preservation, and live tool tip flat cut width calculation.
 
+### 2. 3D WebGL / Isometric Backplotter & Simulation
+- **Interactive 3D Toolpath Simulation**: Real-time 3D orbital canvas with pitch/yaw mouse drag, camera presets (Isometric, Top XY, Front XZ, Right YZ), and auto-fit bounding box.
+- **Animated Cutter Playback**: Step-by-step cutter animation along toolpaths with Play/Pause, Step Forward/Backward, progress scrubber slider, speed multipliers ($0.5\times$ to $10\times$), and live coordinates HUD ($X, Y, Z$, Feed, Step count).
+- **Bi-Directional Selection Sync**: Clicking any line in the interactive G-code editor jumps the 3D cutter tool directly to that position and highlights the active motion vector in glowing yellow.
 
-### 2. Machine & Tool Management
-- **Router Speed Dial Mapping**: Automatic mapping of spindle speeds to discrete speed dial numbers for manual trim routers (e.g. DeWalt DWP611 Dial 1=16k, Dial 2=18.2k, Dial 3=20.4k, Dial 4=22.6k, Dial 5=24.8k, Dial 6=27k) with operator setup alerts and minimum RPM clamping. Supports continuous VFD / PWM spindles as well.
-- **Tool Library & Material Presets**: SQLite-backed database storing tool dimensions, flutes, and material feeds/speeds presets across woods, plastics, brass, and aluminum.
-- **Dynamic Machine Profiles**: Switch between active machine profiles with distinct work envelopes, max feed limits, touch probe plate thicknesses, and controller dialects (`grbl`, `standard`).
-- **Interactive 2D Canvas & Vector Toolpath Visualizer**: Real-time toolpath rendering with pan, mouse-wheel zoom, fit-to-view, machine soft limit boundaries, true single-line cutting feeds (`G1` in solid cyan with stroke width scaling), rapid traverse paths (`G0` in dashed pink/red), plunge entry points (green), retract lift points (amber), and direct G-code program backplot simulation.
-- **Instant Export**: Live G-code syntax viewer with one-click clipboard copy and `.nc` file download.
+### 3. G-Code "Hints" & Live Modal State Inspector
+- **Plain English Explainer**: Decodes complex G-code blocks (arcs, canned cycles, spindle start, dwell) into clear conversational explanations with calculated travel distances, radius, and descent angles.
+- **Live Modal State Dashboard**: Real-time modal registers (`WCS`, `Plane`, `Units`, `Distance Mode`, `Motion`, `Tool`, `Spindle`, `Feed`).
 
+### 4. G-Code Transformations & Multi-Tool Program Splitter
+- **Coordinate Shift & Offsets**: Translates coordinates by $(\Delta X, \Delta Y, \Delta Z)$ for multi-fixture work setups.
+- **Rotation**: Rotates toolpaths in the $XY$ plane around arbitrary pivot centers $(X_c, Y_c)$ with arc center vector ($I, J$) rotation.
+- **Mirroring with Automatic Arc Reversal**: Mirrors across $X$ or $Y$ axis and automatically flips arc directions ($G2 \leftrightarrow G3$).
+- **Feed & Speed Override Adjuster**: Global percentage scaling for feed rates and spindle speeds.
+- **Multi-Tool Program Splitter**: Extracts multi-tool jobs (`M6 T...`) into individual standalone `.nc` programs per tool with safe retracts and footers.
 
----
+### 5. Physics-Based Feeds & Speeds Engine
+- **Radial Chip Thinning Compensation**: Automatically boosts feed rate for shallow stepovers ($< 50\%$ tool diameter) to prevent cutter rubbing and premature tool wear.
+- **Material Removal Rate (MRR) & Spindle Power**: Calculates volume removal rate ($\text{cm}^3/\text{min}$) and estimates required spindle cutting power (kW/HP) across woods, plastics, brass, and aluminum.
+- **Deflection Warning Advisor**: Flags high tool stickout ratios ($> 4.5\times$ diameter) and power overloads for hobby trim routers (e.g. DeWalt DWP611).
+
 
 ## 🏗️ Architecture & Philosophy
 
@@ -87,7 +98,7 @@ conversationalCNC/
 │   │   ├── static/          # CSS stylesheets and client JavaScript modules
 │   │   ├── templates/       # Jinja2 HTML templates
 │   │   └── web/             # Web frontend routing blueprint
-│   └── tests/               # 80 automated pytest unit and integration tests
+│   └── tests/               # 97 automated pytest unit and integration tests
 └── docs/
     └── API_DOCUMENTATION.md # Comprehensive REST API reference
 ```
@@ -134,10 +145,11 @@ PYTHONPATH=backend python backend/seed.py
 ```
 
 ### Step 5: Run Automated Tests
-Verify that all 80 tests pass on your machine:
+Verify that all 97 tests pass on your machine:
 ```bash
 PYTHONPATH=backend pytest backend/tests -v
 ```
+
 
 
 

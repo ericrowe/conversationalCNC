@@ -1,0 +1,155 @@
+{% extends 'base.html' %}
+
+{% block title %}G-Code Transformations & Multi-Tool Splitter - Conversational CNC{% endblock %}
+
+{% block content %}
+<div class="page-container">
+  <div class="page-header">
+    <div>
+      <h1>🔄 G-Code Transformations & Tool Splitter</h1>
+      <p class="subtitle">Shift coordinates, rotate patterns, mirror geometry (auto-reversing G2/G3), scale feeds/speeds, and split multi-tool files.</p>
+    </div>
+  </div>
+
+  <div class="operation-layout">
+    <!-- Left Column: Input G-Code & Transformation Controls -->
+    <div class="form-col">
+      <!-- Input G-Code Card -->
+      <div class="card">
+        <div class="card-title">
+          <span>1. Source G-Code</span>
+        </div>
+        <div class="form-group">
+          <label for="sourceGCode">Paste G-Code or Load File</label>
+          <textarea id="sourceGCode" rows="8" style="font-family: var(--font-mono); font-size: 0.85rem;" placeholder="Paste raw G-code here, or generate an operation from the menu..."></textarea>
+        </div>
+        <div style="display: flex; gap: 0.5rem;">
+          <input type="file" id="fileUploadInput" accept=".nc,.gcode,.tap,.txt" style="display: none;">
+          <button type="button" class="btn btn-secondary btn-sm" id="uploadFileBtn">📂 Upload .nc File</button>
+          <button type="button" class="btn btn-secondary btn-sm" id="loadSampleBtn">⚡ Load Sample Multi-Tool</button>
+        </div>
+      </div>
+
+      <!-- Transformation Operations Card -->
+      <div class="card">
+        <div class="card-title">
+          <span>2. Transformation Mode</span>
+        </div>
+
+        <div class="pattern-tabs" style="margin-bottom: 1rem;">
+          <button type="button" class="pattern-tab active" data-tab="shift">Shift / Offset</button>
+          <button type="button" class="pattern-tab" data-tab="rotate">Rotate</button>
+          <button type="button" class="pattern-tab" data-tab="mirror">Mirror</button>
+          <button type="button" class="pattern-tab" data-tab="override">Feed / Speed %</button>
+          <button type="button" class="pattern-tab" data-tab="split">Split Tools</button>
+        </div>
+
+        <!-- Shift Tab -->
+        <div id="tabContentShift" class="tab-pane">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="shiftX">Delta X (mm)</label>
+              <input type="number" id="shiftX" step="0.5" value="10.0">
+            </div>
+            <div class="form-group">
+              <label for="shiftY">Delta Y (mm)</label>
+              <input type="number" id="shiftY" step="0.5" value="0.0">
+            </div>
+            <div class="form-group">
+              <label for="shiftZ">Delta Z (mm)</label>
+              <input type="number" id="shiftZ" step="0.5" value="0.0">
+            </div>
+          </div>
+          <button type="button" class="btn btn-primary" id="btnApplyShift" style="width: 100%;">⚡ Apply Coordinate Shift</button>
+        </div>
+
+        <!-- Rotate Tab -->
+        <div id="tabContentRotate" class="tab-pane" style="display: none;">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="rotAngle">Rotation Angle (° CCW)</label>
+              <input type="number" id="rotAngle" step="15" value="45.0">
+            </div>
+            <div class="form-group">
+              <label for="rotCenterX">Center X (mm)</label>
+              <input type="number" id="rotCenterX" step="1.0" value="0.0">
+            </div>
+            <div class="form-group">
+              <label for="rotCenterY">Center Y (mm)</label>
+              <input type="number" id="rotCenterY" step="1.0" value="0.0">
+            </div>
+          </div>
+          <button type="button" class="btn btn-primary" id="btnApplyRotate" style="width: 100%;">⚡ Apply Rotation</button>
+        </div>
+
+        <!-- Mirror Tab -->
+        <div id="tabContentMirror" class="tab-pane" style="display: none;">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="mirrorAxis">Mirror Axis</label>
+              <select id="mirrorAxis">
+                <option value="x">Across X Axis (Flips Y, G2↔G3)</option>
+                <option value="y">Across Y Axis (Flips X, G2↔G3)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="mirrorOrigin">Mirror Line Center</label>
+              <input type="number" id="mirrorOrigin" step="1.0" value="0.0">
+            </div>
+          </div>
+          <button type="button" class="btn btn-primary" id="btnApplyMirror" style="width: 100%;">⚡ Apply Mirror & Arc Flip</button>
+        </div>
+
+        <!-- Feed/Speed Override Tab -->
+        <div id="tabContentOverride" class="tab-pane" style="display: none;">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="overrideFeedPercent">Feed Rate Override (%)</label>
+              <input type="number" id="overrideFeedPercent" step="5" min="10" max="300" value="80">
+            </div>
+            <div class="form-group">
+              <label for="overrideSpeedPercent">Spindle RPM Override (%)</label>
+              <input type="number" id="overrideSpeedPercent" step="5" min="10" max="300" value="100">
+            </div>
+          </div>
+          <button type="button" class="btn btn-primary" id="btnApplyOverride" style="width: 100%;">⚡ Apply Feeds/Speeds Override</button>
+        </div>
+
+        <!-- Multi-Tool Split Tab -->
+        <div id="tabContentSplit" class="tab-pane" style="display: none;">
+          <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.75rem;">
+            Separates programs with multiple tool changes (<code>M6 T...</code>) into individual `.nc` files per tool with safe retracts and footers.
+          </p>
+          <div class="form-group">
+            <label for="splitRetractZ">Safe Retract Z Clearance (mm)</label>
+            <input type="number" id="splitRetractZ" step="0.5" value="5.0">
+          </div>
+          <button type="button" class="btn btn-primary" id="btnApplySplit" style="width: 100%;">⚡ Split Into Standalone Tool Files</button>
+          <div id="splitFilesList" style="margin-top: 1rem;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column: 3D Visualizer & Interactive Output -->
+    <div class="visualizer-col">
+      {% include 'components/visualizer_panel.html' %}
+
+      <div class="card" style="margin-top: 1rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+          <label style="margin: 0; font-weight: 600;">Transformed G-Code Output</label>
+          <div style="display: flex; gap: 0.5rem;">
+            <button type="button" class="btn btn-secondary btn-sm" id="copyGcodeBtn" disabled>📋 Copy</button>
+            <button type="button" class="btn btn-secondary btn-sm" id="downloadGcodeBtn" disabled>💾 Download .nc</button>
+          </div>
+        </div>
+        <div class="gcode-editor-container" id="gcodeOutput">Transformed G-code program will appear here...</div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/visualizer.js') }}"></script>
+<script src="{{ url_for('static', filename='js/transformations.js') }}"></script>
+{% endblock %}

@@ -52,5 +52,13 @@ def test_rectangular_pocket_page_renders(client):
     assert b"Rectangular Pocket" in response.data
     assert b"Raised Boss" in response.data
 
+def test_transformations_page_renders(client):
+    response = client.get("/transformations")
+    assert response.status_code == 200
+    assert b"Transformations" in response.data
+    assert b"Shift / Offset" in response.data
+    assert b"Split Tools" in response.data
+
+
 
 

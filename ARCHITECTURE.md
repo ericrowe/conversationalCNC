@@ -156,26 +156,53 @@ For CNC machines utilizing manual trim routers (such as the DeWalt DWP611), spin
 
 ## 5. Visualizer & G-Code Simulation Engine
 
-The client-side visualizer (`app/static/js/visualizer.js`) provides a zero-dependency interactive toolpath canvas:
+The client-side visualizer (`app/static/js/visualizer.js`) provides an interactive 2D/3D toolpath simulation engine:
 
-1. **True CNC Vector Toolpath Simulation**:
-   - **Cutting Feeds (`G1`)**: Drawn in solid cyan (`#38bdf8`) with stroke thickness scaled to the cutter / tip flat width.
-   - **Rapid Traverses (`G0`)**: Drawn in dashed pink/red (`rgba(244, 63, 94, 0.75)`) connecting retract lifts to plunge entries across safe Z clearance.
-   - **Plunge Markers**: Green circles (`#10b981`) marking exact points where the tool enters the material ($Z \le 0$).
-   - **Retract Markers**: Amber circles (`#f59e0b`) marking points where the tool lifts to safe Z.
-2. **Direct G-Code AST Parser (`loadGCode`)**:
-   - Parses generated G-code programs line by line, maintaining modal registers ($X, Y, Z, I, J, R, F, \text{motion mode}$) to backplot machine motion.
-3. **Interactive Viewport Controls**:
-   - Pan (click & drag), Zoom (mouse-wheel and zoom buttons), Auto-fit bounding box, and machine envelope soft limits overlay.
+1. **3D Isometric Orbit Viewport**:
+   - Projected 3D coordinate space with mouse drag orbit (pitch/yaw), camera angle presets (Isometric, Top XY, Front XZ, Right YZ), auto-fit scaling, and machine envelope soft limits wireframe.
+2. **Animated Toolpath Playback**:
+   - Step-by-step cutter animation along toolpaths with Play/Pause, Step Forward/Backward, progress scrubber slider, speed multipliers ($0.5\times$ to $10\times$), and live coordinates HUD ($X, Y, Z$, Feed, Step count).
+3. **Bi-Directional Selection Sync**:
+   - Clicking any line in the interactive G-code editor jumps the 3D cutter tool directly to that position and highlights the active motion vector in glowing yellow (`#facc15`).
 
 ---
 
-## 6. Development Status & Roadmap
+## 6. Plain English G-Code Hints & Modal State Inspector
+
+Implemented in `app/static/js/gcode_inspector.js`:
+1. **Plain English Explainer**: Decodes G-code blocks (linear feeds, helical arcs, dwells, canned cycles) into crystal-clear conversational explanations with calculated travel distance, arc center coordinates, and Z-pitch descent.
+2. **Live Modal State Dashboard**: Real-time modal registers (`WCS`, `Plane`, `Units`, `Distance Mode`, `Motion`, `Tool`, `Spindle`, `Feed`).
+
+---
+
+## 7. G-Code Transformations & Multi-Tool Splitter
+
+Implemented in `app/generators/transformations.py`:
+1. **Coordinate Shift / Offsets**: Translates coordinates by $(\Delta X, \Delta Y, \Delta Z)$ for multi-fixture work setups.
+2. **Rotation**: Rotates toolpaths in the $XY$ plane around arbitrary pivot centers $(X_c, Y_c)$ with arc center vector ($I, J$) rotation.
+3. **Mirroring with Automatic Arc Reversal**: Mirrors across $X$ or $Y$ axis and automatically flips arc directions ($G2 \leftrightarrow G3$).
+4. **Feed & Speed Override Adjuster**: Global percentage scaling for feed rates and spindle speeds.
+5. **Multi-Tool Program Splitter**: Extracts multi-tool jobs (`M6 T...`) into individual standalone `.nc` programs per tool with safe retracts and footers.
+
+---
+
+## 8. Physics-Based Feeds & Speeds Engine
+
+Implemented in `app/generators/feeds_speeds.py`:
+1. **Radial Chip Thinning Factor (RCTF)**: Compares radial stepover $W$ against tool diameter $D$. When $W < 0.5D$, compensates chip load ($\text{RCTF} = \frac{1}{2\sqrt{(W/D) - (W/D)^2}}$) to prevent cutter rubbing.
+2. **Material Removal Rate (MRR) & Power Calculation**: Calculates volume removal rate ($\text{cm}^3/\text{min}$) and estimates required spindle cutting power (kW/HP) using material-specific specific cutting energy ($K_p$).
+3. **Deflection Warning Advisor**: Flags high tool stickout ratios ($> 4.5\times$ diameter) and power overloads.
+
+---
+
+## 9. Development Status & Roadmap
 
 - **Phase 1 (Completed)**: Core architecture, SQLite schema, Straight Plunge drilling, Grbl post-processor, DeWalt DWP611 dial mapping.
 - **Phase 2 (Completed)**: Helical Thread Milling, Peck Drilling (G73/G83), Circular Pocketing, Surfacing/Facing, Single-Line Vector Text Engraving with 5 fonts and spline smoothing, 2D vector toolpath visualizer.
 - **Phase 3 (Completed)**: Bolt Circle (PCD) & Matrix Grid hole patterns, Rectangular Pockets & Boss/Island milling, Linear Slotting & 2D Chamfering / Edge Deburring.
-- **Phase 4 (Upcoming)**: 3D WebGL / Three.js isometric backplotter with animated tool simulation and bi-directional G-code sync.
-- **Phase 5 (Upcoming)**: Plain English G-Code Hints and live Modal State inspector.
-- **Phase 6 (Upcoming)**: G-Code Transformations (Shift, Rotate, Mirror, R-to-IJK conversion, Multi-tool program file splitter).
+- **Phase 4 (Completed)**: 3D Isometric Viewport, Animated Cutter Playback, and Bi-Directional Line $\leftrightarrow$ Toolpath Sync.
+- **Phase 5 (Completed)**: Plain English G-Code Hints ("X-Ray Vision") and live Modal State Inspector.
+- **Phase 6 (Completed)**: G-Code Transformations (Shift, Rotate, Mirror, Overrides) & Multi-Tool Program File Splitter.
+- **Phase 7 (Completed)**: Physics-Based Feeds & Speeds, Radial Chip Thinning, MRR, and Spindle Power Engine.
+
 

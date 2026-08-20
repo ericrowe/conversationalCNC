@@ -1,0 +1,58 @@
+<div class="card" style="margin-bottom: 1rem;">
+  <!-- Viewport Toolbar -->
+  <div class="visualizer-toolbar">
+    <div class="view-btn-group">
+      <button type="button" class="tool-btn-sm active" id="btnToggle3D" title="Toggle 3D / 2D View">🧊 3D View</button>
+      <button type="button" class="tool-btn-sm" id="btnIsoView" title="Isometric Angle">ISO</button>
+      <button type="button" class="tool-btn-sm" id="btnTopView" title="Top Plan View">Top</button>
+      <button type="button" class="tool-btn-sm" id="btnFrontView" title="Front View">Front</button>
+    </div>
+    <div class="view-btn-group">
+      <button type="button" class="tool-btn-sm" id="resetViewBtn" title="Auto-Fit Viewport">Fit</button>
+    </div>
+  </div>
+
+  <!-- Canvas Container -->
+  <div class="canvas-container">
+    <canvas id="toolpathCanvas" width="600" height="380"></canvas>
+  </div>
+
+  <!-- Simulation Stepper Toolbar -->
+  <div class="sim-playback-bar" id="simPlaybackBar">
+    <div class="sim-btn-group">
+      <button type="button" class="tool-btn-sm" id="btnSimStepBack" title="Step Backward">⏮</button>
+      <button type="button" class="tool-btn-sm" id="btnSimPlay" title="Play / Pause">▶ Play</button>
+      <button type="button" class="tool-btn-sm" id="btnSimStepFwd" title="Step Forward">⏭</button>
+    </div>
+    <input type="range" class="sim-scrubber" id="simScrubber" min="0" max="100" value="0" title="Scrub Toolpath Position">
+    <select id="simSpeedSelect" class="tool-btn-sm" style="padding: 0.15rem 0.3rem;" title="Playback Speed">
+      <option value="0.5">0.5x</option>
+      <option value="1.0" selected>1x</option>
+      <option value="2.0">2x</option>
+      <option value="5.0">5x</option>
+      <option value="10.0">10x</option>
+    </select>
+    <div class="sim-hud" id="simHud">X: 0.00 | Y: 0.00 | Z: 5.00</div>
+  </div>
+
+  <!-- Live Modal State Dashboard -->
+  <div class="modal-state-bar" id="modalStateBar">
+    <div class="modal-badge"><span class="modal-label">WCS</span> <span class="modal-val">G54</span></div>
+    <div class="modal-badge"><span class="modal-label">Plane</span> <span class="modal-val">G17</span></div>
+    <div class="modal-badge"><span class="modal-label">Units</span> <span class="modal-val">G21</span></div>
+    <div class="modal-badge"><span class="modal-label">Dist</span> <span class="modal-val">G90</span></div>
+    <div class="modal-badge"><span class="modal-label">Motion</span> <span class="modal-val">G0</span></div>
+    <div class="modal-badge"><span class="modal-label">Tool</span> <span class="modal-val">T1</span></div>
+    <div class="modal-badge"><span class="modal-label">Spindle</span> <span class="modal-val">0 RPM</span></div>
+    <div class="modal-badge"><span class="modal-label">Feed</span> <span class="modal-val">0 mm/min</span></div>
+  </div>
+
+  <!-- Plain English Hints Explainer Box -->
+  <div class="gcode-hint-box" id="gcodeHintBox">
+    <div class="hint-icon">💡</div>
+    <div class="hint-body">
+      <div class="hint-title">G-Code Plain English Explanation</div>
+      <div class="hint-text" id="hintText">Generate G-code or select any line in the program editor below to inspect real-time cutting parameters and geometry.</div>
+    </div>
+  </div>
+</div>

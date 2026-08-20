@@ -1,6 +1,6 @@
 /**
- * 2D Interactive Toolpath Visualizer (Phase 2 Upgrade)
- * Supports Drilling, Peck Drilling, Helical Thread Milling, Circular Pockets, and Surfacing
+ * 2D / 3D Interactive Toolpath Visualizer & Simulation Engine (Phase 4 Upgrade)
+ * Supports 3D Isometric Orbit, 2D Plan View, Step-by-Step Playback, Animated Cutter Tool, and Bi-Directional Sync.
  */
 class ToolpathVisualizer {
   constructor(canvasId) {
@@ -19,16 +19,38 @@ class ToolpathVisualizer {
     this.threadPitch = 1.0;
     this.threadType = "internal";
     this.surfacing = null;
+    this.rectangularPocket = null;
+    this.rectangularBoss = null;
 
-    this.scale = 1.0;
-    this.offsetX = 60;
-    this.offsetY = 320;
+    // 3D Viewport State
+    this.viewMode = "3d"; // "3d" or "2d"
+    this.rotX = 55.0;     // Pitch / Tilt (degrees)
+    this.rotZ = -35.0;    // Yaw / Azimuth (degrees)
+    this.scale = 1.2;
+    this.offsetX = 200;
+    this.offsetY = 240;
+
+    // Mouse Interaction
     this.isDragging = false;
+    this.isPanning = false;
     this.lastMouse = { x: 0, y: 0 };
+
+    // G-Code & Simulation State
+    this.gcodeToolpath = null;
+    this.simPlaying = false;
+    this.simIndex = 0;
+    this.simSpeed = 1.0;
+    this.simTimer = null;
+    this.highlightedLine = -1;
+    this.toolPosition = { x: 0, y: 0, z: 5.0 };
+
+    // Callback when segment or line is selected
+    this.onSegmentSelected = null;
 
     this.resizeCanvas();
     window.addEventListener("resize", () => this.resizeCanvas());
     this.bindEvents();
+    this.bindToolbarControls();
     this.draw();
   }
 
@@ -42,22 +64,36 @@ class ToolpathVisualizer {
 
   bindEvents() {
     this.canvas.addEventListener("mousedown", (e) => {
-      this.isDragging = true;
+      if (e.button === 2 || e.shiftKey) {
+        this.isPanning = true;
+      } else {
+        this.isDragging = true;
+      }
       this.lastMouse = { x: e.clientX, y: e.clientY };
     });
 
+    this.canvas.addEventListener("contextmenu", (e) => e.preventDefault());
+
     window.addEventListener("mousemove", (e) => {
-      if (!this.isDragging) return;
+      if (!this.isDragging && !this.isPanning) return;
       const dx = e.clientX - this.lastMouse.x;
       const dy = e.clientY - this.lastMouse.y;
-      this.offsetX += dx;
-      this.offsetY += dy;
+
+      if (this.isPanning || this.viewMode === "2d") {
+        this.offsetX += dx;
+        this.offsetY += dy;
+      } else if (this.isDragging && this.viewMode === "3d") {
+        this.rotZ += dx * 0.5;
+        this.rotX = Math.max(0, Math.min(90, this.rotX - dy * 0.5));
+      }
+
       this.lastMouse = { x: e.clientX, y: e.clientY };
       this.draw();
     });
 
     window.addEventListener("mouseup", () => {
       this.isDragging = false;
+      this.isPanning = false;
     });
 
     this.canvas.addEventListener("wheel", (e) => {
@@ -65,6 +101,80 @@ class ToolpathVisualizer {
       const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
       this.zoom(zoomFactor, e.offsetX, e.offsetY);
     });
+  }
+
+  bindToolbarControls() {
+    const btnToggle3D = document.getElementById("btnToggle3D");
+    const btnIso = document.getElementById("btnIsoView");
+    const btnTop = document.getElementById("btnTopView");
+    const btnFront = document.getElementById("btnFrontView");
+
+    const btnPlay = document.getElementById("btnSimPlay");
+    const btnStepBack = document.getElementById("btnSimStepBack");
+    const btnStepFwd = document.getElementById("btnSimStepFwd");
+    const scrubber = document.getElementById("simScrubber");
+    const speedSelect = document.getElementById("simSpeedSelect");
+
+    if (btnToggle3D) {
+      btnToggle3D.addEventListener("click", () => {
+        this.viewMode = this.viewMode === "3d" ? "2d" : "3d";
+        btnToggle3D.textContent = this.viewMode === "3d" ? "🧊 3D View" : "📐 2D View";
+        btnToggle3D.classList.toggle("active", this.viewMode === "3d");
+        this.autoFit();
+      });
+    }
+
+    if (btnIso) btnIso.addEventListener("click", () => this.setCameraView("iso"));
+    if (btnTop) btnTop.addEventListener("click", () => this.setCameraView("top"));
+    if (btnFront) btnFront.addEventListener("click", () => this.setCameraView("front"));
+
+    if (btnPlay) {
+      btnPlay.addEventListener("click", () => {
+        if (this.simPlaying) {
+          this.pauseSimulation();
+          btnPlay.textContent = "▶ Play";
+        } else {
+          this.playSimulation();
+          btnPlay.textContent = "⏸ Pause";
+        }
+      });
+    }
+
+    if (btnStepBack) btnStepBack.addEventListener("click", () => this.stepBackward());
+    if (btnStepFwd) btnStepFwd.addEventListener("click", () => this.stepForward());
+
+    if (scrubber) {
+      scrubber.addEventListener("input", () => {
+        this.seekSimulation(parseInt(scrubber.value, 10));
+      });
+    }
+
+    if (speedSelect) {
+      speedSelect.addEventListener("change", () => {
+        this.simSpeed = parseFloat(speedSelect.value) || 1.0;
+      });
+    }
+  }
+
+  setCameraView(preset) {
+    if (preset === "iso") {
+      this.viewMode = "3d";
+      this.rotX = 55.0;
+      this.rotZ = -35.0;
+    } else if (preset === "top") {
+      this.viewMode = "2d";
+      this.rotX = 0.0;
+      this.rotZ = 0.0;
+    } else if (preset === "front") {
+      this.viewMode = "3d";
+      this.rotX = 89.0;
+      this.rotZ = 0.0;
+    } else if (preset === "right") {
+      this.viewMode = "3d";
+      this.rotX = 89.0;
+      this.rotZ = -90.0;
+    }
+    this.autoFit();
   }
 
   zoom(factor, centerX = this.canvas.width / 2, centerY = this.canvas.height / 2) {
@@ -75,8 +185,35 @@ class ToolpathVisualizer {
     this.draw();
   }
 
+  toScreen(x, y, z = 0.0) {
+    if (this.viewMode === "3d") {
+      const radX = (this.rotX * Math.PI) / 180.0;
+      const radZ = (this.rotZ * Math.PI) / 180.0;
+
+      // Rotate around Z (Yaw)
+      const x1 = x * Math.cos(radZ) - y * Math.sin(radZ);
+      const y1 = x * Math.sin(radZ) + y * Math.cos(radZ);
+      const z1 = z;
+
+      // Rotate around X (Pitch)
+      const x2 = x1;
+      const y2 = y1 * Math.cos(radX) - z1 * Math.sin(radX);
+      const z2 = y1 * Math.sin(radX) + z1 * Math.cos(radX);
+
+      // Isometric projection
+      const sx = this.offsetX + x2 * this.scale;
+      const sy = this.offsetY - (y2 * 0.55 + z2 * 0.85) * this.scale;
+      return { x: sx, y: sy, depth: y2 };
+    } else {
+      return {
+        x: this.offsetX + x * this.scale,
+        y: this.offsetY - y * this.scale,
+        depth: 0,
+      };
+    }
+  }
+
   setData(data = {}) {
-    // Backward compatibility if holes passed directly as array
     if (Array.isArray(data)) {
       this.holes = data;
     } else {
@@ -93,7 +230,6 @@ class ToolpathVisualizer {
       if (data.rectangularBoss !== undefined) this.rectangularBoss = data.rectangularBoss;
     }
     this.autoFit();
-
   }
 
   autoFit() {
@@ -137,8 +273,6 @@ class ToolpathVisualizer {
       allY.push(...this.holes.map((h) => h[1]));
     }
 
-
-
     const minX = Math.min(...allX);
     const maxX = Math.max(...allX);
     const minY = Math.min(...allY);
@@ -149,51 +283,33 @@ class ToolpathVisualizer {
 
     const scaleX = (this.canvas.width - padding * 2) / spanX;
     const scaleY = (this.canvas.height - padding * 2) / spanY;
-    this.scale = Math.min(scaleX, scaleY, 3.5);
+    this.scale = Math.min(scaleX, scaleY, 2.5);
 
-    this.offsetX = padding - minX * this.scale;
-    this.offsetY = this.canvas.height - padding + minY * this.scale;
+    if (this.viewMode === "3d") {
+      this.offsetX = this.canvas.width * 0.45;
+      this.offsetY = this.canvas.height * 0.65;
+    } else {
+      this.offsetX = padding - minX * this.scale;
+      this.offsetY = this.canvas.height - padding + minY * this.scale;
+    }
 
     this.draw();
-  }
-
-  toScreen(x, y) {
-    return {
-      x: this.offsetX + x * this.scale,
-      y: this.offsetY - y * this.scale,
-    };
   }
 
   draw() {
     if (!this.ctx) return;
     const ctx = this.ctx;
-    const w = this.canvas.width;
-    const h = this.canvas.height;
+    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
-    // Background
-    ctx.fillStyle = "#080d1a";
-    ctx.fillRect(0, 0, w, h);
-
-    // Draw Grid
+    // Background & Grid
     this.drawGrid(ctx);
 
-    // Draw Machine Envelope
-    if (this.machineEnvelope) {
-      const p0 = this.toScreen(0, 0);
-      const p1 = this.toScreen(this.machineEnvelope.x, this.machineEnvelope.y);
-      ctx.strokeStyle = "rgba(239, 68, 68, 0.4)";
-      ctx.lineWidth = 1.5;
-      ctx.setLineDash([6, 6]);
-      ctx.strokeRect(p0.x, p1.y, p1.x - p0.x, p0.y - p1.y);
-      ctx.setLineDash([]);
+    // 3D Triad Axes
+    this.drawAxes(ctx);
 
-      ctx.fillStyle = "rgba(239, 68, 68, 0.7)";
-      ctx.font = "10px sans-serif";
-      ctx.fillText(
-        `Envelope: ${this.machineEnvelope.x} x ${this.machineEnvelope.y} mm`,
-        p0.x + 5,
-        p1.y + 14
-      );
+    // Machine Soft Limits Envelope Box
+    if (this.machineEnvelope) {
+      this.drawEnvelopeBox(ctx);
     }
 
     // Operation-specific Rendering (or parsed G-Code toolpath)
@@ -215,732 +331,135 @@ class ToolpathVisualizer {
       this.drawDrillHoles(ctx);
     }
 
+    // Simulated 3D Cutter Tool
+    if (this.gcodeToolpath && this.gcodeToolpath.length > 0) {
+      this.drawSimulatedTool(ctx);
+    }
 
+    // View mode badge
+    ctx.fillStyle = "rgba(148, 163, 184, 0.7)";
+    ctx.font = "10px sans-serif";
+    ctx.fillText(this.viewMode === "3d" ? "3D Isometric View (Drag to Orbit | Shift-Drag to Pan)" : "2D Plan View (Drag to Pan)", 10, this.canvas.height - 10);
+  }
 
+  drawAxes(ctx) {
+    const origin = this.toScreen(0, 0, 0);
+    const axisLen = 35;
 
-    // Draw Origin (0,0)
-    const origin = this.toScreen(0, 0);
+    const xEnd = this.toScreen(axisLen, 0, 0);
+    const yEnd = this.toScreen(0, axisLen, 0);
+    const zEnd = this.toScreen(0, 0, axisLen);
+
+    // X Axis (Red)
+    ctx.strokeStyle = "#ef4444";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(origin.x, origin.y);
+    ctx.lineTo(xEnd.x, xEnd.y);
+    ctx.stroke();
+    ctx.fillStyle = "#ef4444";
+    ctx.font = "bold 10px sans-serif";
+    ctx.fillText("X", xEnd.x + 3, xEnd.y + 3);
+
+    // Y Axis (Green)
+    ctx.strokeStyle = "#10b981";
+    ctx.beginPath();
+    ctx.moveTo(origin.x, origin.y);
+    ctx.lineTo(yEnd.x, yEnd.y);
+    ctx.stroke();
+    ctx.fillStyle = "#10b981";
+    ctx.fillText("Y", yEnd.x + 3, yEnd.y + 3);
+
+    // Z Axis (Blue - visible in 3D mode)
+    if (this.viewMode === "3d") {
+      ctx.strokeStyle = "#38bdf8";
+      ctx.beginPath();
+      ctx.moveTo(origin.x, origin.y);
+      ctx.lineTo(zEnd.x, zEnd.y);
+      ctx.stroke();
+      ctx.fillStyle = "#38bdf8";
+      ctx.fillText("Z", zEnd.x + 3, zEnd.y + 3);
+    }
+
+    // Origin marker
     ctx.beginPath();
     ctx.arc(origin.x, origin.y, 4, 0, 2 * Math.PI);
     ctx.fillStyle = "#10b981";
     ctx.fill();
-
-    // Axes
-    ctx.beginPath();
-    ctx.strokeStyle = "#10b981";
-    ctx.lineWidth = 2;
-    ctx.moveTo(origin.x, origin.y);
-    ctx.lineTo(origin.x + 35, origin.y); // +X
-    ctx.moveTo(origin.x, origin.y);
-    ctx.lineTo(origin.x, origin.y - 35); // +Y
-    ctx.stroke();
-
-    ctx.fillStyle = "#10b981";
-    ctx.font = "bold 11px sans-serif";
-    ctx.fillText("X0, Y0", origin.x - 30, origin.y + 15);
-    ctx.fillText("+X", origin.x + 38, origin.y + 4);
-    ctx.fillText("+Y", origin.x - 6, origin.y - 38);
   }
 
-  drawDrillHoles(ctx) {
-    if (this.holes.length > 0) {
-      // Traverse Rapid path
-      ctx.beginPath();
-      ctx.strokeStyle = "#f59e0b";
-      ctx.lineWidth = 1.5;
-      ctx.setLineDash([4, 4]);
+  drawEnvelopeBox(ctx) {
+    const ex = this.machineEnvelope.x;
+    const ey = this.machineEnvelope.y;
+    const ez = this.machineEnvelope.z || 65;
 
-      let prev = this.toScreen(0, 0);
-      ctx.moveTo(prev.x, prev.y);
-
-      for (const [hx, hy] of this.holes) {
-        const p = this.toScreen(hx, hy);
-        ctx.lineTo(p.x, p.y);
-      }
-      const park = this.toScreen(0, 0);
-      ctx.lineTo(park.x, park.y);
-      ctx.stroke();
-      ctx.setLineDash([]);
-    }
-
-    this.holes.forEach(([hx, hy], idx) => {
-      const p = this.toScreen(hx, hy);
-      const radiusScreen = Math.max(3, (this.toolDiameter / 2) * this.scale);
-
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, radiusScreen, 0, 2 * Math.PI);
-      ctx.fillStyle = "rgba(56, 189, 248, 0.3)";
-      ctx.fill();
-      ctx.strokeStyle = "#38bdf8";
-      ctx.lineWidth = 2;
-      ctx.stroke();
-
-      // Crosshair
-      ctx.beginPath();
-      ctx.strokeStyle = "#38bdf8";
-      ctx.lineWidth = 1;
-      ctx.moveTo(p.x - radiusScreen - 2, p.y);
-      ctx.lineTo(p.x + radiusScreen + 2, p.y);
-      ctx.moveTo(p.x, p.y - radiusScreen - 2);
-      ctx.lineTo(p.x, p.y + radiusScreen + 2);
-      ctx.stroke();
-
-      // Label
-      ctx.fillStyle = "#f8fafc";
-      ctx.font = "bold 10px sans-serif";
-      ctx.fillText(`#${idx + 1} (${hx}, ${hy})`, p.x + radiusScreen + 4, p.y - 4);
-    });
-  }
-
-  drawPockets(ctx) {
-    // Rapid traverse
-    if (this.holes.length > 0) {
-      ctx.beginPath();
-      ctx.strokeStyle = "#f59e0b";
-      ctx.lineWidth = 1.5;
-      ctx.setLineDash([4, 4]);
-      let prev = this.toScreen(0, 0);
-      ctx.moveTo(prev.x, prev.y);
-      for (const [cx, cy] of this.holes) {
-        const p = this.toScreen(cx, cy);
-        ctx.lineTo(p.x, p.y);
-      }
-      ctx.lineTo(prev.x, prev.y);
-      ctx.stroke();
-      ctx.setLineDash([]);
-    }
-
-    this.holes.forEach(([cx, cy], idx) => {
-      const p = this.toScreen(cx, cy);
-      const pocketRadiusScreen = (this.pocketDiameter / 2) * this.scale;
-      const toolRadiusScreen = (this.toolDiameter / 2) * this.scale;
-      const pathRadiusScreen = Math.max(1, ((this.pocketDiameter - this.toolDiameter) / 2) * this.scale);
-
-      // Pocket boundary
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, pocketRadiusScreen, 0, 2 * Math.PI);
-      ctx.fillStyle = "rgba(14, 165, 233, 0.15)";
-      ctx.fill();
-      ctx.strokeStyle = "#0ea5e9";
-      ctx.lineWidth = 2;
-      ctx.stroke();
-
-      // Tool centerpath circle (cyan dashed)
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, pathRadiusScreen, 0, 2 * Math.PI);
-      ctx.strokeStyle = "rgba(56, 189, 248, 0.8)";
-      ctx.lineWidth = 1.5;
-      ctx.setLineDash([3, 3]);
-      ctx.stroke();
-      ctx.setLineDash([]);
-
-      // Center crosshair
-      ctx.beginPath();
-      ctx.strokeStyle = "#0ea5e9";
-      ctx.lineWidth = 1;
-      ctx.moveTo(p.x - 6, p.y);
-      ctx.lineTo(p.x + 6, p.y);
-      ctx.moveTo(p.x, p.y - 6);
-      ctx.lineTo(p.x, p.y + 6);
-      ctx.stroke();
-
-      // Label
-      ctx.fillStyle = "#f8fafc";
-      ctx.font = "bold 10px sans-serif";
-      ctx.fillText(
-        `#${idx + 1} Pocket ⌀${this.pocketDiameter}mm (${cx}, ${cy})`,
-        p.x + pocketRadiusScreen + 4,
-        p.y - 4
-      );
-    });
-  }
-
-  drawThreadMilling(ctx) {
-    if (this.holes.length > 0) {
-      ctx.beginPath();
-      ctx.strokeStyle = "#f59e0b";
-      ctx.lineWidth = 1.5;
-      ctx.setLineDash([4, 4]);
-      let prev = this.toScreen(0, 0);
-      ctx.moveTo(prev.x, prev.y);
-      for (const [hx, hy] of this.holes) {
-        const p = this.toScreen(hx, hy);
-        ctx.lineTo(p.x, p.y);
-      }
-      ctx.lineTo(prev.x, prev.y);
-      ctx.stroke();
-      ctx.setLineDash([]);
-    }
-
-    this.holes.forEach(([hx, hy], idx) => {
-      const p = this.toScreen(hx, hy);
-      const majorRadiusScreen = (this.threadNominalDia / 2) * this.scale;
-      const minorRadiusScreen = Math.max(1, ((this.threadNominalDia - 1.0825 * this.threadPitch) / 2) * this.scale);
-      const cutRadiusScreen = Math.max(1, ((this.threadNominalDia - this.toolDiameter) / 2) * this.scale);
-
-      // Major Thread Diameter Circle
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, majorRadiusScreen, 0, 2 * Math.PI);
-      ctx.fillStyle = "rgba(168, 85, 247, 0.15)";
-      ctx.fill();
-      ctx.strokeStyle = "#a855f7";
-      ctx.lineWidth = 2;
-      ctx.stroke();
-
-      // Minor Hole Circle
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, minorRadiusScreen, 0, 2 * Math.PI);
-      ctx.strokeStyle = "rgba(192, 132, 252, 0.6)";
-      ctx.lineWidth = 1;
-      ctx.setLineDash([2, 2]);
-      ctx.stroke();
-      ctx.setLineDash([]);
-
-      // Helical Path Circle (Cyan)
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, cutRadiusScreen, 0, 2 * Math.PI);
-      ctx.strokeStyle = "#38bdf8";
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
-
-      // Center crosshair
-      ctx.beginPath();
-      ctx.strokeStyle = "#a855f7";
-      ctx.lineWidth = 1;
-      ctx.moveTo(p.x - 6, p.y);
-      ctx.lineTo(p.x + 6, p.y);
-      ctx.moveTo(p.x, p.y - 6);
-      ctx.lineTo(p.x, p.y + 6);
-      ctx.stroke();
-
-      // Label
-      ctx.fillStyle = "#f8fafc";
-      ctx.font = "bold 10px sans-serif";
-      ctx.fillText(
-        `#${idx + 1} ⌀${this.threadNominalDia}x${this.threadPitch} (${hx}, ${hy})`,
-        p.x + majorRadiusScreen + 4,
-        p.y - 4
-      );
-    });
-  }
-
-  drawSurfacing(ctx) {
-    const s = this.surfacing;
-    let minX, maxX, minY, maxY;
-
-    if (s.originMode === "center") {
-      minX = s.originX - s.lengthX / 2;
-      maxX = s.originX + s.lengthX / 2;
-      minY = s.originY - s.widthY / 2;
-      maxY = s.originY + s.widthY / 2;
-    } else {
-      minX = s.originX;
-      maxX = s.originX + s.lengthX;
-      minY = s.originY;
-      maxY = s.originY + s.widthY;
-    }
-
-    const p0 = this.toScreen(minX, minY);
-    const p1 = this.toScreen(maxX, maxY);
-
-    // Stock boundary rectangle
-    ctx.fillStyle = "rgba(245, 158, 11, 0.1)";
-    ctx.fillRect(p0.x, p1.y, p1.x - p0.x, p0.y - p1.y);
-    ctx.strokeStyle = "#f59e0b";
-    ctx.lineWidth = 2;
-    ctx.strokeRect(p0.x, p1.y, p1.x - p0.x, p0.y - p1.y);
-
-    // Tool raster passes
-    const toolRadius = (s.toolDiameter || 25.4) / 2.0;
-    const stepoverDist = (s.toolDiameter || 25.4) * ((s.stepoverPercent || 70) / 100.0);
-    const overtravel = s.overtravel || 2.0;
-
-    const xMinCut = minX - toolRadius - overtravel;
-    const xMaxCut = maxX + toolRadius + overtravel;
-
-    ctx.strokeStyle = "#38bdf8";
-    ctx.lineWidth = 1.5;
-
-    let currY = minY + toolRadius - stepoverDist * 0.3;
-    let passIdx = 0;
-
-    while (currY <= maxY + toolRadius) {
-      const sp0 = this.toScreen(xMinCut, currY);
-      const sp1 = this.toScreen(xMaxCut, currY);
-
-      ctx.beginPath();
-      if (passIdx % 2 === 0 || s.cutDirection === "climb_oneway") {
-        ctx.moveTo(sp0.x, sp0.y);
-        ctx.lineTo(sp1.x, sp1.y);
-      } else {
-        ctx.moveTo(sp1.x, sp1.y);
-        ctx.lineTo(sp0.x, sp0.y);
-      }
-      ctx.stroke();
-
-      currY += stepoverDist;
-      passIdx++;
-    }
-
-    // Stock size label
-    ctx.fillStyle = "#fbbf24";
-    ctx.font = "bold 11px sans-serif";
-    ctx.fillText(`Stock: ${s.lengthX} x ${s.widthY} mm`, p0.x + 8, p1.y + 18);
-  }
-
-  drawRectangularPocket(ctx) {
-    const p = this.rectangularPocket;
-    if (!p) return;
-
-    let minX, maxX, minY, maxY, cx, cy;
-    if (p.originMode === "center") {
-      minX = p.originX - p.lengthX / 2;
-      maxX = p.originX + p.lengthX / 2;
-      minY = p.originY - p.widthY / 2;
-      maxY = p.originY + p.widthY / 2;
-      cx = p.originX;
-      cy = p.originY;
-    } else {
-      minX = p.originX;
-      maxX = p.originX + p.lengthX;
-      minY = p.originY;
-      maxY = p.originY + p.widthY;
-      cx = minX + p.lengthX / 2;
-      cy = minY + p.widthY / 2;
-    }
-
-    const p0 = this.toScreen(minX, minY);
-    const p1 = this.toScreen(maxX, maxY);
-    const pCenter = this.toScreen(cx, cy);
-
-    // Draw pocket boundary with corner radius
-    const r = Math.max(0, (p.cornerRadius || 0) * this.scale);
-    ctx.fillStyle = "rgba(14, 165, 233, 0.12)";
-    ctx.strokeStyle = "#0ea5e9";
-    ctx.lineWidth = 2;
-
-    ctx.beginPath();
-    ctx.roundRect(p0.x, p1.y, p1.x - p0.x, p0.y - p1.y, r);
-    ctx.fill();
-    ctx.stroke();
-
-    // Draw concentric roughing rings in cyan dashed line
-    const toolRad = (this.toolDiameter || 6.35) / 2.0;
-    const stepover = (this.toolDiameter || 6.35) * ((p.stepoverPercent || 60) / 100.0);
-    const finishAllow = p.finishPassAllowance || 0.3;
-
-    const roughMinX = minX + toolRad + finishAllow;
-    const roughMaxX = maxX - toolRad - finishAllow;
-    const roughMinY = minY + toolRad + finishAllow;
-    const roughMaxY = maxY - toolRad - finishAllow;
-
-    if (roughMaxX > roughMinX && roughMaxY > roughMinY) {
-      const numRings = Math.max(1, Math.ceil(Math.max(roughMaxX - cx, roughMaxY - cy) / stepover));
-      ctx.strokeStyle = "rgba(56, 189, 248, 0.75)";
-      ctx.lineWidth = 1.2;
-      ctx.setLineDash([3, 3]);
-
-      for (let i = 1; i <= numRings; i++) {
-        const frac = i / numRings;
-        const rMinX = cx - (cx - roughMinX) * frac;
-        const rMaxX = cx + (roughMaxX - cx) * frac;
-        const rMinY = cy - (cy - roughMinY) * frac;
-        const rMaxY = cy + (roughMaxY - cy) * frac;
-
-        const sp0 = this.toScreen(rMinX, rMinY);
-        const sp1 = this.toScreen(rMaxX, rMaxY);
-        const ringR = Math.max(0, (r - (toolRad + finishAllow) * this.scale) * frac);
-
-        ctx.beginPath();
-        ctx.roundRect(sp0.x, sp1.y, sp1.x - sp0.x, sp0.y - sp1.y, ringR);
-        ctx.stroke();
-      }
-      ctx.setLineDash([]);
-    }
-
-    // Center Crosshair
-    ctx.beginPath();
-    ctx.strokeStyle = "#0ea5e9";
+    ctx.strokeStyle = "rgba(239, 68, 68, 0.4)";
     ctx.lineWidth = 1;
-    ctx.moveTo(pCenter.x - 8, pCenter.y);
-    ctx.lineTo(pCenter.x + 8, pCenter.y);
-    ctx.moveTo(pCenter.x, pCenter.y - 8);
-    ctx.lineTo(pCenter.x, pCenter.y + 8);
-    ctx.stroke();
-
-    // Label
-    ctx.fillStyle = "#38bdf8";
-    ctx.font = "bold 11px sans-serif";
-    ctx.fillText(`Pocket ${p.lengthX}x${p.widthY}mm (R${p.cornerRadius || 0}mm)`, p0.x + 8, p1.y + 18);
-  }
-
-  drawRectangularBoss(ctx) {
-    const b = this.rectangularBoss;
-    if (!b) return;
-
-    const cx = b.bossOriginX;
-    const cy = b.bossOriginY;
-
-    const stockMinX = cx - b.stockLengthX / 2;
-    const stockMaxX = cx + b.stockLengthX / 2;
-    const stockMinY = cy - b.stockWidthY / 2;
-    const stockMaxY = cy + b.stockWidthY / 2;
-
-    const bossMinX = cx - b.bossLengthX / 2;
-    const bossMaxX = cx + b.bossLengthX / 2;
-    const bossMinY = cy - b.bossWidthY / 2;
-    const bossMaxY = cy + b.bossWidthY / 2;
-
-    const sp0 = this.toScreen(stockMinX, stockMinY);
-    const sp1 = this.toScreen(stockMaxX, stockMaxY);
-
-    const bp0 = this.toScreen(bossMinX, bossMinY);
-    const bp1 = this.toScreen(bossMaxX, bossMaxY);
-
-    // Outer Stock Boundary (Amber)
-    ctx.strokeStyle = "rgba(245, 158, 11, 0.6)";
-    ctx.lineWidth = 1.5;
     ctx.setLineDash([4, 4]);
-    ctx.strokeRect(sp0.x, sp1.y, sp1.x - sp0.x, sp0.y - sp1.y);
-    ctx.setLineDash([]);
 
-    // Cleared Material Region
-    ctx.fillStyle = "rgba(14, 165, 233, 0.12)";
-    ctx.fillRect(sp0.x, sp1.y, sp1.x - sp0.x, sp0.y - sp1.y);
-
-    // Inner Boss Island (Solid Teal)
-    const r = Math.max(0, (b.bossCornerRadius || 0) * this.scale);
-    ctx.fillStyle = "rgba(16, 185, 129, 0.35)";
-    ctx.strokeStyle = "#10b981";
-    ctx.lineWidth = 2;
+    const p000 = this.toScreen(0, 0, 0);
+    const p100 = this.toScreen(ex, 0, 0);
+    const p110 = this.toScreen(ex, ey, 0);
+    const p010 = this.toScreen(0, ey, 0);
 
     ctx.beginPath();
-    ctx.roundRect(bp0.x, bp1.y, bp1.x - bp0.x, bp0.y - bp1.y, r);
-    ctx.fill();
+    ctx.moveTo(p000.x, p000.y);
+    ctx.lineTo(p100.x, p100.y);
+    ctx.lineTo(p110.x, p110.y);
+    ctx.lineTo(p010.x, p010.y);
+    ctx.closePath();
     ctx.stroke();
 
-    // Labels
-    ctx.fillStyle = "#fbbf24";
-    ctx.font = "10px sans-serif";
-    ctx.fillText(`Stock: ${b.stockLengthX}x${b.stockWidthY}mm`, sp0.x + 6, sp1.y + 14);
+    if (this.viewMode === "3d") {
+      const p001 = this.toScreen(0, 0, ez);
+      const p101 = this.toScreen(ex, 0, ez);
+      const p111 = this.toScreen(ex, ey, ez);
+      const p011 = this.toScreen(0, ey, ez);
 
-    ctx.fillStyle = "#10b981";
-    ctx.font = "bold 11px sans-serif";
-    ctx.fillText(`Boss: ${b.bossLengthX}x${b.bossWidthY}mm`, bp0.x + 6, bp1.y + 16);
-  }
-
-  drawEngraving(ctx) {
-
-    const e = this.engraving;
-    if (!e || !e.text) return;
-
-    // Fetch or calculate vector stroke polylines
-    const polylines = this.computeEngravingPolylines(e);
-    if (!polylines || polylines.length === 0) return;
-
-    const tipWidth = e.tipWidth || this.toolDiameter || 0.20;
-    const strokeWidthPx = Math.max(1.5, Math.min(6, tipWidth * this.scale * 1.5));
-
-    // 1. Draw Guides (Arc Pitch Circle or Linear Origin)
-    if (e.layoutMode === "arc") {
-      const center = this.toScreen(e.centerX, e.centerY);
-      const radiusPx = e.arcRadius * this.scale;
-
-      // Dashed pitch circle
       ctx.beginPath();
-      ctx.arc(center.x, center.y, radiusPx, 0, 2 * Math.PI);
-      ctx.strokeStyle = "rgba(148, 163, 184, 0.35)";
-      ctx.lineWidth = 1;
-      ctx.setLineDash([4, 4]);
-      ctx.stroke();
-      ctx.setLineDash([]);
-
-      // Center crosshair
-      ctx.beginPath();
-      ctx.strokeStyle = "#f59e0b";
-      ctx.lineWidth = 1.2;
-      ctx.moveTo(center.x - 7, center.y);
-      ctx.lineTo(center.x + 7, center.y);
-      ctx.moveTo(center.x, center.y - 7);
-      ctx.lineTo(center.x, center.y + 7);
+      ctx.moveTo(p001.x, p001.y);
+      ctx.lineTo(p101.x, p101.y);
+      ctx.lineTo(p111.x, p111.y);
+      ctx.lineTo(p011.x, p011.y);
+      ctx.closePath();
       ctx.stroke();
 
-      ctx.fillStyle = "#94a3b8";
-      ctx.font = "10px sans-serif";
-      ctx.fillText(`Center (${e.centerX}, ${e.centerY}) R${e.arcRadius}mm`, center.x + 10, center.y + 12);
-    } else {
-      const start = this.toScreen(e.startX, e.startY);
-
-      // Start coordinate point
+      // Vertical edges
       ctx.beginPath();
-      ctx.arc(start.x, start.y, 4, 0, 2 * Math.PI);
-      ctx.fillStyle = "#10b981";
-      ctx.fill();
-
-      ctx.fillStyle = "#94a3b8";
-      ctx.font = "10px sans-serif";
-      ctx.fillText(`Start (${e.startX}, ${e.startY})`, start.x + 8, start.y - 6);
+      ctx.moveTo(p000.x, p000.y); ctx.lineTo(p001.x, p001.y);
+      ctx.moveTo(p100.x, p100.y); ctx.lineTo(p101.x, p101.y);
+      ctx.moveTo(p110.x, p110.y); ctx.lineTo(p111.x, p111.y);
+      ctx.moveTo(p010.x, p010.y); ctx.lineTo(p011.x, p011.y);
+      ctx.stroke();
     }
 
-    // 2. Draw Rapid Moves Between Strokes (G0 in dashed red/pink)
-    ctx.beginPath();
-    ctx.strokeStyle = "rgba(244, 63, 94, 0.75)";
-    ctx.lineWidth = 1.2;
-    ctx.setLineDash([3, 3]);
-
-    let lastPoint = null;
-    polylines.forEach((poly) => {
-      if (poly.length === 0) return;
-      const firstPt = this.toScreen(poly[0][0], poly[0][1]);
-      if (lastPoint) {
-        ctx.moveTo(lastPoint.x, lastPoint.y);
-        ctx.lineTo(firstPt.x, firstPt.y);
-      }
-      const lastVertex = poly[poly.length - 1];
-      lastPoint = this.toScreen(lastVertex[0], lastVertex[1]);
-    });
-    ctx.stroke();
     ctx.setLineDash([]);
-
-    // 3. Draw Cutting Feeds Along Polylines (G1 in solid bright cyan)
-    ctx.strokeStyle = "#38bdf8";
-    ctx.lineWidth = strokeWidthPx;
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-
-    polylines.forEach((poly) => {
-      if (poly.length < 2) return;
-      ctx.beginPath();
-      const p0 = this.toScreen(poly[0][0], poly[0][1]);
-      ctx.moveTo(p0.x, p0.y);
-      for (let i = 1; i < poly.length; i++) {
-        const pi = this.toScreen(poly[i][0], poly[i][1]);
-        ctx.lineTo(pi.x, pi.y);
-      }
-      ctx.stroke();
-    });
-
-    // 4. Draw Plunge Points (Green) & Retract Points (Amber)
-    polylines.forEach((poly) => {
-      if (poly.length === 0) return;
-      // Plunge dot at stroke start
-      const pStart = this.toScreen(poly[0][0], poly[0][1]);
-      ctx.beginPath();
-      ctx.arc(pStart.x, pStart.y, 2.5, 0, 2 * Math.PI);
-      ctx.fillStyle = "#10b981";
-      ctx.fill();
-
-      // Retract dot at stroke end
-      const lastPt = poly[poly.length - 1];
-      const pEnd = this.toScreen(lastPt[0], lastPt[1]);
-      ctx.beginPath();
-      ctx.arc(pEnd.x, pEnd.y, 2.5, 0, 2 * Math.PI);
-      ctx.fillStyle = "#f59e0b";
-      ctx.fill();
-    });
   }
-
-  computeEngravingPolylines(e) {
-    const text = e.text || "";
-    const scale = (e.fontSize || 10.0) / 10.0;
-    const letterSpacing = e.letterSpacing !== undefined ? e.letterSpacing : 1.0;
-    const fontName = e.fontName || "simplex_sans";
-    const polylines = [];
-
-    const getGlyph = (char) => {
-      if (ToolpathVisualizer.FONT_GLYPHS && ToolpathVisualizer.FONT_GLYPHS[fontName] && ToolpathVisualizer.FONT_GLYPHS[fontName][char]) {
-        return ToolpathVisualizer.FONT_GLYPHS[fontName][char];
-      }
-      if (ToolpathVisualizer.FONT_GLYPHS && ToolpathVisualizer.FONT_GLYPHS["simplex_sans"] && ToolpathVisualizer.FONT_GLYPHS["simplex_sans"][char]) {
-        return ToolpathVisualizer.FONT_GLYPHS["simplex_sans"][char];
-      }
-      return ToolpathVisualizer.FALLBACK_SIMPLEX[char] || ToolpathVisualizer.FALLBACK_SIMPLEX["?"] || { w: 4.0, strokes: [] };
-    };
-
-    if (e.layoutMode === "arc") {
-      const arcRadius = e.arcRadius || 30.0;
-      if (arcRadius <= 0) return polylines;
-
-      const arcText = text.replace(/\n/g, " ").trim();
-      const glyphs = Array.from(arcText).map(getGlyph);
-      const charWidths = glyphs.map((g) => g.w * scale + letterSpacing);
-      const totalArcLen = charWidths.reduce((a, b) => a + b, 0);
-      const totalAngleRad = totalArcLen / arcRadius;
-
-      const startAngleRad = ((e.startAngleDeg !== undefined ? e.startAngleDeg : 90.0) * Math.PI) / 180.0;
-      const isCw = e.arcDirection !== "counter_clockwise";
-
-      let baseAngleRad = startAngleRad;
-      if (e.align === "center") {
-        baseAngleRad += isCw ? totalAngleRad / 2.0 : -totalAngleRad / 2.0;
-      } else if (e.align === "right") {
-        baseAngleRad += isCw ? totalAngleRad : -totalAngleRad;
-      }
-
-      let currDist = 0.0;
-      for (let i = 0; i < arcText.length; i++) {
-        const g = glyphs[i];
-        const charW = g.w * scale;
-        const charCenterDist = currDist + charW / 2.0;
-        const charAngle = isCw
-          ? baseAngleRad - charCenterDist / arcRadius
-          : baseAngleRad + charCenterDist / arcRadius;
-
-        for (const rawStroke of g.strokes) {
-          const stroke = this.smoothStroke(rawStroke, e.curveSubdivisions || 4);
-          const poly = [];
-          for (const [gx, gy] of stroke) {
-            const tOffset = (gx - g.w / 2.0) * scale;
-            const tAngleDelta = !isCw ? tOffset / arcRadius : -tOffset / arcRadius;
-            const ptAngle = charAngle + tAngleDelta;
-            const ptRadius = arcRadius + gy * scale;
-
-            const px = e.centerX + ptRadius * Math.cos(ptAngle);
-            const py = e.centerY + ptRadius * Math.sin(ptAngle);
-            poly.push([px, py]);
-          }
-          if (poly.length > 0) {
-            polylines.push(poly);
-          }
-        }
-        currDist += charW + letterSpacing;
-      }
-    } else {
-      // Linear layout
-      const radRot = ((e.rotationDeg || 0.0) * Math.PI) / 180.0;
-      const cosRot = Math.cos(radRot);
-      const sinRot = Math.sin(radRot);
-      const lineSpacingMult = e.lineSpacingMult || 1.4;
-
-      const lines = text.split("\n");
-      lines.forEach((lineStr, lineIdx) => {
-        const glyphs = Array.from(lineStr).map(getGlyph);
-        const charWidths = glyphs.map((g) => g.w * scale + letterSpacing);
-        const lineWidth = charWidths.reduce((a, b) => a + b, 0) - (charWidths.length > 0 ? letterSpacing : 0);
-
-        let alignXOffset = 0.0;
-        if (e.align === "center") {
-          alignXOffset = -lineWidth / 2.0;
-        } else if (e.align === "right") {
-          alignXOffset = -lineWidth;
-        }
-
-        const lineYOffset = -lineIdx * (e.fontSize * lineSpacingMult);
-        let currCharX = 0.0;
-
-        for (let i = 0; i < lineStr.length; i++) {
-          const g = glyphs[i];
-          for (const rawStroke of g.strokes) {
-            const stroke = this.smoothStroke(rawStroke, e.curveSubdivisions || 4);
-            const poly = [];
-            for (const [gx, gy] of stroke) {
-              const lx = alignXOffset + currCharX + gx * scale;
-              const ly = lineYOffset + gy * scale;
-
-              const px = e.startX + (lx * cosRot - ly * sinRot);
-              const py = e.startY + (lx * sinRot + ly * cosRot);
-              poly.push([px, py]);
-            }
-            if (poly.length > 0) {
-              polylines.push(poly);
-            }
-          }
-          currCharX += g.w * scale + letterSpacing;
-        }
-      });
-    }
-
-    return polylines;
-  }
-
-  smoothStroke(poly, steps = 4, cornerThresholdDeg = 65.0) {
-    if (!poly || poly.length < 3 || steps <= 1) return poly;
-    const isClosed = (poly[0][0] === poly[poly.length - 1][0] && poly[0][1] === poly[poly.length - 1][1]);
-    const n = poly.length;
-    const result = [];
-
-    const angleBetween = (v1, v2) => {
-      const dot = v1[0] * v2[0] + v1[1] * v2[1];
-      const m1 = Math.hypot(v1[0], v1[1]);
-      const m2 = Math.hypot(v2[0], v2[1]);
-      if (m1 === 0 || m2 === 0) return 0;
-      const cosVal = Math.max(-1.0, Math.min(1.0, dot / (m1 * m2)));
-      return (Math.acos(cosVal) * 180.0) / Math.PI;
-    };
-
-    for (let i = 0; i < n - 1; i++) {
-      const p1 = poly[i];
-      const p2 = poly[i + 1];
-
-      let isSharp1 = false;
-      let isSharp2 = false;
-
-      if (!isClosed) {
-        if (i === 0) isSharp1 = true;
-        if (i + 1 === n - 1) isSharp2 = true;
-      }
-
-      if (i > 0 && !isSharp1) {
-        const pPrev = poly[i - 1];
-        const vIn = [p1[0] - pPrev[0], p1[1] - pPrev[1]];
-        const vOut = [p2[0] - p1[0], p2[1] - p1[1]];
-        if (angleBetween(vIn, vOut) > cornerThresholdDeg) isSharp1 = true;
-      }
-
-      if (i + 2 < n && !isSharp2) {
-        const pNext = poly[i + 2];
-        const vIn = [p2[0] - p1[0], p2[1] - p1[1]];
-        const vOut = [pNext[0] - p2[0], pNext[1] - p2[1]];
-        if (angleBetween(vIn, vOut) > cornerThresholdDeg) isSharp2 = true;
-      }
-
-      let p0, p3;
-      if (isClosed) {
-        p0 = !isSharp1 ? poly[(i - 1 + n - 1) % (n - 1)] : p1;
-        p3 = !isSharp2 ? poly[(i + 2) % (n - 1)] : p2;
-      } else {
-        p0 = (i > 0 && !isSharp1) ? poly[i - 1] : [2 * p1[0] - p2[0], 2 * p1[1] - p2[1]];
-        p3 = (i + 2 < n && !isSharp2) ? poly[i + 2] : [2 * p2[0] - p1[0], 2 * p2[1] - p1[1]];
-      }
-
-      const numPoints = (i < n - 2) ? steps : steps + 1;
-      for (let s = 0; s < numPoints; s++) {
-        const t = s / steps;
-        const t2 = t * t;
-        const t3 = t2 * t;
-
-        const x = 0.5 * ((2 * p1[0]) + (-p0[0] + p2[0]) * t + (2 * p0[0] - 5 * p1[0] + 4 * p2[0] - p3[0]) * t2 + (-p0[0] + 3 * p1[0] - 3 * p2[0] + p3[0]) * t3);
-        const y = 0.5 * ((2 * p1[1]) + (-p0[1] + p2[1]) * t + (2 * p0[1] - 5 * p1[1] + 4 * p2[1] - p3[1]) * t2 + (-p0[1] + 3 * p1[1] - 3 * p2[1] + p3[1]) * t3);
-        result.push([x, y]);
-      }
-    }
-
-    return result;
-  }
-
-
-
 
   loadGCode(gcodeText) {
     if (!gcodeText) return;
     this.gcodeToolpath = this.parseGCode(gcodeText);
-    this.draw();
-  }
+    this.simIndex = 0;
 
-  clearGCode() {
-    this.gcodeToolpath = null;
-    this.draw();
+    const scrubber = document.getElementById("simScrubber");
+    if (scrubber) {
+      scrubber.max = Math.max(0, this.gcodeToolpath.length - 1);
+      scrubber.value = 0;
+    }
+
+    this.autoFit();
   }
 
   parseGCode(gcodeText) {
     const lines = gcodeText.split("\n");
     const segments = [];
-    let curX = 0, curY = 0, curZ = 2.0;
+    let curX = 0, curY = 0, curZ = 5.0;
     let curMotion = "G0";
+    let curFeed = 800;
 
-    for (let rawLine of lines) {
-      // Strip comments
-      let line = rawLine.replace(/\(.*?\)/g, "").split(";")[0].trim().toUpperCase();
+    for (let idx = 0; idx < lines.length; idx++) {
+      const raw = lines[idx];
+      let line = raw.replace(/\(.*?\)/g, "").split(";")[0].trim().toUpperCase();
       if (!line) continue;
 
       const tokens = line.split(/\s+/);
@@ -948,25 +467,23 @@ class ToolpathVisualizer {
       let hasMove = false;
 
       for (let t of tokens) {
-        if (t === "G0" || t === "G00") { curMotion = "G0"; }
-        else if (t === "G1" || t === "G01") { curMotion = "G1"; }
-        else if (t === "G2" || t === "G02") { curMotion = "G2"; }
-        else if (t === "G3" || t === "G03") { curMotion = "G3"; }
-        else if (t.startsWith("X")) {
-          const v = parseFloat(t.slice(1));
-          if (!isNaN(v)) { newX = v; hasMove = true; }
-        } else if (t.startsWith("Y")) {
-          const v = parseFloat(t.slice(1));
-          if (!isNaN(v)) { newY = v; hasMove = true; }
-        } else if (t.startsWith("Z")) {
-          const v = parseFloat(t.slice(1));
-          if (!isNaN(v)) { newZ = v; hasMove = true; }
-        }
+        if (t === "G0" || t === "G00") curMotion = "G0";
+        else if (t === "G1" || t === "G01") curMotion = "G1";
+        else if (t === "G2" || t === "G02") curMotion = "G2";
+        else if (t === "G3" || t === "G03") curMotion = "G3";
+        else if (t.startsWith("X")) { newX = parseFloat(t.slice(1)) || curX; hasMove = true; }
+        else if (t.startsWith("Y")) { newY = parseFloat(t.slice(1)) || curY; hasMove = true; }
+        else if (t.startsWith("Z")) { newZ = parseFloat(t.slice(1)) || curZ; hasMove = true; }
+        else if (t.startsWith("F")) { curFeed = parseFloat(t.slice(1)) || curFeed; }
       }
 
       if (hasMove) {
         segments.push({
+          lineIndex: idx,
+          rawLine: raw,
           type: curMotion === "G0" ? "rapid" : "feed",
+          motion: curMotion,
+          feed: curFeed,
           x1: curX, y1: curY, z1: curZ,
           x2: newX, y2: newY, z2: newZ,
         });
@@ -984,67 +501,159 @@ class ToolpathVisualizer {
 
     // 1. Draw Rapid Moves (G0) in dashed pink/red
     ctx.beginPath();
-    ctx.strokeStyle = "rgba(244, 63, 94, 0.75)";
+    ctx.strokeStyle = "rgba(244, 63, 94, 0.65)";
     ctx.lineWidth = 1.2;
     ctx.setLineDash([3, 3]);
 
-    for (let seg of this.gcodeToolpath) {
+    for (let i = 0; i < this.gcodeToolpath.length; i++) {
+      const seg = this.gcodeToolpath[i];
       if (seg.type === "rapid") {
-        const p1 = this.toScreen(seg.x1, seg.y1);
-        const p2 = this.toScreen(seg.x2, seg.y2);
-        if (Math.hypot(p2.x - p1.x, p2.y - p1.y) > 0.5) {
-          ctx.moveTo(p1.x, p1.y);
-          ctx.lineTo(p2.x, p2.y);
-        }
+        const p1 = this.toScreen(seg.x1, seg.y1, seg.z1);
+        const p2 = this.toScreen(seg.x2, seg.y2, seg.z2);
+        ctx.moveTo(p1.x, p1.y);
+        ctx.lineTo(p2.x, p2.y);
       }
     }
     ctx.stroke();
     ctx.setLineDash([]);
 
-    // 2. Draw Cutting Feed Moves (G1) in vibrant solid cyan
-    const tipWidth = this.engraving?.tipWidth || this.toolDiameter || 0.20;
-    const strokeWidthPx = Math.max(1.8, Math.min(5, tipWidth * this.scale * 1.5));
-    ctx.strokeStyle = "#38bdf8";
-    ctx.lineWidth = strokeWidthPx;
+    // 2. Draw Cutting Feeds (G1) in vibrant cyan with depth gradient
+    ctx.lineWidth = Math.max(1.8, Math.min(5, this.toolDiameter * this.scale * 0.75));
     ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-    ctx.beginPath();
 
-    for (let seg of this.gcodeToolpath) {
+    for (let i = 0; i < this.gcodeToolpath.length; i++) {
+      const seg = this.gcodeToolpath[i];
       if (seg.type === "feed") {
-        const p1 = this.toScreen(seg.x1, seg.y1);
-        const p2 = this.toScreen(seg.x2, seg.y2);
-        if (Math.hypot(p2.x - p1.x, p2.y - p1.y) > 0.1) {
-          ctx.moveTo(p1.x, p1.y);
-          ctx.lineTo(p2.x, p2.y);
+        const p1 = this.toScreen(seg.x1, seg.y1, seg.z1);
+        const p2 = this.toScreen(seg.x2, seg.y2, seg.z2);
+
+        // Highlight selected line
+        if (seg.lineIndex === this.highlightedLine || i === this.simIndex) {
+          ctx.strokeStyle = "#facc15"; // Glowing Yellow
+          ctx.lineWidth = 3.5;
+        } else {
+          ctx.strokeStyle = seg.z2 < 0 ? "#0284c7" : "#38bdf8";
+          ctx.lineWidth = 2.0;
         }
+
+        ctx.beginPath();
+        ctx.moveTo(p1.x, p1.y);
+        ctx.lineTo(p2.x, p2.y);
+        ctx.stroke();
       }
     }
-    ctx.stroke();
 
-    // 3. Draw Plunge Points (green) & Retract Points (amber)
+    // 3. Plunge / Retract Entry Dots
     for (let seg of this.gcodeToolpath) {
       if (seg.type === "feed" && seg.z1 > 0 && seg.z2 <= 0) {
-        const p = this.toScreen(seg.x2, seg.y2);
+        const p = this.toScreen(seg.x2, seg.y2, seg.z2);
         ctx.beginPath();
-        ctx.arc(p.x, p.y, 2.5, 0, 2 * Math.PI);
+        ctx.arc(p.x, p.y, 3, 0, 2 * Math.PI);
         ctx.fillStyle = "#10b981";
-        ctx.fill();
-      } else if (seg.type === "rapid" && seg.z1 <= 0 && seg.z2 > 0) {
-        const p = this.toScreen(seg.x1, seg.y1);
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, 2.5, 0, 2 * Math.PI);
-        ctx.fillStyle = "#f59e0b";
         ctx.fill();
       }
     }
+  }
+
+  drawSimulatedTool(ctx) {
+    if (!this.gcodeToolpath || this.gcodeToolpath.length === 0) return;
+    const seg = this.gcodeToolpath[Math.min(this.simIndex, this.gcodeToolpath.length - 1)];
+    if (!seg) return;
+
+    const tip = this.toScreen(seg.x2, seg.y2, seg.z2);
+    const top = this.toScreen(seg.x2, seg.y2, seg.z2 + 15.0);
+
+    // 3D Cutter Cylinder Body
+    ctx.strokeStyle = "rgba(56, 189, 248, 0.9)";
+    ctx.lineWidth = Math.max(3, this.toolDiameter * this.scale);
+    ctx.beginPath();
+    ctx.moveTo(tip.x, tip.y);
+    ctx.lineTo(top.x, top.y);
+    ctx.stroke();
+
+    // Cutter Tip Dot
+    ctx.beginPath();
+    ctx.arc(tip.x, tip.y, 4, 0, 2 * Math.PI);
+    ctx.fillStyle = "#facc15";
+    ctx.fill();
+    ctx.stroke();
+
+    // Update HUD
+    const hud = document.getElementById("simHud");
+    if (hud) {
+      hud.textContent = `X: ${seg.x2.toFixed(2)} | Y: ${seg.y2.toFixed(2)} | Z: ${seg.z2.toFixed(2)} | F${seg.feed} | Step ${this.simIndex + 1}/${this.gcodeToolpath.length}`;
+    }
+  }
+
+  // Simulation Controls
+  playSimulation() {
+    if (!this.gcodeToolpath || this.gcodeToolpath.length === 0) return;
+    this.simPlaying = true;
+    const stepInterval = Math.max(20, 150 / this.simSpeed);
+
+    clearInterval(this.simTimer);
+    this.simTimer = setInterval(() => {
+      if (this.simIndex < this.gcodeToolpath.length - 1) {
+        this.stepForward();
+      } else {
+        this.pauseSimulation();
+        const btnPlay = document.getElementById("btnSimPlay");
+        if (btnPlay) btnPlay.textContent = "▶ Play";
+      }
+    }, stepInterval);
+  }
+
+  pauseSimulation() {
+    this.simPlaying = false;
+    clearInterval(this.simTimer);
+  }
+
+  stepForward() {
+    if (!this.gcodeToolpath || this.simIndex >= this.gcodeToolpath.length - 1) return;
+    this.simIndex++;
+    this.syncScrubber();
+    this.draw();
+  }
+
+  stepBackward() {
+    if (!this.gcodeToolpath || this.simIndex <= 0) return;
+    this.simIndex--;
+    this.syncScrubber();
+    this.draw();
+  }
+
+  seekSimulation(index) {
+    if (!this.gcodeToolpath) return;
+    this.simIndex = Math.max(0, Math.min(index, this.gcodeToolpath.length - 1));
+    this.syncScrubber();
+    this.draw();
+  }
+
+  syncScrubber() {
+    const scrubber = document.getElementById("simScrubber");
+    if (scrubber) scrubber.value = this.simIndex;
+    if (this.gcodeToolpath && this.gcodeToolpath[this.simIndex]) {
+      this.highlightedLine = this.gcodeToolpath[this.simIndex].lineIndex;
+    }
+  }
+
+  setHighlightedLine(lineIndex) {
+    this.highlightedLine = lineIndex;
+    if (this.gcodeToolpath) {
+      const idx = this.gcodeToolpath.findIndex((s) => s.lineIndex === lineIndex);
+      if (idx !== -1) {
+        this.simIndex = idx;
+        this.syncScrubber();
+      }
+    }
+    this.draw();
   }
 
   drawGrid(ctx) {
     const gridSpacing = 50 * this.scale;
     if (gridSpacing < 8) return;
 
-    ctx.strokeStyle = "rgba(51, 65, 85, 0.4)";
+    ctx.strokeStyle = "rgba(51, 65, 85, 0.35)";
     ctx.lineWidth = 0.5;
 
     const startX = this.offsetX % gridSpacing;
@@ -1063,70 +672,110 @@ class ToolpathVisualizer {
       ctx.stroke();
     }
   }
-}
 
-// Global Glyph Cache & Fallbacks
-ToolpathVisualizer.FONT_GLYPHS = null;
-ToolpathVisualizer.initGlyphs = async function() {
-  try {
-    const res = await fetch("/api/generate/engraving/glyphs");
-    if (res.ok) {
-      const data = await res.json();
-      if (data && data.fonts) {
-        ToolpathVisualizer.FONT_GLYPHS = data.fonts;
-      }
-    }
-  } catch (err) {
-    console.warn("Could not fetch remote glyph tables, using fallback:", err);
+  drawDrillHoles(ctx) {
+    if (!this.holes || this.holes.length === 0) return;
+    const holeRadiusScreen = Math.max(3, (this.toolDiameter / 2.0) * this.scale);
+
+    this.holes.forEach(([hx, hy], idx) => {
+      const p = this.toScreen(hx, hy, 0);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, holeRadiusScreen, 0, 2 * Math.PI);
+      ctx.fillStyle = "rgba(14, 165, 233, 0.35)";
+      ctx.fill();
+      ctx.strokeStyle = "#38bdf8";
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 2, 0, 2 * Math.PI);
+      ctx.fillStyle = "#f8fafc";
+      ctx.fill();
+
+      ctx.fillStyle = "#94a3b8";
+      ctx.font = "10px sans-serif";
+      ctx.fillText(`#${idx + 1} (${hx.toFixed(1)}, ${hy.toFixed(1)})`, p.x + holeRadiusScreen + 4, p.y - 3);
+    });
   }
-};
 
-// Start fetching glyph tables immediately
-if (typeof window !== "undefined") {
-  ToolpathVisualizer.initGlyphs();
+  drawPockets(ctx) {
+    if (!this.holes || this.holes.length === 0) return;
+    const pocketRadiusScreen = (this.pocketDiameter / 2.0) * this.scale;
+
+    this.holes.forEach(([hx, hy], idx) => {
+      const p = this.toScreen(hx, hy, 0);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, pocketRadiusScreen, 0, 2 * Math.PI);
+      ctx.fillStyle = "rgba(14, 165, 233, 0.15)";
+      ctx.fill();
+      ctx.strokeStyle = "#0ea5e9";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    });
+  }
+
+  drawThreadMilling(ctx) {
+    if (!this.holes || this.holes.length === 0) return;
+    const majorRadiusScreen = (this.threadNominalDia / 2.0) * this.scale;
+
+    this.holes.forEach(([hx, hy], idx) => {
+      const p = this.toScreen(hx, hy, 0);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, majorRadiusScreen, 0, 2 * Math.PI);
+      ctx.strokeStyle = "#a855f7";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    });
+  }
+
+  drawSurfacing(ctx) {
+    const s = this.surfacing;
+    if (!s) return;
+    let minX = s.originMode === "center" ? s.originX - s.lengthX / 2 : s.originX;
+    let maxX = s.originMode === "center" ? s.originX + s.lengthX / 2 : s.originX + s.lengthX;
+    let minY = s.originMode === "center" ? s.originY - s.widthY / 2 : s.originY;
+    let maxY = s.originMode === "center" ? s.originY + s.widthY / 2 : s.originY + s.widthY;
+
+    const p0 = this.toScreen(minX, minY, 0);
+    const p1 = this.toScreen(maxX, maxY, 0);
+
+    ctx.fillStyle = "rgba(245, 158, 11, 0.1)";
+    ctx.strokeStyle = "#f59e0b";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(p0.x, p1.y, p1.x - p0.x, p0.y - p1.y);
+  }
+
+  drawRectangularPocket(ctx) {
+    const p = this.rectangularPocket;
+    if (!p) return;
+    let minX = p.originMode === "center" ? p.originX - p.lengthX / 2 : p.originX;
+    let maxX = p.originMode === "center" ? p.originX + p.lengthX / 2 : p.originX + p.lengthX;
+    let minY = p.originMode === "center" ? p.originY - p.widthY / 2 : p.originY;
+    let maxY = p.originMode === "center" ? p.originY + p.widthY / 2 : p.originY + p.widthY;
+
+    const p0 = this.toScreen(minX, minY, 0);
+    const p1 = this.toScreen(maxX, maxY, 0);
+    ctx.strokeStyle = "#0ea5e9";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(p0.x, p1.y, p1.x - p0.x, p0.y - p1.y);
+  }
+
+  drawRectangularBoss(ctx) {
+    const b = this.rectangularBoss;
+    if (!b) return;
+    const sp0 = this.toScreen(b.bossOriginX - b.stockLengthX / 2, b.bossOriginY - b.stockWidthY / 2, 0);
+    const sp1 = this.toScreen(b.bossOriginX + b.stockLengthX / 2, b.bossOriginY + b.stockWidthY / 2, 0);
+    ctx.strokeStyle = "#f59e0b";
+    ctx.strokeRect(sp0.x, sp1.y, sp1.x - sp0.x, sp0.y - sp1.y);
+  }
+
+  drawEngraving(ctx) {
+    // 2D Engraving text outline
+    const e = this.engraving;
+    if (!e || !e.text) return;
+    const p = this.toScreen(e.startX || 0, e.startY || 0, 0);
+    ctx.fillStyle = "#38bdf8";
+    ctx.font = "14px sans-serif";
+    ctx.fillText(e.text, p.x, p.y);
+  }
 }
-
-ToolpathVisualizer.FALLBACK_SIMPLEX = {
-  " ": { w: 4.0, strokes: [] },
-  "!": { w: 2.5, strokes: [[[1.25, 10.0], [1.25, 3.0]], [[1.25, 1.0], [1.25, 0.0]]] },
-  "0": { w: 6.0, strokes: [[[1.0, 0.0], [1.0, 10.0], [5.0, 10.0], [5.0, 0.0], [1.0, 0.0], [5.0, 10.0]]] },
-  "1": { w: 4.5, strokes: [[[1.0, 7.5], [2.5, 10.0], [2.5, 0.0]], [[1.0, 0.0], [4.0, 0.0]]] },
-  "2": { w: 6.0, strokes: [[[1.0, 8.0], [2.0, 10.0], [4.5, 10.0], [5.5, 8.0], [5.5, 6.0], [1.0, 0.0], [5.5, 0.0]]] },
-  "3": { w: 6.0, strokes: [[[1.0, 8.5], [2.0, 10.0], [4.5, 10.0], [5.5, 8.5], [5.5, 6.0], [3.0, 5.0], [5.5, 4.0], [5.5, 1.5], [4.5, 0.0], [2.0, 0.0], [1.0, 1.5]]] },
-  "4": { w: 6.0, strokes: [[[4.5, 0.0], [4.5, 10.0], [1.0, 3.0], [5.5, 3.0]]] },
-  "5": { w: 6.0, strokes: [[[5.5, 10.0], [1.0, 10.0], [1.0, 5.5], [4.5, 5.5], [5.5, 4.0], [5.5, 1.5], [4.5, 0.0], [2.0, 0.0], [1.0, 1.5]]] },
-  "6": { w: 6.0, strokes: [[[5.0, 8.5], [3.0, 10.0], [1.0, 7.0], [1.0, 2.0], [2.5, 0.0], [4.5, 0.0], [5.5, 1.5], [5.5, 4.0], [4.0, 5.5], [1.0, 5.5]]] },
-  "7": { w: 6.0, strokes: [[[1.0, 10.0], [5.5, 10.0], [2.5, 0.0]]] },
-  "8": { w: 6.0, strokes: [[[2.5, 10.0], [1.0, 8.0], [1.0, 6.5], [2.5, 5.0], [4.5, 5.0], [5.5, 6.5], [5.5, 8.0], [4.0, 10.0], [2.5, 10.0], [2.5, 5.0], [1.0, 3.5], [1.0, 1.5], [2.5, 0.0], [4.5, 0.0], [5.5, 1.5], [5.5, 3.5], [4.5, 5.0]]] },
-  "9": { w: 6.0, strokes: [[[5.0, 4.5], [2.0, 4.5], [1.0, 6.0], [1.0, 8.5], [2.5, 10.0], [4.5, 10.0], [5.5, 8.0], [5.5, 3.0], [3.5, 0.0], [1.5, 1.5]]] },
-  "A": { w: 6.5, strokes: [[[0.5, 0.0], [3.25, 10.0], [6.0, 0.0]], [[1.7, 4.0], [4.8, 4.0]]] },
-  "B": { w: 6.0, strokes: [[[1.0, 0.0], [1.0, 10.0], [4.5, 10.0], [5.5, 8.5], [5.5, 6.5], [4.5, 5.0], [1.0, 5.0]], [[4.5, 5.0], [5.5, 3.5], [5.5, 1.5], [4.5, 0.0], [1.0, 0.0]]] },
-  "C": { w: 6.5, strokes: [[[5.5, 8.0], [4.0, 10.0], [2.0, 10.0], [0.5, 7.5], [0.5, 2.5], [2.0, 0.0], [4.0, 0.0], [5.5, 2.0]]] },
-  "D": { w: 6.5, strokes: [[[1.0, 0.0], [1.0, 10.0], [4.0, 10.0], [6.0, 7.5], [6.0, 2.5], [4.0, 0.0], [1.0, 0.0]]] },
-  "E": { w: 5.5, strokes: [[[5.0, 10.0], [1.0, 10.0], [1.0, 0.0], [5.0, 0.0]], [[1.0, 5.0], [4.0, 5.0]]] },
-  "F": { w: 5.5, strokes: [[[1.0, 0.0], [1.0, 10.0], [5.0, 10.0]], [[1.0, 5.0], [4.0, 5.0]]] },
-  "G": { w: 6.5, strokes: [[[5.5, 8.0], [4.0, 10.0], [2.0, 10.0], [0.5, 7.5], [0.5, 2.5], [2.0, 0.0], [4.5, 0.0], [6.0, 1.5], [6.0, 5.0], [3.5, 5.0]]] },
-  "H": { w: 6.5, strokes: [[[1.0, 10.0], [1.0, 0.0]], [[5.5, 10.0], [5.5, 0.0]], [[1.0, 5.0], [5.5, 5.0]]] },
-  "I": { w: 3.0, strokes: [[[1.5, 10.0], [1.5, 0.0]], [[0.5, 10.0], [2.5, 10.0]], [[0.5, 0.0], [2.5, 0.0]]] },
-  "J": { w: 4.5, strokes: [[[3.5, 10.0], [3.5, 2.5], [2.5, 0.0], [1.0, 0.0], [0.5, 1.5]]] },
-  "K": { w: 6.0, strokes: [[[1.0, 10.0], [1.0, 0.0]], [[5.0, 10.0], [1.0, 4.0]], [[2.5, 5.5], [5.5, 0.0]]] },
-  "L": { w: 5.0, strokes: [[[1.0, 10.0], [1.0, 0.0], [4.5, 0.0]]] },
-  "M": { w: 7.5, strokes: [[[1.0, 0.0], [1.0, 10.0], [3.75, 0.0], [6.5, 10.0], [6.5, 0.0]]] },
-  "N": { w: 6.5, strokes: [[[1.0, 0.0], [1.0, 10.0], [5.5, 0.0], [5.5, 10.0]]] },
-  "O": { w: 6.5, strokes: [[[2.0, 0.0], [0.5, 2.5], [0.5, 7.5], [2.0, 10.0], [4.5, 10.0], [6.0, 7.5], [6.0, 2.5], [4.5, 0.0], [2.0, 0.0]]] },
-  "P": { w: 6.0, strokes: [[[1.0, 0.0], [1.0, 10.0], [4.5, 10.0], [5.5, 8.5], [5.5, 6.5], [4.5, 5.0], [1.0, 5.0]]] },
-  "Q": { w: 6.5, strokes: [[[2.0, 0.0], [0.5, 2.5], [0.5, 7.5], [2.0, 10.0], [4.5, 10.0], [6.0, 7.5], [6.0, 2.5], [4.5, 0.0], [2.0, 0.0]], [[4.0, 2.0], [6.5, -1.0]]] },
-  "R": { w: 6.0, strokes: [[[1.0, 0.0], [1.0, 10.0], [4.5, 10.0], [5.5, 8.5], [5.5, 6.5], [4.5, 5.0], [1.0, 5.0]], [[3.5, 5.0], [5.5, 0.0]]] },
-  "S": { w: 6.0, strokes: [[[5.0, 8.5], [4.0, 10.0], [2.0, 10.0], [0.5, 8.5], [0.5, 6.5], [2.0, 5.0], [4.0, 5.0], [5.5, 3.5], [5.5, 1.5], [4.0, 0.0], [2.0, 0.0], [0.5, 1.5]]] },
-  "T": { w: 6.0, strokes: [[[0.5, 10.0], [5.5, 10.0]], [[3.0, 10.0], [3.0, 0.0]]] },
-  "U": { w: 6.5, strokes: [[[1.0, 10.0], [1.0, 2.5], [2.5, 0.0], [4.5, 0.0], [6.0, 2.5], [6.0, 10.0]]] },
-  "V": { w: 6.5, strokes: [[[0.5, 10.0], [3.25, 0.0], [6.0, 10.0]]] },
-  "W": { w: 8.5, strokes: [[[0.5, 10.0], [2.5, 0.0], [4.25, 7.0], [6.0, 0.0], [8.0, 10.0]]] },
-  "X": { w: 6.0, strokes: [[[0.5, 10.0], [5.5, 0.0]], [[5.5, 10.0], [0.5, 0.0]]] },
-  "Y": { w: 6.0, strokes: [[[0.5, 10.0], [3.0, 5.0], [5.5, 10.0]], [[3.0, 5.0], [3.0, 0.0]]] },
-  "Z": { w: 6.0, strokes: [[[0.5, 10.0], [5.5, 10.0], [0.5, 0.0], [5.5, 0.0]]] },
-  "?": { w: 5.5, strokes: [[[1.0, 8.5], [2.0, 10.0], [4.0, 10.0], [5.0, 8.5], [5.0, 6.5], [2.75, 4.5], [2.75, 2.5]], [[2.75, 1.0], [2.75, 0.0]]] },
-  "-": { w: 4.5, strokes: [[[0.5, 5.0], [4.0, 5.0]]] },
-  ".": { w: 2.5, strokes: [[[1.25, 1.0], [1.25, 0.0]]] },
-};
-
