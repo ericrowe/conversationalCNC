@@ -46,9 +46,14 @@ def surfacing_page():
 def engraving_page():
     return render_template("operations/engraving.html")
 
+@web_bp.route("/contouring")
+def contouring_page():
+    return render_template("operations/contouring.html")
+
 @web_bp.route("/transformations")
 def transformations_page():
     return render_template("operations/transformations.html")
+
 
 @web_bp.route("/machines")
 def machines_page():

@@ -18,6 +18,7 @@ from .slotting import generate_linear_slot
 from .chamfering import generate_rectangular_chamfer
 from .surfacing import generate_surfacing
 from .engraving import generate_text_engraving
+from .contouring import generate_contour_profile
 
 
 GENERATOR_MAP = {
@@ -34,7 +35,10 @@ GENERATOR_MAP = {
     "chamfering": generate_rectangular_chamfer,
     "surfacing": generate_surfacing,
     "engraving": generate_text_engraving,
+    "contouring": generate_contour_profile,
+    "profile": generate_contour_profile,
 }
+
 
 
 def _strip_header_and_footer(gcode_text: str) -> List[str]:

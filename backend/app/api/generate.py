@@ -12,6 +12,7 @@ from ..schemas import (
     TextEngravingPayloadSchema,
     LinearSlotPayloadSchema,
     RectangularChamferPayloadSchema,
+    ContourProfilePayloadSchema,
 )
 from ..postprocessors import get_postprocessor, DIALECT_REGISTRY
 from ..generators import (
@@ -25,11 +26,13 @@ from ..generators import (
     generate_text_engraving,
     generate_linear_slot,
     generate_rectangular_chamfer,
+    generate_contour_profile,
     get_available_fonts,
     FONTS,
     THREAD_STANDARDS,
     WorkEnvelope,
 )
+
 
 
 
@@ -743,6 +746,55 @@ def generate_rectangular_chamfer_gcode():
         "machine_profile": ctx["machine"].to_dict() if ctx["machine"] else None,
         "dialect_used": ctx["postprocessor"].dialect_name,
     }), 200
+
+
+@generate_bp.route("/milling/contour", methods=["POST"])
+def generate_contour_milling_gcode():
+    data = request.get_json() or {}
+    try:
+        payload = ContourProfilePayloadSchema(**data)
+    except ValidationError as e:
+        error_details = [{"loc": err.get("loc"), "msg": err.get("msg"), "type": err.get("type")} for err in e.errors()]
+        return jsonify({"error": "Validation error", "details": error_details}), 400
+
+    ctx = _resolve_context(payload)
+
+    # Convert segments to dicts if needed
+    segments_data = [s.model_dump() if hasattr(s, "model_dump") else dict(s) for s in payload.segments]
+
+    try:
+        result = generate_contour_profile(
+            segments=segments_data,
+            start_point=tuple(payload.start_point) if payload.start_point else (0.0, 0.0),
+            is_closed=payload.is_closed,
+            side=payload.side,
+            lead_in_type=payload.lead_in_type,
+            lead_in_radius=payload.lead_in_radius,
+            target_depth_z=payload.target_depth_z,
+            start_z=payload.start_z,
+            stepdown_z=payload.stepdown_z,
+            retract_z=payload.retract_z if payload.retract_z is not None else ctx["safe_z_default"],
+            finish_allowance=payload.finish_allowance,
+            spring_pass=payload.spring_pass,
+            tool_diameter=payload.tool_diameter or ctx["tool_diameter"],
+            tool_number=ctx["tool_number"],
+            tool_name=ctx["tool_name"],
+            spindle_speed=ctx["spindle_speed"],
+            feed_rate_xy=payload.feed_rate_xy or ctx["feed_rate_xy"],
+            plunge_feed=payload.plunge_feed or ctx["plunge_feed"],
+            units=payload.units,
+            dialect=ctx["postprocessor"].dialect_name,
+        )
+    except ValueError as val_err:
+        return jsonify({"error": "Generation error", "message": str(val_err)}), 400
+
+    return jsonify({
+        "success": True,
+        "data": result,
+        "machine_profile": ctx["machine"].to_dict() if ctx["machine"] else None,
+        "dialect_used": ctx["postprocessor"].dialect_name,
+    }), 200
+
 
 
 

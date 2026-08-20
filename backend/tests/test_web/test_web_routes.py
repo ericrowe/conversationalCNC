@@ -59,6 +59,13 @@ def test_transformations_page_renders(client):
     assert b"Shift / Offset" in response.data
     assert b"Split Tools" in response.data
 
+def test_contouring_page_renders(client):
+    response = client.get("/contouring")
+    assert response.status_code == 200
+    assert b"Contour Milling" in response.data
+    assert b"toolpathCanvas" in response.data
+
+
 
 
 

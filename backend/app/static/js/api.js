@@ -372,8 +372,20 @@ const API = {
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || data.error || "Job sequence generation failed");
     return data;
+  },
+
+  async generateContourMilling(payload) {
+    const res = await fetch("/api/generate/milling/contour", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || data.error || "Contour milling generation failed");
+    return data;
   }
 };
+
 
 
 

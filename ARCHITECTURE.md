@@ -225,7 +225,17 @@ Implemented in `app/generators/sequencer.py` and `app/static/js/job_builder.js`:
 
 ---
 
-## 12. Development Status & Roadmap
+## 12. 2.5D Arbitrary Profile & Contour Milling Architecture
+
+Implemented in `app/generators/contouring.py` and `app/static/js/contouring.js`:
+1. **Line & Arc Geometry Chaining**: Supports arbitrary sequence of line segments and circular arc (`G2`/`G3`) segments for both open edge profiles and closed loops.
+2. **Cutter Radius Compensation**: Automatically calculates normal offset vectors for Climb Milling (`Left`), Conventional Milling (`Right`), and Centerline (`None`).
+3. **Smooth Lead-Ins / Lead-Outs**: 90° tangential circular arcs and 45° linear ramps prevent cutter dwell marks on finished part perimeters.
+4. **Roughing & Finishing**: Multi-depth stepdowns with configurable wall stock allowance and spring passes.
+
+---
+
+## 13. Development Status & Roadmap
 
 - **Phase 1 (Completed)**: Core architecture, SQLite schema, Straight Plunge drilling, Grbl post-processor, DeWalt DWP611 dial mapping.
 - **Phase 2 (Completed)**: Helical Thread Milling, Peck Drilling (G73/G83), Circular Pocketing, Surfacing/Facing, Single-Line Vector Text Engraving with 5 fonts and spline smoothing, 2D vector toolpath visualizer.
@@ -237,9 +247,10 @@ Implemented in `app/generators/sequencer.py` and `app/static/js/job_builder.js`:
 - **Phase 8 (Completed)**: Machine Probing Assistant (Z-Touch Plate, Corner XYZ Block, Homing) and explicit `G54` safety headers.
 - **Phase 9 (Completed)**: Manual Jog Controller & Live DRO Pendant with keyboard hotkeys and quick-zero actions.
 - **Phase 10 (Completed)**: Multi-Operation Job Program Sequencer / Builder with tool change optimization.
-- **Phase 11 (Planned)**: 2.5D Arbitrary Profile / Contour Milling.
+- **Phase 11 (Completed)**: 2.5D Arbitrary Profile & Contour Milling with cutter compensation and lead-in/out arcs.
 - **Phase 12 (Planned)**: Step-and-Repeat Array Nesting & Soft Jaw Fixturing Wizard.
 - **Phase 13 (Planned)**: DXF / 2D Vector CAD Importer.
+
 
 
 

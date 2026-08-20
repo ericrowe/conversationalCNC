@@ -17,6 +17,7 @@ from .surfacing_schema import SurfacingPayloadSchema
 from .engraving_schema import TextEngravingPayloadSchema
 from .slotting_schema import LinearSlotPayloadSchema
 from .chamfering_schema import RectangularChamferPayloadSchema
+from .contouring_schema import ContourProfilePayloadSchema, ContourSegmentItemSchema
 
 __all__ = [
     "MachineProfileCreateSchema",
@@ -35,7 +36,10 @@ __all__ = [
     "TextEngravingPayloadSchema",
     "LinearSlotPayloadSchema",
     "RectangularChamferPayloadSchema",
+    "ContourProfilePayloadSchema",
+    "ContourSegmentItemSchema",
 ]
+
 
 
 

@@ -342,7 +342,38 @@ Generates G-code for 2D perimeter edge deburring and chamfering with conical V-b
 
 ---
 
+### `POST /api/generate/milling/contour`
+Generates 2.5D arbitrary profile and contour milling G-code from chained line and arc segments with cutter compensation (climb/conventional) and smooth lead-ins/outs.
+
+#### Request Payload
+```json
+{
+  "segments": [
+    {"type": "line", "x": 40.0, "y": 0.0},
+    {"type": "line", "x": 40.0, "y": 30.0},
+    {"type": "line", "x": 0.0, "y": 30.0},
+    {"type": "line", "x": 0.0, "y": 0.0}
+  ],
+  "start_point": [0.0, 0.0],
+  "is_closed": true,
+  "side": "left",
+  "lead_in_type": "tangential_arc",
+  "lead_in_radius": 5.0,
+  "target_depth_z": -5.0,
+  "stepdown_z": 1.5,
+  "finish_allowance": 0.2,
+  "spring_pass": true,
+  "tool_diameter": 3.175,
+  "feed_rate_xy": 800.0,
+  "plunge_feed": 250.0,
+  "spindle_speed": 16000
+}
+```
+
+---
+
 ## 4. G-Code Transformations & Program Splitter
+
 
 ### `POST /api/transform/shift`
 Translates all coordinates by $(\Delta X, \Delta Y, \Delta Z)$.

@@ -135,7 +135,17 @@ Generate test programs from Conversational CNC UI with workpiece origin set to $
   - Transition from Op 2 (T2) to Op 3 (T2) recognizes identical tool number and immediately proceeds without redundant tool change pauses.
   - Program completes with single unified footer (`M5`, `G0 Z`, `G0 X0 Y0`, `M2`).
 
+### Test 3.6: 2.5D Arbitrary Profile & Contour Milling Verification
+- **Parameters**: Custom L-Bracket or Rounded Slot contour profile with Left (Climb) cutter compensation, $5\text{mm}$ tangential arc lead-in/lead-out, $0.2\text{mm}$ finish allowance, and spring pass.
+- **Verification**:
+  - Tangential 90° circular arc lead-in engages smoothly without dwell marks or hesitation.
+  - Cutter path follows the offset trajectory on the configured side (Outside/Left vs Inside/Right).
+  - Multi-depth stepdowns plunge at configured plunge feed rate.
+  - Roughing passes respect the $0.2\text{mm}$ wall stock allowance, followed by a dedicated full-depth finish pass and optional spring pass.
+  - Tangential arc lead-out departs cleanly before retracting to safe clearance.
+
 ---
+
 
 
 ## 🌪️ Phase 4: Spindle Integration & EMI Noise Baseline

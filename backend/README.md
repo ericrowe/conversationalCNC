@@ -3,7 +3,7 @@
 Stateless, deterministic Python/Flask G-code generator and SQLite configuration manager designed for conversational CNC machining on Raspberry Pi (targeting Grbl / X-Carve and expandable to other machines).
 
 ## Architecture Highlights
-- **Pure Operation Generators**: Zero database or web framework dependencies in the mathematical G-code generation functions (`app/generators/`) covering Straight Plunge Drilling, Peck Drilling, Bolt Circle & Grid Pattern calculation, Helical Thread Milling, Circular Pocketing, Rectangular Pocketing & Boss Machining, Linear Slotting, 2D Chamfering, Surfacing/Facing, and Single-Line Vector Text Engraving.
+- **Pure Operation Generators**: Zero database or web framework dependencies in the mathematical G-code generation functions (`app/generators/`) covering Straight Plunge Drilling, Peck Drilling, Bolt Circle & Grid Pattern calculation, Helical Thread Milling, Circular Pocketing, Rectangular Pocketing & Boss Machining, Linear Slotting, 2D Chamfering, Surfacing/Facing, Single-Line Vector Text Engraving, and 2.5D Arbitrary Profile & Contour Milling with cutter compensation.
 - **Machine Probing & Setup Engine**: 2-stage precision Z-touch plate probing macros, 3-axis Corner XYZ touch block macros with tool radius and block lip offset compensation, and machine homing cycles (`$H`).
 - **Manual Jog Controller & Machine Control Engine**: Directional incremental jog command generation ($J=G91 for Grbl/Smoothie and G91 G1 for Standard), quick WCS coordinate zeroing (`G10 L20 P1`), and safe 2-stage Return to Work Origin.
 - **Multi-Operation Job Program Sequencer**: Assembles multi-operation part programs into a single cohesive `.nc` file with tool change optimization, safe retracts, and coordinate continuity.
@@ -36,7 +36,8 @@ PYTHONPATH=backend python backend/seed.py
 ```bash
 PYTHONPATH=backend pytest backend/tests -v
 ```
-*(Runs 118 automated unit and integration tests)*
+*(Runs 127 automated unit and integration tests)*
+
 
 
 
