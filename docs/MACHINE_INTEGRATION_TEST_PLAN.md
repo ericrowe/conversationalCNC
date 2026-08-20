@@ -138,43 +138,68 @@ Generate test programs from Conversational CNC UI with workpiece origin set to $
 
 ---
 
-## 🪵 Phase 5: Soft Medium First Cuts (Dimensional & Geometry Certification)
+## 🪵 Phase 5: Soft Medium First Cuts (Dimensional & Side-of-Line Accuracy Certification)
 
 Mount a piece of high-density foam, machinable wax, or scrap MDF.
 
 ```
-+-------------------------------------------------------------+
-|                      50.0 mm                                |
-|          +-----------------------------+                    |
-|          |                             |                    |
-|          |    +-------------------+    |                    |
-|          |    |   30.0 mm Bore    |    |  50.0 mm           |
-|          |    |      (Pocket)     |    |                    |
-|          |    +-------------------+    |                    |
-|          |                             |                    |
-|          +-----------------------------+                    |
-|                                                             |
-|   (Hole 1)                                      (Hole 2)    |
-|      (O)---------------- 80.0 mm ----------------(O)        |
-+-------------------------------------------------------------+
++-------------------------------------------------------------------------+
+|                  "PLUG & BORE" SIDE-OF-LINE GAUGE TEST                  |
+|                                                                         |
+|     (A) 40.0mm Outer Boss           (B) 40.0mm Inner Pocket             |
+|         [Outside Offset]                [Inside Offset]                 |
+|      Toolpath: D_nom + Tool_D        Toolpath: D_nom - Tool_D           |
+|          +-------------+                 +-------------+                |
+|          |    ( @ )    |                 |   (     )   |                |
+|          | 40.0mm Plug |                 | 40.0mm Bore |                |
+|          +-------------+                 +-------------+                |
+|                                                                         |
+|     (C) 50.0mm Square Check         (D) 12.0mm Wide Linear Slot         |
+|         +---------------+                +---------------+              |
+|         | 50.0mm Square |                | |===========| | (12.00mm)    |
+|         +---------------+                +---------------+              |
++-------------------------------------------------------------------------+
 ```
 
+### Critical Side-of-Line / Kerf Offset Math & Failure Modes:
+| Operation Type | Correct Tool Offset Mode | Correct Cutter Path | If Wrong Side / Centerline Error |
+|---|---|---|---|
+| **Pocket / Bore (Inside)** | **Inward by $R_{\text{tool}}$** ($D/2$) | Tool stays inside cavity boundary | Cavity will be oversized by $2R$ ($+6.35\text{mm}$) or $+R$ ($+3.175\text{mm}$) |
+| **Boss / Island (Outside)** | **Outward by $R_{\text{tool}}$** ($D/2$) | Tool stays outside feature boundary | Boss will be undersized by $2R$ ($-6.35\text{mm}$) or $-R$ ($-3.175\text{mm}$) |
+| **Linear Wide Slot** | **Bilateral Symmetrical Offset** | Tool cuts center then cleans walls | Slot width will deviate from nominal $W_{\text{slot}}$ |
+| **2D Chamfering** | **Conical Tip Offset $+ Z_{\text{depth}}$** | Chamfer edge lines up at surface | Chamfer bit will gouge wall or cut in air |
+| **Text Engraving** | **Zero Offset (Centerline)** | Tool cuts exactly along font stroke | N/A (True single-stroke centerline) |
+
+---
+
 ### Steps & Measurements:
-- [ ] **5.1 50mm Square Boss (Diagonal Squareness Check)**:
-  - Cut $50.0\text{mm} \times 50.0\text{mm}$ outer square.
-  - Measure side $X$: Must equal $50.00\text{mm} \pm 0.08\text{mm}$.
-  - Measure side $Y$: Must equal $50.00\text{mm} \pm 0.08\text{mm}$.
-  - Measure diagonals $D_1, D_2$: Must equal $70.71\text{mm}$ and $|D_1 - D_2| \le 0.05\text{mm}$ (Gantry orthogonality check).
-- [ ] **5.2 30mm Circular Bearing Bore (Circularity & Backlash)**:
-  - Machine 30.0mm circular pocket.
-  - Measure diameter at 0°, 45°, 90°, 135° with bore gauge/calipers.
-  - Out-of-round error must be $< 0.04\text{mm}$.
-- [ ] **5.3 2-Hole Center-to-Center Pitch**:
+
+- [ ] **5.1 The "Plug & Bore" Mating Test (Side-of-Line Accuracy)**:
+  - Tool: $6.35\text{mm}$ (1/4") Endmill.
+  - Cut Feature A: $40.00\text{mm}$ Circular Boss (Outside clearing mode).
+  - Cut Feature B: $40.00\text{mm}$ Circular Pocket (Inside pocket mode).
+  - **Caliper Check**:
+    - Outside Boss OD: Must measure $40.00\text{mm} \pm 0.05\text{mm}$. *(If $33.65\text{mm}$, tool cut on wrong side; if $46.35\text{mm}$, offset direction inverted).*
+    - Inside Pocket ID: Must measure $40.00\text{mm} \pm 0.05\text{mm}$. *(If $46.35\text{mm}$, tool cut on wrong side).*
+  - **Mating Fit**: Insert Plug A into Bore B. The plug must slide with a smooth sliding fit ($\le 0.08\text{mm}$ clearance).
+- [ ] **5.2 50mm Square Boss (Gantry Orthogonality & Climb Milling Check)**:
+  - Cut $50.0\text{mm} \times 50.0\text{mm}$ outer square in **Climb Milling** mode (Clockwise travel).
+  - Side $X$: Must equal $50.00\text{mm} \pm 0.05\text{mm}$.
+  - Side $Y$: Must equal $50.00\text{mm} \pm 0.05\text{mm}$.
+  - Diagonals $D_1, D_2$: Must equal $70.71\text{mm}$ with $|D_1 - D_2| \le 0.05\text{mm}$ (Confirms gantry is perfectly perpendicular / 90° square).
+  - Verify wall finish: Climb milling produces smooth walls without tool chattering.
+- [ ] **5.3 Linear Slotting (Centerline vs Wide Wall Finish Pass)**:
+  - Cut Slot 1: Single-pass centerline slot at tool diameter ($6.35\text{mm}$).
+  - Cut Slot 2: Wide slot specified at $12.00\text{mm}$ width with $0.5\text{mm}$ finish passes.
+  - Measure Slot 1 width: Must equal $6.35\text{mm} \pm 0.05\text{mm}$ (Bit runout check).
+  - Measure Slot 2 width: Must equal $12.00\text{mm} \pm 0.05\text{mm}$ (Bilateral offset check).
+- [ ] **5.4 2-Hole Center-to-Center Pitch**:
   - Drill 2 holes spaced 80.0mm apart along X.
   - Measure center distance: Must equal $80.00\text{mm} \pm 0.05\text{mm}$.
-- [ ] **5.4 Surface Flatness (Spindle Tram Check)**:
+- [ ] **5.5 Surface Flatness (Spindle Tram Check)**:
   - Surface a $60\text{mm} \times 60\text{mm}$ patch with $12\text{mm}$ stepover.
-  - Run fingernail across raster ridges: Surface must feel smooth with no ridging steps ($< 0.02\text{mm}$ scallop indicating nod/tilt).
+  - Run fingernail across raster ridges: Surface must feel smooth with no ridging steps ($< 0.02\text{mm}$ scallop indicating zero spindle tilt/nod).
+
 
 ---
 
