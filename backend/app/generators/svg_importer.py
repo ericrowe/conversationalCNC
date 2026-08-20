@@ -212,6 +212,8 @@ def parse_svg(
     max_cut_depth: float = -6.0,
     invert_shading: bool = False,
     shading_mode: str = "fill",
+    target_width: Optional[float] = None,
+    target_height: Optional[float] = None,
 ) -> Dict[str, Any]:
     """
     Parses SVG XML vector data into chains, circles, bounding boxes, and calculates
@@ -513,6 +515,47 @@ def parse_svg(
                 })
                 chain_id_counter += 1
 
+    raw_w = (max(all_x) - min(all_x)) if all_x else 0.0
+    raw_h = (max(all_y) - min(all_y)) if all_y else 0.0
+    orig_min_x = min(all_x) if all_x else 0.0
+    orig_min_y = min(all_y) if all_y else 0.0
+
+    # Apply manual target width/height scaling if requested
+    if all_x and all_y and raw_w > 0 and raw_h > 0:
+        scale_factor_x = 1.0
+        scale_factor_y = 1.0
+
+        if target_width is not None and target_width > 0 and target_height is not None and target_height > 0:
+            scale_factor_x = float(target_width) / raw_w
+            scale_factor_y = float(target_height) / raw_h
+        elif target_width is not None and target_width > 0:
+            scale_factor_x = float(target_width) / raw_w
+            scale_factor_y = scale_factor_x
+        elif target_height is not None and target_height > 0:
+            scale_factor_y = float(target_height) / raw_h
+            scale_factor_x = scale_factor_y
+
+        if abs(scale_factor_x - 1.0) > 1e-6 or abs(scale_factor_y - 1.0) > 1e-6:
+            for ch in chains:
+                ch["start_point"][0] = round(orig_min_x + (ch["start_point"][0] - orig_min_x) * scale_factor_x, 4)
+                ch["start_point"][1] = round(orig_min_y + (ch["start_point"][1] - orig_min_y) * scale_factor_y, 4)
+                for seg in ch["segments"]:
+                    seg["x"] = round(orig_min_x + (seg["x"] - orig_min_x) * scale_factor_x, 4)
+                    seg["y"] = round(orig_min_y + (seg["y"] - orig_min_y) * scale_factor_y, 4)
+                    if seg.get("i") is not None:
+                        seg["i"] = round(seg["i"] * scale_factor_x, 4)
+                    if seg.get("j") is not None:
+                        seg["j"] = round(seg["j"] * scale_factor_y, 4)
+
+            for circ in circles:
+                circ["x"] = round(orig_min_x + (circ["x"] - orig_min_x) * scale_factor_x, 4)
+                circ["y"] = round(orig_min_y + (circ["y"] - orig_min_y) * scale_factor_y, 4)
+                circ["radius"] = round(circ["radius"] * ((scale_factor_x + scale_factor_y) / 2.0), 4)
+                circ["diameter"] = round(circ["radius"] * 2.0, 4)
+
+            all_x = [orig_min_x + (x - orig_min_x) * scale_factor_x for x in all_x]
+            all_y = [orig_min_y + (y - orig_min_y) * scale_factor_y for y in all_y]
+
     # Apply Flip-Y if enabled (SVG screen Y down -> CNC Cartesian Y up)
     if flip_y and all_y:
         max_y_val = max(all_y)
@@ -546,6 +589,15 @@ def parse_svg(
         "chains": chains,
         "circles": circles,
         "bounding_box": bbox,
+        "original_dimensions": {
+            "width": round(raw_w, 3),
+            "height": round(raw_h, 3),
+            "aspect_ratio": round(raw_w / raw_h, 5) if raw_h > 0 else 1.0,
+        },
+        "target_dimensions": {
+            "width": round(bbox["width"], 3),
+            "height": round(bbox["height"], 3),
+        },
         "entity_count": len(chains) + len(circles),
         "units": "mm",
     }

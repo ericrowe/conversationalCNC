@@ -12,6 +12,8 @@ class SVGParsePayloadSchema(BaseModel):
     max_cut_depth: float = Field(default=-6.0, description="100% Black maximum cut depth (mm)")
     invert_shading: bool = Field(default=False, description="Invert grayscale shading (White=100% depth instead of Black)")
     shading_mode: str = Field(default="fill", description="'fill' or 'stroke' color evaluation")
+    target_width: Optional[float] = Field(default=None, gt=0, description="Manual target width in mm")
+    target_height: Optional[float] = Field(default=None, gt=0, description="Manual target height in mm")
 
 
 class SVGToGCodePayloadSchema(BaseModel):

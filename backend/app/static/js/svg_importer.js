@@ -11,6 +11,15 @@ document.addEventListener("DOMContentLoaded", async () => {
   const svgTextInput = document.getElementById("svgTextInput");
   const parseSvgBtn = document.getElementById("parseSvgBtn");
 
+  const svgWidthInput = document.getElementById("svgWidthInput");
+  const svgHeightInput = document.getElementById("svgHeightInput");
+  const svgLinkAspectBtn = document.getElementById("svgLinkAspectBtn");
+  const svgLinkAspectIcon = document.getElementById("svgLinkAspectIcon");
+  const svgLinkAspectText = document.getElementById("svgLinkAspectText");
+  const svgResetDimensionsBtn = document.getElementById("svgResetDimensionsBtn");
+  const spanOrigDimensions = document.getElementById("spanOrigDimensions");
+  const spanAspectRatio = document.getElementById("spanAspectRatio");
+
   const maxCutDepthInput = document.getElementById("maxCutDepthInput");
   const shadingModeSelect = document.getElementById("shadingModeSelect");
   const invertShadingInput = document.getElementById("invertShadingInput");
@@ -59,6 +68,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   let activeMachine = null;
   let parsedSvgData = null;
   let currentGeneratedGCode = "";
+  let isAspectLinked = true; // Enabled by default
+  let nativeSvgWidth = null;
+  let nativeSvgHeight = null;
+  let currentAspectRatio = 1.0;
+  let parseDebounceTimer = null;
 
   // Initialize 3D Visualizer
   const visualizer = new ToolpathVisualizer("toolpathCanvas");
@@ -100,11 +114,83 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   function updateDepthLegend() {
-    const maxD = Math.abs(parseFloat(maxCutDepthInput.value) || 6.0);
+    const maxD = Math.abs(parseFloat(maxCutDepthInput?.value) || 6.0);
     const midD = (maxD / 2.0).toFixed(2);
     if (legendMaxDepth) legendMaxDepth.textContent = `-${maxD.toFixed(2)}mm`;
     if (legendMidDepth) legendMidDepth.textContent = `-${midD}mm`;
   }
+
+  function updateLinkAspectButton() {
+    if (!svgLinkAspectBtn) return;
+    if (isAspectLinked) {
+      svgLinkAspectBtn.style.background = "var(--primary-color, #0284c7)";
+      svgLinkAspectBtn.style.color = "#ffffff";
+      if (svgLinkAspectIcon) svgLinkAspectIcon.textContent = "🔗";
+      if (svgLinkAspectText) svgLinkAspectText.textContent = "Linked";
+      svgLinkAspectBtn.title = "Aspect Ratio Locked (Linked): Auto-adjusts Height when Width changes and vice versa";
+
+      const w = parseFloat(svgWidthInput?.value);
+      const h = parseFloat(svgHeightInput?.value);
+      if (w > 0 && h > 0) {
+        currentAspectRatio = w / h;
+        if (spanAspectRatio) spanAspectRatio.textContent = currentAspectRatio.toFixed(3);
+      }
+    } else {
+      svgLinkAspectBtn.style.background = "var(--bg-input, #1e293b)";
+      svgLinkAspectBtn.style.color = "var(--text-muted, #94a3b8)";
+      if (svgLinkAspectIcon) svgLinkAspectIcon.textContent = "🔓";
+      if (svgLinkAspectText) svgLinkAspectText.textContent = "Unlinked";
+      svgLinkAspectBtn.title = "Aspect Ratio Unlocked: Width and Height can be scaled independently";
+    }
+  }
+
+  svgLinkAspectBtn?.addEventListener("click", () => {
+    isAspectLinked = !isAspectLinked;
+    updateLinkAspectButton();
+  });
+
+  function triggerDebouncedParse() {
+    clearTimeout(parseDebounceTimer);
+    parseDebounceTimer = setTimeout(() => {
+      const text = svgTextInput?.value.trim();
+      if (text) {
+        parseSvg(text, false);
+      }
+    }, 450);
+  }
+
+  svgWidthInput?.addEventListener("input", () => {
+    const w = parseFloat(svgWidthInput.value);
+    if (w > 0 && isAspectLinked && currentAspectRatio > 0) {
+      const h = w / currentAspectRatio;
+      if (svgHeightInput) svgHeightInput.value = parseFloat(h.toFixed(2));
+    }
+    triggerDebouncedParse();
+  });
+
+  svgHeightInput?.addEventListener("input", () => {
+    const h = parseFloat(svgHeightInput.value);
+    if (h > 0 && isAspectLinked && currentAspectRatio > 0) {
+      const w = h * currentAspectRatio;
+      if (svgWidthInput) svgWidthInput.value = parseFloat(w.toFixed(2));
+    }
+    triggerDebouncedParse();
+  });
+
+  svgResetDimensionsBtn?.addEventListener("click", () => {
+    if (nativeSvgWidth && nativeSvgHeight) {
+      if (svgWidthInput) svgWidthInput.value = parseFloat(nativeSvgWidth.toFixed(2));
+      if (svgHeightInput) svgHeightInput.value = parseFloat(nativeSvgHeight.toFixed(2));
+      currentAspectRatio = nativeSvgWidth / nativeSvgHeight;
+      if (spanAspectRatio) spanAspectRatio.textContent = currentAspectRatio.toFixed(3);
+      if (svgTextInput.value.trim()) {
+        parseSvg(svgTextInput.value.trim(), false);
+      }
+    }
+  });
+
+  updateDepthLegend();
+  updateLinkAspectButton();
 
   maxCutDepthInput?.addEventListener("input", () => {
     updateDepthLegend();
@@ -251,7 +337,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     const sample = getSampleBadgeSvg();
     svgTextInput.value = sample;
     svgTextContainer.style.display = "block";
-    parseSvg(sample);
+    nativeSvgWidth = null;
+    nativeSvgHeight = null;
+    if (svgWidthInput) svgWidthInput.value = "";
+    if (svgHeightInput) svgHeightInput.value = "";
+    parseSvg(sample, true);
   });
 
   // File Upload Handling
@@ -262,7 +352,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     reader.onload = (event) => {
       const content = event.target.result;
       svgTextInput.value = content;
-      parseSvg(content);
+      nativeSvgWidth = null;
+      nativeSvgHeight = null;
+      if (svgWidthInput) svgWidthInput.value = "";
+      if (svgHeightInput) svgHeightInput.value = "";
+      parseSvg(content, true);
     };
     reader.readAsText(file);
   });
@@ -273,13 +367,16 @@ document.addEventListener("DOMContentLoaded", async () => {
       alert("Please upload an .svg file or paste SVG code first.");
       return;
     }
-    parseSvg(text);
+    parseSvg(text, false);
   });
 
-  async function parseSvg(svgText) {
+  async function parseSvg(svgText, isInitialFileLoad = false) {
     try {
       parseSvgBtn.disabled = true;
       parseSvgBtn.textContent = "⏳ Parsing SVG...";
+
+      const targetW = (!isInitialFileLoad && svgWidthInput) ? (parseFloat(svgWidthInput.value) || null) : null;
+      const targetH = (!isInitialFileLoad && svgHeightInput) ? (parseFloat(svgHeightInput.value) || null) : null;
 
       const payload = {
         svg_text: svgText,
@@ -288,10 +385,31 @@ document.addEventListener("DOMContentLoaded", async () => {
         max_cut_depth: parseFloat(maxCutDepthInput.value) || -6.0,
         invert_shading: invertShadingInput.checked,
         shading_mode: shadingModeSelect.value,
+        target_width: targetW,
+        target_height: targetH,
       };
 
       const res = await API.parseSVG(payload);
       parsedSvgData = res.data;
+
+      // Handle Native vs Scaled Dimensions
+      if (res.data.original_dimensions) {
+        nativeSvgWidth = res.data.original_dimensions.width;
+        nativeSvgHeight = res.data.original_dimensions.height;
+        currentAspectRatio = res.data.original_dimensions.aspect_ratio || (nativeSvgWidth / (nativeSvgHeight || 1.0));
+
+        if (spanOrigDimensions) {
+          spanOrigDimensions.textContent = `${nativeSvgWidth.toFixed(1)} x ${nativeSvgHeight.toFixed(1)} mm`;
+        }
+        if (spanAspectRatio) {
+          spanAspectRatio.textContent = currentAspectRatio.toFixed(3);
+        }
+
+        if (isInitialFileLoad || !svgWidthInput.value || !svgHeightInput.value) {
+          if (svgWidthInput) svgWidthInput.value = parseFloat((res.data.target_dimensions?.width || res.data.bounding_box.width).toFixed(2));
+          if (svgHeightInput) svgHeightInput.value = parseFloat((res.data.target_dimensions?.height || res.data.bounding_box.height).toFixed(2));
+        }
+      }
 
       spanBbox.textContent = `${parsedSvgData.bounding_box.width} x ${parsedSvgData.bounding_box.height} mm (X: ${parsedSvgData.bounding_box.min_x}..${parsedSvgData.bounding_box.max_x}, Y: ${parsedSvgData.bounding_box.min_y}..${parsedSvgData.bounding_box.max_y})`;
       spanEntities.textContent = parsedSvgData.entity_count;

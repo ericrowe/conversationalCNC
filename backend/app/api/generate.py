@@ -968,6 +968,8 @@ def api_parse_svg():
             max_cut_depth=payload.max_cut_depth,
             invert_shading=payload.invert_shading,
             shading_mode=payload.shading_mode,
+            target_width=payload.target_width,
+            target_height=payload.target_height,
         )
     except Exception as err:
         return jsonify({"error": "SVG parsing failed", "message": str(err)}), 400

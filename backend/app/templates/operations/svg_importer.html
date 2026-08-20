@@ -36,10 +36,42 @@
       </div>
     </div>
 
-    <!-- 2. Grayscale Shading & Depth Mapping Card -->
+    <!-- 2. Target Dimensions & Scaling Card -->
+    <div class="card" id="dimensionsCard">
+      <div class="card-title" style="display: flex; justify-content: space-between; align-items: center;">
+        <span>2. Target Dimensions & Scaling</span>
+        <button type="button" class="btn btn-secondary btn-xs" id="svgResetDimensionsBtn" title="Reset to original detected SVG dimensions" style="font-size: 0.75rem; padding: 0.2rem 0.5rem;">↺ Original Size</button>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr auto 1fr; gap: 0.5rem; align-items: flex-end;">
+        <div class="form-group" style="margin-bottom: 0;">
+          <label for="svgWidthInput">Target Width (X) mm</label>
+          <input type="number" id="svgWidthInput" step="0.5" min="0.1" placeholder="Auto (mm)">
+        </div>
+
+        <div style="display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding-bottom: 2px;">
+          <button type="button" class="btn btn-secondary" id="svgLinkAspectBtn" title="Lock Aspect Ratio: Linked (Auto-adjusts Height when Width changes and vice versa)" style="padding: 0.45rem 0.6rem; font-size: 0.85rem; background: var(--primary-color, #0284c7); color: white; border: 1px solid var(--border-color); display: flex; align-items: center; gap: 0.3rem;">
+            <span id="svgLinkAspectIcon">🔗</span>
+            <span id="svgLinkAspectText" style="font-size: 0.75rem; font-weight: 600;">Linked</span>
+          </button>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 0;">
+          <label for="svgHeightInput">Target Height (Y) mm</label>
+          <input type="number" id="svgHeightInput" step="0.5" min="0.1" placeholder="Auto (mm)">
+        </div>
+      </div>
+
+      <div style="margin-top: 0.5rem; font-size: 0.75rem; color: var(--text-muted); display: flex; justify-content: space-between; align-items: center;">
+        <span>Detected Native Size: <strong id="spanOrigDimensions" style="color: var(--text-primary);">--</strong></span>
+        <span id="spanAspectNotice" style="color: #38bdf8;">Aspect Ratio: <strong id="spanAspectRatio">1.000</strong></span>
+      </div>
+    </div>
+
+    <!-- 3. Grayscale Shading & Depth Mapping Card -->
     <div class="card">
       <div class="card-title">
-        <span>2. Grayscale Shading to Depth Mapping</span>
+        <span>3. Grayscale Shading to Depth Mapping</span>
       </div>
 
       <div class="form-row">
@@ -78,10 +110,10 @@
       </div>
     </div>
 
-    <!-- 3. Parsed Vector Elements Card -->
+    <!-- 4. Parsed Vector Elements Card -->
     <div class="card" id="geometrySummaryCard">
       <div class="card-title">
-        <span>3. Detected Vector Elements & Depth Table</span>
+        <span>4. Detected Vector Elements & Depth Table</span>
       </div>
       <div style="font-size: 0.85rem; line-height: 1.5; color: var(--text-secondary);">
         <div><strong>Canvas Dimensions:</strong> <span id="spanBbox" style="color: var(--text-primary);">None</span></div>
@@ -107,10 +139,10 @@
       </div>
     </div>
 
-    <!-- 4. Machining Strategy Card -->
+    <!-- 5. Machining Strategy Card -->
     <div class="card">
       <div class="card-title">
-        <span>4. Machining Strategy & Depth Steps</span>
+        <span>5. Machining Strategy & Depth Steps</span>
       </div>
 
       <div class="form-row">
@@ -159,10 +191,10 @@
       </div>
     </div>
 
-    <!-- 5. Unified Tool & Speeds Card -->
+    <!-- 6. Unified Tool & Speeds Card -->
     <div class="card">
       <div class="card-title">
-        <span>5. Tool & Speeds</span>
+        <span>6. Tool & Speeds</span>
       </div>
       
       <div class="form-group">
@@ -273,6 +305,5 @@
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/visualizer.js') }}"></script>
-<script src="{{ url_for('static', filename='js/gcode_inspector.js') }}"></script>
 <script src="{{ url_for('static', filename='js/svg_importer.js') }}"></script>
 {% endblock %}

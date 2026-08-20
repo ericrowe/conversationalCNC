@@ -20,6 +20,26 @@ def test_api_parse_svg(client):
     assert len(data["data"]["circles"]) == 1
 
 
+def test_api_parse_svg_with_target_dimensions(client):
+    svg_data = """<svg width="80mm" height="40mm" viewBox="0 0 80 40">
+      <rect x="0" y="0" width="80" height="40" fill="#000000" />
+    </svg>"""
+
+    res = client.post("/api/generate/svg/parse", json={
+        "svg_text": svg_data,
+        "target_width": 160.0,
+        "target_height": 80.0,
+    })
+
+    assert res.status_code == 200
+    data = res.get_json()
+    assert data["success"] is True
+    assert data["data"]["bounding_box"]["width"] == pytest.approx(160.0, abs=0.1)
+    assert data["data"]["bounding_box"]["height"] == pytest.approx(80.0, abs=0.1)
+    assert data["data"]["original_dimensions"]["width"] == pytest.approx(80.0, abs=0.1)
+    assert data["data"]["original_dimensions"]["height"] == pytest.approx(40.0, abs=0.1)
+
+
 def test_api_generate_svg_toolpath(client):
     svg_data = """<svg width="80mm" height="40mm" viewBox="0 0 80 40">
       <rect x="0" y="0" width="80" height="40" fill="#000000" />

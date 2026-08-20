@@ -88,3 +88,26 @@ def test_generate_svg_multi_depth_toolpath():
     assert "G21 G90" in result["gcode"]
     assert "Z-6.000" in result["gcode"]  # Full depth pass
     assert "Z-2.988" in result["gcode"] or "Z-3.000" in result["gcode"]  # 50% depth hole
+
+
+def test_parse_svg_manual_scaling():
+    svg_sample = """<svg width="100mm" height="50mm" viewBox="0 0 100 50">
+      <rect x="0" y="0" width="100" height="50" fill="#000000" />
+    </svg>"""
+
+    # 1. Scaling Width with aspect ratio preserved
+    scaled_w = parse_svg(svg_sample, target_width=200.0)
+    assert scaled_w["bounding_box"]["width"] == pytest.approx(200.0, abs=0.1)
+    assert scaled_w["bounding_box"]["height"] == pytest.approx(100.0, abs=0.1)
+    assert scaled_w["original_dimensions"]["width"] == pytest.approx(100.0, abs=0.1)
+    assert scaled_w["original_dimensions"]["height"] == pytest.approx(50.0, abs=0.1)
+
+    # 2. Scaling Height with aspect ratio preserved
+    scaled_h = parse_svg(svg_sample, target_height=25.0)
+    assert scaled_h["bounding_box"]["width"] == pytest.approx(50.0, abs=0.1)
+    assert scaled_h["bounding_box"]["height"] == pytest.approx(25.0, abs=0.1)
+
+    # 3. Independent Non-Uniform Scaling (Unlinked width and height)
+    scaled_both = parse_svg(svg_sample, target_width=150.0, target_height=80.0)
+    assert scaled_both["bounding_box"]["width"] == pytest.approx(150.0, abs=0.1)
+    assert scaled_both["bounding_box"]["height"] == pytest.approx(80.0, abs=0.1)

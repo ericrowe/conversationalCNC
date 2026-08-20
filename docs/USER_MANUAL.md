@@ -349,6 +349,11 @@ $$\text{Cut Depth} = \text{Max Cut Depth} \times (1.0 - \text{Luminance})$$
 - **0% Pure White (`#FFFFFF`)** $\to$ **$0.0\text{mm}$ (No cut / Surface stock preserved)**.
 
 #### Parameter Settings:
+- **Target Dimensions & Scaling (Manual Width & Height)**:
+  - **Target Width (X) mm & Target Height (Y) mm**: SVGs frequently have loose specifications, incorrect viewBox scales, or unit mismatches (such as 72 DPI vs 96 DPI). You can manually enter the exact physical width or height in millimeters.
+  - **Aspect Ratio Link Toggle (`🔗 Linked` / `🔓 Unlinked`)**: **Enabled by default**. When linked, entering a new Width automatically recalculates and updates the Height proportionally (and vice versa) to prevent geometry distortion. Clicking the link button toggles to unlinked mode for independent, non-uniform X/Y scaling.
+  - **`↺ Original Size` Button**: Instantly restores the SVG's native detected dimensions.
+  - **Detected Native Size & Aspect Ratio**: Displays the original dimensions and exact aspect ratio ($W/H$) detected from the vector data.
 - **Max Cut Depth (100% Black)**: The cut depth assigned to pure black paths (e.g. `-6.0mm`).
 - **Color Evaluation Mode**:
   - `Fill Color`: Evaluates the interior fill shade of closed vector shapes.
