@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+
+{% block title %}Tool Library — Conversational CNC{% endblock %}
+
+{% block content %}
+<div class="page-title-row">
+  <div>
+    <h1 class="page-title">Tool Library & Material Presets</h1>
+    <div class="page-desc">Manage cutting tools, drill bits, and assign feeds & speeds presets per material.</div>
+  </div>
+</div>
+
+<div class="two-col-grid">
+  <!-- Left Column: Tool Table -->
+  <div>
+    <div class="card">
+      <div class="card-title">
+        <span>Installed Tools</span>
+      </div>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Tool #</th>
+            <th>Description</th>
+            <th>Type</th>
+            <th>Diameter</th>
+            <th>Material Presets</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="toolsTableBody">
+          <tr>
+            <td colspan="6" style="color: var(--text-muted);">Loading tool library...</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Right Column: Add Tool Form -->
+  <div>
+    <div class="card">
+      <div class="card-title">
+        <span>Add Tool to Library</span>
+      </div>
+      <form id="newToolForm">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="toolNumber">Tool Number (T#)</label>
+            <input type="number" id="toolNumber" min="1" step="1" placeholder="e.g. 5" required>
+          </div>
+          <div class="form-group">
+            <label for="toolType">Tool Type</label>
+            <select id="toolType">
+              <option value="endmill">Endmill (Flat)</option>
+              <option value="drill">Drill Bit</option>
+              <option value="v-bit">V-Bit / Chamfer</option>
+              <option value="ballnose">Ball Nose</option>
+              <option value="threadmill">Thread Mill</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="toolName">Tool Description</label>
+          <input type="text" id="toolName" placeholder="e.g. 1/8in 2-Flute Upcut Endmill" required>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="toolDiameter">Diameter (mm)</label>
+            <input type="number" id="toolDiameter" step="0.001" placeholder="3.175" required>
+          </div>
+          <div class="form-group">
+            <label for="toolFluteLength">Flute Length (mm)</label>
+            <input type="number" id="toolFluteLength" step="0.1" placeholder="12.7">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="toolNotes">Notes / Manufacturer SKU</label>
+          <input type="text" id="toolNotes" placeholder="Amana 46100, etc.">
+        </div>
+
+        <button type="button" class="btn btn-primary" id="saveToolBtn">
+          ➕ Add Tool
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/tools.js') }}"></script>
+{% endblock %}

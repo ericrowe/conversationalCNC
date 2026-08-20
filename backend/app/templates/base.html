@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>{% block title %}Conversational CNC Controller{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  {% block head %}{% endblock %}
+</head>
+<body>
+
+  <!-- Top Navigation Bar -->
+  <header>
+    <a href="/drilling" class="logo-area">
+      <div class="logo-icon">CNC</div>
+      <div>
+        <div class="logo-title">Conversational CNC</div>
+        <div class="logo-subtitle">Local Machine Controller</div>
+      </div>
+    </a>
+
+    <nav>
+      <a href="/drilling" class="nav-link {% if request.path == '/' or request.path == '/drilling' %}active{% endif %}" title="Straight Plunge Drilling">⚡ Plunge</a>
+      <a href="/peck-drilling" class="nav-link {% if request.path == '/peck-drilling' %}active{% endif %}" title="Deep Hole Peck Drilling">🔩 Peck</a>
+      <a href="/thread-milling" class="nav-link {% if request.path == '/thread-milling' %}active{% endif %}" title="Helical Thread Milling">🧵 Thread Mill</a>
+      <a href="/circular-pocket" class="nav-link {% if request.path == '/circular-pocket' %}active{% endif %}" title="Circular Pocketing & Helical Boring">⭕ Pocket/Bore</a>
+      <a href="/surfacing" class="nav-link {% if request.path == '/surfacing' %}active{% endif %}" title="Workpiece & Spoilboard Facing">🪚 Surfacing</a>
+      <a href="/tools" class="nav-link {% if request.path == '/tools' %}active{% endif %}" title="Tool & Presets Library">🔧 Tools</a>
+      <a href="/machines" class="nav-link {% if request.path == '/machines' %}active{% endif %}" title="Machine Profiles">⚙️ Machines</a>
+    </nav>
+
+    <div class="header-status">
+      <a href="/machines" class="machine-badge" title="Active Machine Profile">
+        <span class="status-dot"></span>
+        <span id="activeMachineName">X-Carve 1000mm</span>
+        <span id="activeMachineDialect" style="color: var(--text-muted); font-size: 0.75rem;">(GRBL)</span>
+      </a>
+    </div>
+
+  </header>
+
+  <!-- Main Content Body -->
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+
+  <script src="{{ url_for('static', filename='js/api.js') }}"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

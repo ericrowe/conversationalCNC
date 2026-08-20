@@ -1,0 +1,339 @@
+{% extends "base.html" %}
+
+{% block title %}Helical Thread Milling — Conversational CNC{% endblock %}
+
+{% block content %}
+<div class="page-title-row">
+  <div>
+    <h1 class="page-title">🧵 Helical Thread Milling</h1>
+    <div class="page-desc">Generate precision 3D helical toolpaths for internal tapped holes or external threaded studs using single-point thread mills.</div>
+  </div>
+</div>
+
+<!-- Soft limit warning banner -->
+<div id="warningBanner" class="alert alert-warning" style="display: none;"></div>
+
+<div class="two-col-grid">
+  <!-- Left Column: Form Controls -->
+  <div class="controls-col" id="threadForm">
+
+    <!-- 1. Hole / Stud Pattern Card -->
+    <div class="card">
+      <div class="card-title">
+        <span>1. Pattern & Coordinates</span>
+      </div>
+
+      <div class="tab-group">
+        <button type="button" class="tab-btn pattern-tab active" data-pattern="single">Single Location</button>
+        <button type="button" class="tab-btn pattern-tab" data-pattern="grid">Grid Pattern</button>
+        <button type="button" class="tab-btn pattern-tab" data-pattern="circle">Bolt Circle</button>
+      </div>
+
+      <!-- Single Hole Inputs -->
+      <div id="singleHoleInputs">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="singleX">Center X (mm)</label>
+            <input type="number" id="singleX" step="0.1" value="25.0">
+          </div>
+          <div class="form-group">
+            <label for="singleY">Center Y (mm)</label>
+            <input type="number" id="singleY" step="0.1" value="25.0">
+          </div>
+        </div>
+      </div>
+
+      <!-- Grid Pattern Inputs -->
+      <div id="gridHoleInputs" style="display: none;">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="gridStartX">Start X (mm)</label>
+            <input type="number" id="gridStartX" step="0.1" value="15.0">
+          </div>
+          <div class="form-group">
+            <label for="gridStartY">Start Y (mm)</label>
+            <input type="number" id="gridStartY" step="0.1" value="15.0">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="gridSpacingX">X Spacing (mm)</label>
+            <input type="number" id="gridSpacingX" step="0.1" value="25.0">
+          </div>
+          <div class="form-group">
+            <label for="gridSpacingY">Y Spacing (mm)</label>
+            <input type="number" id="gridSpacingY" step="0.1" value="25.0">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="gridCountX">Columns (X Count)</label>
+            <input type="number" id="gridCountX" min="1" step="1" value="2">
+          </div>
+          <div class="form-group">
+            <label for="gridCountY">Rows (Y Count)</label>
+            <input type="number" id="gridCountY" min="1" step="1" value="2">
+          </div>
+        </div>
+      </div>
+
+      <!-- Bolt Circle Inputs -->
+      <div id="boltCircleInputs" style="display: none;">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="circleCenterX">Center X (mm)</label>
+            <input type="number" id="circleCenterX" step="0.1" value="50.0">
+          </div>
+          <div class="form-group">
+            <label for="circleCenterY">Center Y (mm)</label>
+            <input type="number" id="circleCenterY" step="0.1" value="50.0">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="circleDiameter">Pitch Circle Dia (mm)</label>
+            <input type="number" id="circleDiameter" step="0.1" value="60.0">
+          </div>
+          <div class="form-group">
+            <label for="circleHoles">Thread Count</label>
+            <input type="number" id="circleHoles" min="2" step="1" value="4">
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="circleStartAngle">Start Angle (degrees)</label>
+          <input type="number" id="circleStartAngle" step="1" value="0">
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. Thread Geometry Card -->
+    <div class="card">
+      <div class="card-title">
+        <span>2. Thread Specifications</span>
+      </div>
+
+      <div class="form-group">
+        <label for="threadStandardSelect">Standard Thread Preset</label>
+        <select id="threadStandardSelect">
+          <option value="">-- Custom Thread Dimensions --</option>
+          <optgroup label="Metric ISO Coarse">
+            <option value="M3x0.5">M3 x 0.5 (Tap Drill: 2.5mm)</option>
+            <option value="M4x0.7">M4 x 0.7 (Tap Drill: 3.3mm)</option>
+            <option value="M5x0.8">M5 x 0.8 (Tap Drill: 4.2mm)</option>
+            <option value="M6x1.0" selected>M6 x 1.0 (Tap Drill: 5.0mm)</option>
+            <option value="M8x1.25">M8 x 1.25 (Tap Drill: 6.8mm)</option>
+            <option value="M10x1.5">M10 x 1.5 (Tap Drill: 8.5mm)</option>
+            <option value="M12x1.75">M12 x 1.75 (Tap Drill: 10.2mm)</option>
+            <option value="M16x2.0">M16 x 2.0 (Tap Drill: 14.0mm)</option>
+          </optgroup>
+          <optgroup label="Imperial UNC (Coarse)">
+            <option value="#6-32 UNC">#6-32 UNC (0.138")</option>
+            <option value="#8-32 UNC">#8-32 UNC (0.164")</option>
+            <option value="#10-24 UNC">#10-24 UNC (0.190")</option>
+            <option value="1/4-20 UNC">1/4"-20 UNC (0.250")</option>
+            <option value="5/16-18 UNC">5/16"-18 UNC (0.3125")</option>
+            <option value="3/8-16 UNC">3/8"-16 UNC (0.375")</option>
+            <option value="1/2-13 UNC">1/2"-13 UNC (0.500")</option>
+          </optgroup>
+          <optgroup label="Imperial UNF (Fine)">
+            <option value="#10-32 UNF">#10-32 UNF</option>
+            <option value="1/4-28 UNF">1/4"-28 UNF</option>
+            <option value="3/8-24 UNF">3/8"-24 UNF</option>
+          </optgroup>
+        </select>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="nominalDia">Nominal Major Dia (mm)</label>
+          <input type="number" id="nominalDia" step="0.01" value="6.0">
+        </div>
+        <div class="form-group">
+          <label for="threadPitch">Thread Pitch (mm)</label>
+          <input type="number" id="threadPitch" step="0.01" value="1.0">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="threadLength">Thread Length / Depth (mm)</label>
+          <input type="number" id="threadLength" step="0.5" value="10.0">
+        </div>
+        <div class="form-group">
+          <label for="threadTypeSelect">Thread Type</label>
+          <select id="threadTypeSelect">
+            <option value="internal" selected>Internal (Tapped Hole)</option>
+            <option value="external">External (Threaded Stud)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="threadHandSelect">Thread Hand</label>
+          <select id="threadHandSelect">
+            <option value="right_hand" selected>Right-Hand (Standard)</option>
+            <option value="left_hand">Left-Hand (LH)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="millingDirectionSelect">Milling Direction</label>
+          <select id="millingDirectionSelect">
+            <option value="bottom_to_top" selected>Bottom-to-Top (Climb)</option>
+            <option value="top_to_bottom">Top-to-Bottom</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="radialPasses">Radial Passes (Stepover)</label>
+          <select id="radialPasses">
+            <option value="1">1 Pass (Full Depth)</option>
+            <option value="2" selected>2 Passes (Rough + Finish)</option>
+            <option value="3">3 Passes (Delicate Bits)</option>
+            <option value="4">4 Passes (Hard Metals)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="springPasses">Spring Passes (Spring Cuts)</label>
+          <select id="springPasses">
+            <option value="0" selected>0 (Standard)</option>
+            <option value="1">1 Clean-up Pass</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. Tool & Speeds Card -->
+    <div class="card">
+      <div class="card-title">
+        <span>3. Tool & Speeds</span>
+      </div>
+
+      <div class="form-group">
+        <label for="toolSelect">Thread Milling Tool</label>
+        <select id="toolSelect"></select>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="toolDiameter">Tool Cutting Dia (mm)</label>
+          <input type="number" id="toolDiameter" step="0.01" value="4.5">
+        </div>
+        <div class="form-group">
+          <label for="presetSelect">Material Preset</label>
+          <select id="presetSelect"></select>
+        </div>
+      </div>
+
+      <!-- Router Specific Dial Setting -->
+      <div id="routerDialGroup" class="form-group" style="background: rgba(2, 132, 199, 0.1); padding: 0.75rem; border-radius: 6px; border: 1px solid rgba(56, 189, 248, 0.3);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+          <label for="routerDialSelect" style="margin: 0; color: #38bdf8; font-weight: 600;">⚡ DeWalt Router Dial Setting</label>
+          <span id="routerModelBadge" class="badge" style="background: rgba(56, 189, 248, 0.2); color: #38bdf8; font-size: 0.7rem;">DWP611</span>
+        </div>
+        <select id="routerDialSelect">
+          <option value="1" selected>Dial 1 — ~16,000 RPM (Aluminum, Brass, Plastics)</option>
+          <option value="2">Dial 2 — ~18,200 RPM</option>
+          <option value="3">Dial 3 — ~20,400 RPM (Hardwoods)</option>
+          <option value="4">Dial 4 — ~22,600 RPM</option>
+          <option value="5">Dial 5 — ~24,800 RPM</option>
+          <option value="6">Dial 6 — ~27,000 RPM</option>
+        </select>
+        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.35rem;">
+          Set manual speed dial on router to match before executing helical operation.
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="spindleRpm">Spindle RPM</label>
+          <input type="number" id="spindleRpm" step="500" value="16000">
+        </div>
+        <div class="form-group">
+          <label for="feedRateXy">Helical Feed XY (mm/min)</label>
+          <input type="number" id="feedRateXy" step="25" value="300">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="plungeFeed">Plunge Feed (mm/min)</label>
+          <input type="number" id="plungeFeed" step="10" value="200">
+        </div>
+        <div class="form-group">
+          <label for="retractZ">Safe Retract Z (mm)</label>
+          <input type="number" id="retractZ" step="0.5" value="5.0">
+        </div>
+      </div>
+
+      <button type="button" class="btn btn-primary" id="generateGCodeBtn">
+        ⚡ Generate Helical G-Code & Preview
+      </button>
+    </div>
+  </div>
+
+  <!-- Right Column: Visualizer & G-Code Viewer -->
+  <div class="visualizer-col">
+    <div class="card visualizer-card">
+      <div class="card-title">
+        <span>Toolpath Preview (2D View)</span>
+        <div style="font-size: 0.8rem; color: var(--text-muted);">
+          Drag to Pan | Scroll to Zoom
+        </div>
+      </div>
+
+      <div class="canvas-container">
+        <canvas id="toolpathCanvas"></canvas>
+        <div class="canvas-toolbar">
+          <button type="button" class="canvas-btn" id="zoomInBtn" title="Zoom In">+</button>
+          <button type="button" class="canvas-btn" id="zoomOutBtn" title="Zoom Out">-</button>
+          <button type="button" class="canvas-btn" id="fitViewBtn" title="Reset View">Fit</button>
+        </div>
+        <div class="canvas-legend">
+          <div class="legend-item"><span class="legend-color" style="background: #10b981;"></span> Origin (0,0)</div>
+          <div class="legend-item"><span class="legend-color" style="background: #a855f7;"></span> Major Dia</div>
+          <div class="legend-item"><span class="legend-color" style="background: #38bdf8;"></span> Helical Path</div>
+          <div class="legend-item"><span class="legend-color" style="background: #f59e0b;"></span> Rapid (G0)</div>
+        </div>
+      </div>
+
+      <!-- Quick Metrics Grid -->
+      <div class="stats-grid">
+        <div class="stat-box">
+          <div class="stat-value" id="statLocations">1</div>
+          <div class="stat-label">Thread Count</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value" id="statPitchLoops">10</div>
+          <div class="stat-label">Pitch Revs/Hole</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value" id="statTime">--</div>
+          <div class="stat-label">Est. Time</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value" id="statDialect">GRBL</div>
+          <div class="stat-label">Controller</div>
+        </div>
+      </div>
+
+      <!-- Generated G-Code Viewer -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+        <label style="margin: 0; font-weight: 600;">Generated G-Code</label>
+        <div style="display: flex; gap: 0.5rem;">
+          <button type="button" class="btn btn-secondary btn-sm" id="copyGcodeBtn" disabled>📋 Copy</button>
+          <button type="button" class="btn btn-secondary btn-sm" id="downloadGcodeBtn" disabled>💾 Download .nc</button>
+        </div>
+      </div>
+      <div class="gcode-container" id="gcodeOutput">Click "Generate Helical G-Code & Preview" to calculate...</div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/visualizer.js') }}"></script>
+<script src="{{ url_for('static', filename='js/thread_milling.js') }}"></script>
+{% endblock %}

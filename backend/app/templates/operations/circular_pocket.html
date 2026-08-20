@@ -1,0 +1,271 @@
+{% extends "base.html" %}
+
+{% block title %}Circular Pocket & Bore — Conversational CNC{% endblock %}
+
+{% block content %}
+<div class="page-title-row">
+  <div>
+    <h1 class="page-title">⭕ Circular Pocketing & Helical Boring</h1>
+    <div class="page-desc">Mill precision circular pockets, counterbores, and bearing bores with concentric radial stepovers and finishing wall contours.</div>
+  </div>
+</div>
+
+<!-- Soft limit warning banner -->
+<div id="warningBanner" class="alert alert-warning" style="display: none;"></div>
+
+<div class="two-col-grid">
+  <!-- Left Column: Form Controls -->
+  <div class="controls-col" id="pocketForm">
+
+    <!-- Pattern Card -->
+    <div class="card">
+      <div class="card-title">
+        <span>1. Pocket Pattern & Centers</span>
+      </div>
+
+      <div class="tab-group">
+        <button type="button" class="tab-btn pattern-tab active" data-pattern="single">Single Pocket</button>
+        <button type="button" class="tab-btn pattern-tab" data-pattern="grid">Grid Pattern</button>
+        <button type="button" class="tab-btn pattern-tab" data-pattern="circle">Bolt Circle</button>
+      </div>
+
+      <!-- Single Hole Inputs -->
+      <div id="singleHoleInputs">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="singleX">Center X (mm)</label>
+            <input type="number" id="singleX" step="0.1" value="30.0">
+          </div>
+          <div class="form-group">
+            <label for="singleY">Center Y (mm)</label>
+            <input type="number" id="singleY" step="0.1" value="30.0">
+          </div>
+        </div>
+      </div>
+
+      <!-- Grid Pattern Inputs -->
+      <div id="gridHoleInputs" style="display: none;">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="gridStartX">Start X (mm)</label>
+            <input type="number" id="gridStartX" step="0.1" value="20.0">
+          </div>
+          <div class="form-group">
+            <label for="gridStartY">Start Y (mm)</label>
+            <input type="number" id="gridStartY" step="0.1" value="20.0">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="gridSpacingX">X Spacing (mm)</label>
+            <input type="number" id="gridSpacingX" step="0.1" value="35.0">
+          </div>
+          <div class="form-group">
+            <label for="gridSpacingY">Y Spacing (mm)</label>
+            <input type="number" id="gridSpacingY" step="0.1" value="35.0">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="gridCountX">Columns (X Count)</label>
+            <input type="number" id="gridCountX" min="1" step="1" value="2">
+          </div>
+          <div class="form-group">
+            <label for="gridCountY">Rows (Y Count)</label>
+            <input type="number" id="gridCountY" min="1" step="1" value="2">
+          </div>
+        </div>
+      </div>
+
+      <!-- Bolt Circle Inputs -->
+      <div id="boltCircleInputs" style="display: none;">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="circleCenterX">Center X (mm)</label>
+            <input type="number" id="circleCenterX" step="0.1" value="60.0">
+          </div>
+          <div class="form-group">
+            <label for="circleCenterY">Center Y (mm)</label>
+            <input type="number" id="circleCenterY" step="0.1" value="60.0">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="circleDiameter">Pitch Circle Dia (mm)</label>
+            <input type="number" id="circleDiameter" step="0.1" value="70.0">
+          </div>
+          <div class="form-group">
+            <label for="circleHoles">Pocket Count</label>
+            <input type="number" id="circleHoles" min="2" step="1" value="4">
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="circleStartAngle">Start Angle (degrees)</label>
+          <input type="number" id="circleStartAngle" step="1" value="0">
+        </div>
+      </div>
+    </div>
+
+    <!-- Pocket Dimensions & Stepovers Card -->
+    <div class="card">
+      <div class="card-title">
+        <span>2. Pocket Dimensions & Passes</span>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="pocketDiameter">Pocket / Bore Diameter (mm)</label>
+          <input type="number" id="pocketDiameter" step="0.1" value="22.0">
+        </div>
+        <div class="form-group">
+          <label for="targetDepth">Target Depth Z (mm)</label>
+          <input type="number" id="targetDepth" step="0.5" value="-5.0">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="stepdownZ">Z Depth per Pass (mm)</label>
+          <input type="number" id="stepdownZ" step="0.2" value="1.5">
+        </div>
+        <div class="form-group">
+          <label for="stepoverPercent">Radial Stepover (%)</label>
+          <input type="number" id="stepoverPercent" min="10" max="90" step="5" value="50">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="finishAllowance">Finish Pass Allowance (mm)</label>
+          <input type="number" id="finishAllowance" step="0.05" min="0" value="0.2">
+        </div>
+        <div class="form-group">
+          <label for="retractZ">Safe Retract Z (mm)</label>
+          <input type="number" id="retractZ" step="0.5" value="5.0">
+        </div>
+      </div>
+    </div>
+
+    <!-- Tooling & Speeds Card -->
+    <div class="card">
+      <div class="card-title">
+        <span>3. Tool & Speeds</span>
+      </div>
+
+      <div class="form-group">
+        <label for="toolSelect">Endmill Cutting Tool</label>
+        <select id="toolSelect"></select>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="toolDiameter">Tool Diameter (mm)</label>
+          <input type="number" id="toolDiameter" step="0.01" value="3.175">
+        </div>
+        <div class="form-group">
+          <label for="presetSelect">Material Preset</label>
+          <select id="presetSelect"></select>
+        </div>
+      </div>
+
+      <!-- Router Dial Setting -->
+      <div id="routerDialGroup" class="form-group" style="background: rgba(2, 132, 199, 0.1); padding: 0.75rem; border-radius: 6px; border: 1px solid rgba(56, 189, 248, 0.3);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+          <label for="routerDialSelect" style="margin: 0; color: #38bdf8; font-weight: 600;">⚡ DeWalt Router Dial Setting</label>
+          <span id="routerModelBadge" class="badge" style="background: rgba(56, 189, 248, 0.2); color: #38bdf8; font-size: 0.7rem;">DWP611</span>
+        </div>
+        <select id="routerDialSelect">
+          <option value="1">Dial 1 — ~16,000 RPM</option>
+          <option value="2">Dial 2 — ~18,200 RPM</option>
+          <option value="3" selected>Dial 3 — ~20,400 RPM</option>
+          <option value="4">Dial 4 — ~22,600 RPM</option>
+          <option value="5">Dial 5 — ~24,800 RPM</option>
+          <option value="6">Dial 6 — ~27,000 RPM</option>
+        </select>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="spindleRpm">Spindle RPM</label>
+          <input type="number" id="spindleRpm" step="500" value="16000">
+        </div>
+        <div class="form-group">
+          <label for="feedRateXy">Cutting Feed XY (mm/min)</label>
+          <input type="number" id="feedRateXy" step="50" value="1200">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="plungeFeed">Plunge Feed (mm/min)</label>
+        <input type="number" id="plungeFeed" step="10" value="300">
+      </div>
+
+      <button type="button" class="btn btn-primary" id="generateGCodeBtn">
+        ⚡ Generate Pocket G-Code & Preview
+      </button>
+    </div>
+  </div>
+
+  <!-- Right Column: Visualizer & G-Code Viewer -->
+  <div class="visualizer-col">
+    <div class="card visualizer-card">
+      <div class="card-title">
+        <span>Toolpath Preview (2D View)</span>
+        <div style="font-size: 0.8rem; color: var(--text-muted);">
+          Drag to Pan | Scroll to Zoom
+        </div>
+      </div>
+
+      <div class="canvas-container">
+        <canvas id="toolpathCanvas"></canvas>
+        <div class="canvas-toolbar">
+          <button type="button" class="canvas-btn" id="zoomInBtn" title="Zoom In">+</button>
+          <button type="button" class="canvas-btn" id="zoomOutBtn" title="Zoom Out">-</button>
+          <button type="button" class="canvas-btn" id="fitViewBtn" title="Reset View">Fit</button>
+        </div>
+        <div class="canvas-legend">
+          <div class="legend-item"><span class="legend-color" style="background: #10b981;"></span> Origin (0,0)</div>
+          <div class="legend-item"><span class="legend-color" style="background: #0ea5e9;"></span> Pocket Boundary</div>
+          <div class="legend-item"><span class="legend-color" style="background: #38bdf8;"></span> Toolpath</div>
+          <div class="legend-item"><span class="legend-color" style="background: #f59e0b;"></span> Rapid (G0)</div>
+        </div>
+      </div>
+
+      <!-- Quick Metrics Grid -->
+      <div class="stats-grid">
+        <div class="stat-box">
+          <div class="stat-value" id="statPocketCount">1</div>
+          <div class="stat-label">Pocket Count</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value" id="statZPasses">4</div>
+          <div class="stat-label">Z Passes / Pocket</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value" id="statTime">--</div>
+          <div class="stat-label">Est. Time</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value" id="statDialect">GRBL</div>
+          <div class="stat-label">Controller</div>
+        </div>
+      </div>
+
+      <!-- Generated G-Code Viewer -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+        <label style="margin: 0; font-weight: 600;">Generated G-Code</label>
+        <div style="display: flex; gap: 0.5rem;">
+          <button type="button" class="btn btn-secondary btn-sm" id="copyGcodeBtn" disabled>📋 Copy</button>
+          <button type="button" class="btn btn-secondary btn-sm" id="downloadGcodeBtn" disabled>💾 Download .nc</button>
+        </div>
+      </div>
+      <div class="gcode-container" id="gcodeOutput">Click "Generate Pocket G-Code & Preview" to calculate...</div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/visualizer.js') }}"></script>
+<script src="{{ url_for('static', filename='js/circular_pocket.js') }}"></script>
+{% endblock %}
