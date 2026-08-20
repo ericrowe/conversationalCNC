@@ -25,8 +25,8 @@ class ToolpathVisualizer {
 
     // 3D Viewport State
     this.viewMode = "3d"; // "3d" or "2d"
-    this.rotX = 55.0;     // Pitch / Tilt (degrees)
-    this.rotZ = -35.0;    // Yaw / Azimuth (degrees)
+    this.rotX = 35.0;     // Elevation / Tilt angle above horizontal ground plane (0 = front, 90 = top)
+    this.rotZ = -45.0;    // Azimuth / Yaw orbit angle around vertical Z axis (degrees)
     this.scale = 1.2;
     this.offsetX = 200;
     this.offsetY = 240;
@@ -160,19 +160,19 @@ class ToolpathVisualizer {
   setCameraView(preset) {
     if (preset === "iso") {
       this.viewMode = "3d";
-      this.rotX = 55.0;
-      this.rotZ = -35.0;
+      this.rotX = 35.0;
+      this.rotZ = -45.0;
     } else if (preset === "top") {
       this.viewMode = "2d";
-      this.rotX = 0.0;
+      this.rotX = 90.0;
       this.rotZ = 0.0;
     } else if (preset === "front") {
       this.viewMode = "3d";
-      this.rotX = 89.0;
+      this.rotX = 0.0;
       this.rotZ = 0.0;
     } else if (preset === "right") {
       this.viewMode = "3d";
-      this.rotX = 89.0;
+      this.rotX = 0.0;
       this.rotZ = -90.0;
     }
     this.autoFit();
@@ -188,23 +188,32 @@ class ToolpathVisualizer {
 
   toScreen(x, y, z = 0.0) {
     if (this.viewMode === "3d") {
-      const radX = (this.rotX * Math.PI) / 180.0;
-      const radZ = (this.rotZ * Math.PI) / 180.0;
+      const radX = (this.rotX * Math.PI) / 180.0; // Elevation angle above horizontal (0 = front, 90 = top)
+      const radZ = (this.rotZ * Math.PI) / 180.0; // Azimuth angle around vertical Z
 
-      // Rotate around Z (Yaw)
-      const x1 = x * Math.cos(radZ) - y * Math.sin(radZ);
-      const y1 = x * Math.sin(radZ) + y * Math.cos(radZ);
-      const z1 = z;
+      // Step 1: Rotate (X, Y) around vertical Z axis by azimuth angle radZ
+      const cosZ = Math.cos(radZ);
+      const sinZ = Math.sin(radZ);
+      const x1 = x * cosZ - y * sinZ; // Screen horizontal component
+      const y1 = x * sinZ + y * cosZ; // Depth along ground plane into screen
+      const z1 = z;                   // Vertical height (CNC +Z is UP)
 
-      // Rotate around X (Pitch)
-      const x2 = x1;
-      const y2 = y1 * Math.cos(radX) - z1 * Math.sin(radX);
-      const z2 = y1 * Math.sin(radX) + z1 * Math.cos(radX);
+      // Step 2: Project along elevation angle radX (tilt above horizon)
+      const cosX = Math.cos(radX);
+      const sinX = Math.sin(radX);
 
-      // Isometric projection
-      const sx = this.offsetX + x2 * this.scale;
-      const sy = this.offsetY - (y2 * 0.55 + z2 * 0.85) * this.scale;
-      return { x: sx, y: sy, depth: y2 };
+      // Screen X
+      const sx = this.offsetX + x1 * this.scale;
+
+      // Screen Y:
+      // - Higher vertical height (+Z) moves UP on screen (decreases canvas Y) -> - z1 * cosX
+      // - Further depth along ground (+Y1) moves UP on screen (decreases canvas Y) -> - y1 * sinX
+      const sy = this.offsetY - (y1 * sinX + z1 * cosX) * this.scale;
+
+      // Depth for z-sorting / distance
+      const depth = y1 * cosX - z1 * sinX;
+
+      return { x: sx, y: sy, depth: depth };
     } else {
       return {
         x: this.offsetX + x * this.scale,
@@ -213,6 +222,7 @@ class ToolpathVisualizer {
       };
     }
   }
+
 
   setData(data = {}) {
     if (Array.isArray(data)) {
@@ -293,8 +303,16 @@ class ToolpathVisualizer {
     this.scale = Math.min(scaleX, scaleY, 2.5);
 
     if (this.viewMode === "3d") {
-      this.offsetX = this.canvas.width * 0.45;
-      this.offsetY = this.canvas.height * 0.65;
+      const centerX = (minX + maxX) / 2.0;
+      const centerY = (minY + maxY) / 2.0;
+      const radX = (this.rotX * Math.PI) / 180.0;
+      const radZ = (this.rotZ * Math.PI) / 180.0;
+      const x1 = centerX * Math.cos(radZ) - centerY * Math.sin(radZ);
+      const y1 = centerX * Math.sin(radZ) + centerY * Math.cos(radZ);
+      const projY = y1 * Math.sin(radX);
+
+      this.offsetX = this.canvas.width / 2.0 - x1 * this.scale;
+      this.offsetY = this.canvas.height / 2.0 + projY * this.scale;
     } else {
       this.offsetX = padding - minX * this.scale;
       this.offsetY = this.canvas.height - padding + minY * this.scale;
@@ -302,6 +320,7 @@ class ToolpathVisualizer {
 
     this.draw();
   }
+
 
   draw() {
     if (!this.ctx) return;
@@ -366,7 +385,7 @@ class ToolpathVisualizer {
     ctx.stroke();
     ctx.fillStyle = "#ef4444";
     ctx.font = "bold 10px sans-serif";
-    ctx.fillText("X", xEnd.x + 3, xEnd.y + 3);
+    ctx.fillText("+X", xEnd.x + 4, xEnd.y + 3);
 
     // Y Axis (Green)
     ctx.strokeStyle = "#10b981";
@@ -375,9 +394,9 @@ class ToolpathVisualizer {
     ctx.lineTo(yEnd.x, yEnd.y);
     ctx.stroke();
     ctx.fillStyle = "#10b981";
-    ctx.fillText("Y", yEnd.x + 3, yEnd.y + 3);
+    ctx.fillText("+Y", yEnd.x + 4, yEnd.y + 3);
 
-    // Z Axis (Blue - visible in 3D mode)
+    // Z Axis (Blue - visible in 3D mode, points UP)
     if (this.viewMode === "3d") {
       ctx.strokeStyle = "#38bdf8";
       ctx.beginPath();
@@ -385,8 +404,9 @@ class ToolpathVisualizer {
       ctx.lineTo(zEnd.x, zEnd.y);
       ctx.stroke();
       ctx.fillStyle = "#38bdf8";
-      ctx.fillText("Z", zEnd.x + 3, zEnd.y + 3);
+      ctx.fillText("+Z", zEnd.x + 4, zEnd.y - 2);
     }
+
 
     // Prominent WCS (0,0,0) Part Datum Crosshair Target & Badge
     ctx.save();
@@ -771,13 +791,22 @@ class ToolpathVisualizer {
     let minY = s.originMode === "center" ? s.originY - s.widthY / 2 : s.originY;
     let maxY = s.originMode === "center" ? s.originY + s.widthY / 2 : s.originY + s.widthY;
 
-    const p0 = this.toScreen(minX, minY, 0);
-    const p1 = this.toScreen(maxX, maxY, 0);
+    const p00 = this.toScreen(minX, minY, 0);
+    const p10 = this.toScreen(maxX, minY, 0);
+    const p11 = this.toScreen(maxX, maxY, 0);
+    const p01 = this.toScreen(minX, maxY, 0);
 
     ctx.fillStyle = "rgba(245, 158, 11, 0.1)";
     ctx.strokeStyle = "#f59e0b";
     ctx.lineWidth = 2;
-    ctx.strokeRect(p0.x, p1.y, p1.x - p0.x, p0.y - p1.y);
+    ctx.beginPath();
+    ctx.moveTo(p00.x, p00.y);
+    ctx.lineTo(p10.x, p10.y);
+    ctx.lineTo(p11.x, p11.y);
+    ctx.lineTo(p01.x, p01.y);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
   }
 
   drawRectangularPocket(ctx) {
@@ -788,21 +817,50 @@ class ToolpathVisualizer {
     let minY = p.originMode === "center" ? p.originY - p.widthY / 2 : p.originY;
     let maxY = p.originMode === "center" ? p.originY + p.widthY / 2 : p.originY + p.widthY;
 
-    const p0 = this.toScreen(minX, minY, 0);
-    const p1 = this.toScreen(maxX, maxY, 0);
+    const p00 = this.toScreen(minX, minY, 0);
+    const p10 = this.toScreen(maxX, minY, 0);
+    const p11 = this.toScreen(maxX, maxY, 0);
+    const p01 = this.toScreen(minX, maxY, 0);
+
+    ctx.fillStyle = "rgba(14, 165, 233, 0.15)";
     ctx.strokeStyle = "#0ea5e9";
     ctx.lineWidth = 2;
-    ctx.strokeRect(p0.x, p1.y, p1.x - p0.x, p0.y - p1.y);
+    ctx.beginPath();
+    ctx.moveTo(p00.x, p00.y);
+    ctx.lineTo(p10.x, p10.y);
+    ctx.lineTo(p11.x, p11.y);
+    ctx.lineTo(p01.x, p01.y);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
   }
 
   drawRectangularBoss(ctx) {
     const b = this.rectangularBoss;
     if (!b) return;
-    const sp0 = this.toScreen(b.bossOriginX - b.stockLengthX / 2, b.bossOriginY - b.stockWidthY / 2, 0);
-    const sp1 = this.toScreen(b.bossOriginX + b.stockLengthX / 2, b.bossOriginY + b.stockWidthY / 2, 0);
+    const minX = b.bossOriginX - b.stockLengthX / 2;
+    const maxX = b.bossOriginX + b.stockLengthX / 2;
+    const minY = b.bossOriginY - b.stockWidthY / 2;
+    const maxY = b.bossOriginY + b.stockWidthY / 2;
+
+    const p00 = this.toScreen(minX, minY, 0);
+    const p10 = this.toScreen(maxX, minY, 0);
+    const p11 = this.toScreen(maxX, maxY, 0);
+    const p01 = this.toScreen(minX, maxY, 0);
+
+    ctx.fillStyle = "rgba(245, 158, 11, 0.1)";
     ctx.strokeStyle = "#f59e0b";
-    ctx.strokeRect(sp0.x, sp1.y, sp1.x - sp0.x, sp0.y - sp1.y);
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(p00.x, p00.y);
+    ctx.lineTo(p10.x, p10.y);
+    ctx.lineTo(p11.x, p11.y);
+    ctx.lineTo(p01.x, p01.y);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
   }
+
 
   drawEngraving(ctx) {
     // 2D Engraving text outline
