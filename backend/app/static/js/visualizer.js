@@ -87,11 +87,13 @@ class ToolpathVisualizer {
       if (data.pocketDiameter !== undefined) this.pocketDiameter = data.pocketDiameter;
       if (data.threadNominalDia !== undefined) this.threadNominalDia = data.threadNominalDia;
       if (data.threadPitch !== undefined) this.threadPitch = data.threadPitch;
-      if (data.threadType !== undefined) this.threadType = data.threadType;
       if (data.surfacing !== undefined) this.surfacing = data.surfacing;
       if (data.engraving !== undefined) this.engraving = data.engraving;
+      if (data.rectangularPocket !== undefined) this.rectangularPocket = data.rectangularPocket;
+      if (data.rectangularBoss !== undefined) this.rectangularBoss = data.rectangularBoss;
     }
     this.autoFit();
+
   }
 
   autoFit() {
@@ -118,10 +120,23 @@ class ToolpathVisualizer {
         allX.push(e.startX - 10, e.startX + (e.textLength || 50) + 10);
         allY.push(e.startY - 10, e.startY + (e.fontSize || 10) + 10);
       }
+    } else if (this.opType === "rectangular_pocket" && this.rectangularPocket) {
+      const p = this.rectangularPocket;
+      const minX = p.originMode === "center" ? p.originX - p.lengthX / 2 : p.originX;
+      const maxX = p.originMode === "center" ? p.originX + p.lengthX / 2 : p.originX + p.lengthX;
+      const minY = p.originMode === "center" ? p.originY - p.widthY / 2 : p.originY;
+      const maxY = p.originMode === "center" ? p.originY + p.widthY / 2 : p.originY + p.widthY;
+      allX.push(minX - 5, maxX + 5);
+      allY.push(minY - 5, maxY + 5);
+    } else if (this.opType === "rectangular_boss" && this.rectangularBoss) {
+      const b = this.rectangularBoss;
+      allX.push(b.bossOriginX - b.stockLengthX / 2 - 5, b.bossOriginX + b.stockLengthX / 2 + 5);
+      allY.push(b.bossOriginY - b.stockWidthY / 2 - 5, b.bossOriginY + b.stockWidthY / 2 + 5);
     } else if (this.holes.length > 0) {
       allX.push(...this.holes.map((h) => h[0]));
       allY.push(...this.holes.map((h) => h[1]));
     }
+
 
 
     const minX = Math.min(...allX);
@@ -186,6 +201,10 @@ class ToolpathVisualizer {
       this.drawGCodeToolpath(ctx);
     } else if (this.opType === "surfacing" && this.surfacing) {
       this.drawSurfacing(ctx);
+    } else if (this.opType === "rectangular_pocket" && this.rectangularPocket) {
+      this.drawRectangularPocket(ctx);
+    } else if (this.opType === "rectangular_boss" && this.rectangularBoss) {
+      this.drawRectangularBoss(ctx);
     } else if (this.opType === "pocket") {
       this.drawPockets(ctx);
     } else if (this.opType === "thread_milling") {
@@ -195,6 +214,7 @@ class ToolpathVisualizer {
     } else {
       this.drawDrillHoles(ctx);
     }
+
 
 
 
@@ -468,7 +488,149 @@ class ToolpathVisualizer {
     ctx.fillText(`Stock: ${s.lengthX} x ${s.widthY} mm`, p0.x + 8, p1.y + 18);
   }
 
+  drawRectangularPocket(ctx) {
+    const p = this.rectangularPocket;
+    if (!p) return;
+
+    let minX, maxX, minY, maxY, cx, cy;
+    if (p.originMode === "center") {
+      minX = p.originX - p.lengthX / 2;
+      maxX = p.originX + p.lengthX / 2;
+      minY = p.originY - p.widthY / 2;
+      maxY = p.originY + p.widthY / 2;
+      cx = p.originX;
+      cy = p.originY;
+    } else {
+      minX = p.originX;
+      maxX = p.originX + p.lengthX;
+      minY = p.originY;
+      maxY = p.originY + p.widthY;
+      cx = minX + p.lengthX / 2;
+      cy = minY + p.widthY / 2;
+    }
+
+    const p0 = this.toScreen(minX, minY);
+    const p1 = this.toScreen(maxX, maxY);
+    const pCenter = this.toScreen(cx, cy);
+
+    // Draw pocket boundary with corner radius
+    const r = Math.max(0, (p.cornerRadius || 0) * this.scale);
+    ctx.fillStyle = "rgba(14, 165, 233, 0.12)";
+    ctx.strokeStyle = "#0ea5e9";
+    ctx.lineWidth = 2;
+
+    ctx.beginPath();
+    ctx.roundRect(p0.x, p1.y, p1.x - p0.x, p0.y - p1.y, r);
+    ctx.fill();
+    ctx.stroke();
+
+    // Draw concentric roughing rings in cyan dashed line
+    const toolRad = (this.toolDiameter || 6.35) / 2.0;
+    const stepover = (this.toolDiameter || 6.35) * ((p.stepoverPercent || 60) / 100.0);
+    const finishAllow = p.finishPassAllowance || 0.3;
+
+    const roughMinX = minX + toolRad + finishAllow;
+    const roughMaxX = maxX - toolRad - finishAllow;
+    const roughMinY = minY + toolRad + finishAllow;
+    const roughMaxY = maxY - toolRad - finishAllow;
+
+    if (roughMaxX > roughMinX && roughMaxY > roughMinY) {
+      const numRings = Math.max(1, Math.ceil(Math.max(roughMaxX - cx, roughMaxY - cy) / stepover));
+      ctx.strokeStyle = "rgba(56, 189, 248, 0.75)";
+      ctx.lineWidth = 1.2;
+      ctx.setLineDash([3, 3]);
+
+      for (let i = 1; i <= numRings; i++) {
+        const frac = i / numRings;
+        const rMinX = cx - (cx - roughMinX) * frac;
+        const rMaxX = cx + (roughMaxX - cx) * frac;
+        const rMinY = cy - (cy - roughMinY) * frac;
+        const rMaxY = cy + (roughMaxY - cy) * frac;
+
+        const sp0 = this.toScreen(rMinX, rMinY);
+        const sp1 = this.toScreen(rMaxX, rMaxY);
+        const ringR = Math.max(0, (r - (toolRad + finishAllow) * this.scale) * frac);
+
+        ctx.beginPath();
+        ctx.roundRect(sp0.x, sp1.y, sp1.x - sp0.x, sp0.y - sp1.y, ringR);
+        ctx.stroke();
+      }
+      ctx.setLineDash([]);
+    }
+
+    // Center Crosshair
+    ctx.beginPath();
+    ctx.strokeStyle = "#0ea5e9";
+    ctx.lineWidth = 1;
+    ctx.moveTo(pCenter.x - 8, pCenter.y);
+    ctx.lineTo(pCenter.x + 8, pCenter.y);
+    ctx.moveTo(pCenter.x, pCenter.y - 8);
+    ctx.lineTo(pCenter.x, pCenter.y + 8);
+    ctx.stroke();
+
+    // Label
+    ctx.fillStyle = "#38bdf8";
+    ctx.font = "bold 11px sans-serif";
+    ctx.fillText(`Pocket ${p.lengthX}x${p.widthY}mm (R${p.cornerRadius || 0}mm)`, p0.x + 8, p1.y + 18);
+  }
+
+  drawRectangularBoss(ctx) {
+    const b = this.rectangularBoss;
+    if (!b) return;
+
+    const cx = b.bossOriginX;
+    const cy = b.bossOriginY;
+
+    const stockMinX = cx - b.stockLengthX / 2;
+    const stockMaxX = cx + b.stockLengthX / 2;
+    const stockMinY = cy - b.stockWidthY / 2;
+    const stockMaxY = cy + b.stockWidthY / 2;
+
+    const bossMinX = cx - b.bossLengthX / 2;
+    const bossMaxX = cx + b.bossLengthX / 2;
+    const bossMinY = cy - b.bossWidthY / 2;
+    const bossMaxY = cy + b.bossWidthY / 2;
+
+    const sp0 = this.toScreen(stockMinX, stockMinY);
+    const sp1 = this.toScreen(stockMaxX, stockMaxY);
+
+    const bp0 = this.toScreen(bossMinX, bossMinY);
+    const bp1 = this.toScreen(bossMaxX, bossMaxY);
+
+    // Outer Stock Boundary (Amber)
+    ctx.strokeStyle = "rgba(245, 158, 11, 0.6)";
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([4, 4]);
+    ctx.strokeRect(sp0.x, sp1.y, sp1.x - sp0.x, sp0.y - sp1.y);
+    ctx.setLineDash([]);
+
+    // Cleared Material Region
+    ctx.fillStyle = "rgba(14, 165, 233, 0.12)";
+    ctx.fillRect(sp0.x, sp1.y, sp1.x - sp0.x, sp0.y - sp1.y);
+
+    // Inner Boss Island (Solid Teal)
+    const r = Math.max(0, (b.bossCornerRadius || 0) * this.scale);
+    ctx.fillStyle = "rgba(16, 185, 129, 0.35)";
+    ctx.strokeStyle = "#10b981";
+    ctx.lineWidth = 2;
+
+    ctx.beginPath();
+    ctx.roundRect(bp0.x, bp1.y, bp1.x - bp0.x, bp0.y - bp1.y, r);
+    ctx.fill();
+    ctx.stroke();
+
+    // Labels
+    ctx.fillStyle = "#fbbf24";
+    ctx.font = "10px sans-serif";
+    ctx.fillText(`Stock: ${b.stockLengthX}x${b.stockWidthY}mm`, sp0.x + 6, sp1.y + 14);
+
+    ctx.fillStyle = "#10b981";
+    ctx.font = "bold 11px sans-serif";
+    ctx.fillText(`Boss: ${b.bossLengthX}x${b.bossWidthY}mm`, bp0.x + 6, bp1.y + 16);
+  }
+
   drawEngraving(ctx) {
+
     const e = this.engraving;
     if (!e || !e.text) return;
 

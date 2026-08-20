@@ -46,4 +46,11 @@ def test_engraving_page_renders(client):
     assert response.status_code == 200
     assert b"Text Engraving" in response.data
 
+def test_rectangular_pocket_page_renders(client):
+    response = client.get("/rectangular-pocket")
+    assert response.status_code == 200
+    assert b"Rectangular Pocket" in response.data
+    assert b"Raised Boss" in response.data
+
+
 

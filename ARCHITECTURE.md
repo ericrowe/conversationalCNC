@@ -123,6 +123,16 @@ graph TD
 - **Tool Tip Flat Calculation**: Computes live surface cut width based on V-bit angle $\theta$, tip flat width $W_{\text{tip}}$, and cutting depth $d$:
   $$W_{\text{cut}} = W_{\text{tip}} + 2d\tan(\theta/2)$$
 
+### 3.6. Rectangular Pocket & Boss / Island Machining (`app/generators/rectangular_pocket.py`)
+- **Rectangular Pocket**: Concentric clearing loops with corner fillets ($R_c$), helical ramp entry, customizable stepover percentage, and a dedicated perimeter wall finishing contour pass with tangential lead-in/out.
+- **Boss / Raised Island Machining**: Clears the outer perimeter area between the stock boundary and a precision raised rectangular island feature.
+
+### 3.7. Linear Slotting & Keyways (`app/generators/slotting.py`)
+- **Linear Slots**: Cuts straight slots between arbitrary coordinates $(X_1, Y_1)$ and $(X_2, Y_2)$ with depth stepdowns, centerline cutting (when $W_{\text{slot}} = D_{\text{tool}}$) or automated side clearing passes (when $W_{\text{slot}} > D_{\text{tool}}$).
+
+### 3.8. 2D Chamfering & Edge Breaking (`app/generators/chamfering.py`)
+- **Edge Deburring & Chamfering**: Calculates exact tip offset and plunge depth ($Z = -(W_{\text{chamfer}}/\tan(\theta/2) + d_{\text{tip}})$) for conical 45°, 60°, 90°, and 120° V-bits / chamfer mills along outer perimeter or pocket edges.
+
 ---
 
 ## 4. Machine Profiles & Router Spindle Management
@@ -136,12 +146,7 @@ For CNC machines utilizing manual trim routers (such as the DeWalt DWP611), spin
   - Dial 4: 22,600 RPM
   - Dial 5: 24,800 RPM
   - Dial 6: 27,000 RPM
-- **RPM Clamping & Operator Instructions**: Automatically clamps speeds below 16k RPM and injects explicit human-readable dial setup instructions in G-code program headers:
-  ```gcode
-  (-------------------------------------------------------)
-  ( ROUTER SETUP: Set DeWalt DWP611 Dial to 3 ~20,400 RPM )
-  (-------------------------------------------------------)
-  ```
+- **RPM Clamping & Operator Instructions**: Automatically clamps speeds below 16k RPM and injects explicit human-readable dial setup instructions in G-code program headers.
 
 ### 4.2. Tool Library & Material Presets
 - **Tools**: Stores tool number, name, type (endmill, ball, V-bit, thread mill, flycutter), diameter, flute count, and flute length.
@@ -169,7 +174,8 @@ The client-side visualizer (`app/static/js/visualizer.js`) provides a zero-depen
 
 - **Phase 1 (Completed)**: Core architecture, SQLite schema, Straight Plunge drilling, Grbl post-processor, DeWalt DWP611 dial mapping.
 - **Phase 2 (Completed)**: Helical Thread Milling, Peck Drilling (G73/G83), Circular Pocketing, Surfacing/Facing, Single-Line Vector Text Engraving with 5 fonts and spline smoothing, 2D vector toolpath visualizer.
-- **Phase 3 (Upcoming)**: Bolt Circle (PCD) & Matrix Grid hole patterns, Rectangular Pockets & Boss/Island milling, Slotting & 2D Chamfering.
+- **Phase 3 (Completed)**: Bolt Circle (PCD) & Matrix Grid hole patterns, Rectangular Pockets & Boss/Island milling, Linear Slotting & 2D Chamfering / Edge Deburring.
 - **Phase 4 (Upcoming)**: 3D WebGL / Three.js isometric backplotter with animated tool simulation and bi-directional G-code sync.
 - **Phase 5 (Upcoming)**: Plain English G-Code Hints and live Modal State inspector.
 - **Phase 6 (Upcoming)**: G-Code Transformations (Shift, Rotate, Mirror, R-to-IJK conversion, Multi-tool program file splitter).
+

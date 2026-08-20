@@ -99,4 +99,77 @@ def test_engraving_glyphs_api(client):
     assert "strokes" in data["fonts"]["simplex_sans"]["A"]
 
 
+def test_rectangular_pocket_api(client):
+    payload = {
+        "origin_x": 40.0,
+        "origin_y": 40.0,
+        "length_x": 50.0,
+        "width_y": 35.0,
+        "corner_radius": 3.0,
+        "target_depth_z": -4.0,
+        "tool_diameter": 6.35,
+        "stepdown_z": 2.0,
+    }
+    res = client.post("/api/generate/pocket/rectangular", json=payload)
+    assert res.status_code == 200
+    data = res.get_json()
+    assert data["success"] is True
+    assert "Rectangular Pocket" in data["data"]["gcode"]
+
+
+def test_rectangular_boss_api(client):
+    payload = {
+        "boss_origin_x": 40.0,
+        "boss_origin_y": 40.0,
+        "boss_length_x": 30.0,
+        "boss_width_y": 20.0,
+        "stock_length_x": 60.0,
+        "stock_width_y": 50.0,
+        "target_depth_z": -2.0,
+        "tool_diameter": 6.35,
+        "stepdown_z": 1.0,
+    }
+    res = client.post("/api/generate/boss/rectangular", json=payload)
+    assert res.status_code == 200
+    data = res.get_json()
+    assert data["success"] is True
+    assert "Rectangular Boss" in data["data"]["gcode"]
+
+
+def test_linear_slot_api(client):
+    payload = {
+        "start_x": 20.0,
+        "start_y": 20.0,
+        "end_x": 80.0,
+        "end_y": 20.0,
+        "slot_width": 4.0,
+        "target_depth_z": -3.0,
+        "tool_diameter": 3.175,
+        "stepdown_z": 1.0,
+    }
+    res = client.post("/api/generate/slotting/linear", json=payload)
+    assert res.status_code == 200
+    data = res.get_json()
+    assert data["success"] is True
+    assert "Linear Slot" in data["data"]["gcode"]
+
+
+def test_rectangular_chamfer_api(client):
+    payload = {
+        "origin_x": 40.0,
+        "origin_y": 40.0,
+        "length_x": 50.0,
+        "width_y": 30.0,
+        "chamfer_width": 0.5,
+        "vbit_angle_deg": 90.0,
+    }
+    res = client.post("/api/generate/chamfering/rectangular", json=payload)
+    assert res.status_code == 200
+    data = res.get_json()
+    assert data["success"] is True
+    assert "2D Chamfering" in data["data"]["gcode"]
+
+
+
+
 

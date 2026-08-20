@@ -23,7 +23,77 @@ ROUTER_DIAL_MAPS = {
     },
 }
 
+
+def compute_bolt_circle_holes(
+    center_x: float,
+    center_y: float,
+    diameter: float,
+    num_holes: int,
+    start_angle_deg: float = 0.0,
+    arc_span_deg: float = 360.0,
+) -> List[Tuple[float, float]]:
+    """
+    Computes (X, Y) coordinates for a bolt circle / PCD pattern.
+    """
+    if num_holes < 1:
+        raise ValueError("Number of holes must be at least 1.")
+    if diameter <= 0:
+        raise ValueError("Bolt circle diameter must be greater than zero.")
+
+    radius = diameter / 2.0
+    holes: List[Tuple[float, float]] = []
+
+    if abs(arc_span_deg - 360.0) < 1e-5 or num_holes == 1:
+        step_angle = 360.0 / num_holes
+    else:
+        step_angle = arc_span_deg / (num_holes - 1)
+
+    for i in range(num_holes):
+        angle_deg = start_angle_deg + (i * step_angle)
+        rad = math.radians(angle_deg)
+        x = center_x + radius * math.cos(rad)
+        y = center_y + radius * math.sin(rad)
+        holes.append((round(x, 4), round(y, 4)))
+
+    return holes
+
+
+def compute_grid_holes(
+    origin_x: float,
+    origin_y: float,
+    num_x: int,
+    num_y: int,
+    spacing_x: float,
+    spacing_y: float,
+    angle_deg: float = 0.0,
+) -> List[Tuple[float, float]]:
+    """
+    Computes (X, Y) coordinates for a matrix grid array of holes with serpentine rapid pathing.
+    """
+    if num_x < 1 or num_y < 1:
+        raise ValueError("Grid columns (num_x) and rows (num_y) must be at least 1.")
+
+    rad = math.radians(angle_deg)
+    cos_a = math.cos(rad)
+    sin_a = math.sin(rad)
+    holes: List[Tuple[float, float]] = []
+
+    for row in range(num_y):
+        for col in range(num_x):
+            # Serpentine / Zigzag ordering to optimize rapid traverse
+            effective_col = col if row % 2 == 0 else (num_x - 1 - col)
+            lx = effective_col * spacing_x
+            ly = row * spacing_y
+
+            gx = origin_x + (lx * cos_a - ly * sin_a)
+            gy = origin_y + (lx * sin_a + ly * cos_a)
+            holes.append((round(gx, 4), round(gy, 4)))
+
+    return holes
+
+
 def generate_straight_plunge(
+
     holes: List[Tuple[float, float]],
     target_depth_z: float,
     start_z: float = 0.0,

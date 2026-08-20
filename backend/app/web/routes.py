@@ -33,7 +33,12 @@ def thread_milling_page():
 def circular_pocket_page():
     return render_template("operations/circular_pocket.html")
 
+@web_bp.route("/rectangular-pocket")
+def rectangular_pocket_page():
+    return render_template("operations/rectangular_pocket.html")
+
 @web_bp.route("/surfacing")
+
 def surfacing_page():
     return render_template("operations/surfacing.html")
 

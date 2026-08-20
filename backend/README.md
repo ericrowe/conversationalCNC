@@ -3,7 +3,8 @@
 Stateless, deterministic Python/Flask G-code generator and SQLite configuration manager designed for conversational CNC machining on Raspberry Pi (targeting Grbl / X-Carve and expandable to other machines).
 
 ## Architecture Highlights
-- **Pure Operation Generators**: Zero database or web framework dependencies in the mathematical G-code generation functions (`app/generators/`) covering Straight Plunge Drilling, Peck Drilling, Helical Thread Milling, Circular Pocketing, Surfacing/Facing, and Single-Line Vector Text Engraving.
+- **Pure Operation Generators**: Zero database or web framework dependencies in the mathematical G-code generation functions (`app/generators/`) covering Straight Plunge Drilling, Peck Drilling, Bolt Circle & Grid Pattern calculation, Helical Thread Milling, Circular Pocketing, Rectangular Pocketing & Boss Machining, Linear Slotting, 2D Chamfering, Surfacing/Facing, and Single-Line Vector Text Engraving.
+
 - **Modular Post-Processor / Dialect Strategy**: Abstract base class (`app/postprocessors/base.py`) with concrete implementations (`GrblPostProcessor`, `StandardPostProcessor`) to support Grbl (no canned cycles) as well as standard CNC controllers.
 - **Router & Spindle Support**: Handles manual trim routers (DeWalt DWP611 with 16,000–27,000 RPM speed dial mapping) and continuous VFD/PWM spindles.
 - **Machine Modularity**: Store and dynamically switch active machine profiles (`MachineProfile`) with distinct work envelopes, max feed rates, probe thickness, and controller dialects.

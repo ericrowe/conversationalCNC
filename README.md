@@ -2,7 +2,7 @@
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![Flask 3.0+](https://img.shields.io/badge/flask-3.0+-green.svg)](https://flask.palletsprojects.com/)
-[![Tests](https://img.shields.io/badge/tests-65%20passed-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-80%20passed-brightgreen.svg)]()
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 A web-based, locally executing **Conversational CNC Controller** designed for rapid, on-the-fly machining without launching heavyweight CAD/CAM software. Built with a zero-build-step architecture optimized for offline Raspberry Pi 4/5 setups and desktop workstations driving Grbl-based CNCs (such as the Inventables X-Carve, Shapeoko, PrintNC) and standard CNC controllers.
@@ -12,12 +12,16 @@ A web-based, locally executing **Conversational CNC Controller** designed for ra
 ## 📸 Key Features & Supported Operations
 
 ### 1. Conversational Machining Operations
-- **⚡ Straight Plunge Drilling**: Single holes, rectangular grids, and pitch bolt circles with customizable retract planes, approach clearances, and bottom dwells.
+- **⚡ Straight Plunge Drilling**: Single holes, rectangular grids, pitch bolt circles (PCD), and custom coordinate lists with customizable retract planes, approach clearances, and bottom dwells.
 - **🔩 Peck Drilling (Deep Hole)**: Chip clearing (`G83` full retract to safe Z) and chip breaking (`G73` lift) cycles, mathematically expanded into linear moves for Grbl controllers without native canned cycles.
 - **🧵 Helical Thread Milling**: 3D helical interpolation for internal tapped holes and external threaded studs. Supports single-point thread mills, climb/conventional milling, 180° semi-circular tangential helical lead-in/lead-out arcs, and multi-pass radial stepovers (roughing passes + spring passes). Includes a built-in catalog of standard Metric ISO (M2–M20), Imperial UNC (#2-56 to 3/4-10), and Imperial UNF (#10-32 to 1/2-20) threads.
 - **⭕ Circular Pocketing & Helical Boring**: Precision bearing bores, counterbores, and circular pockets with helical ramp entry, expanding concentric radial stepovers, and clean wall finishing passes.
+- **🔲 Rectangular Pocket & Raised Boss / Island Machining**: Rectangular cavities with corner fillets, helical ramp entry, wall finishing passes, and outside clearing around raised rectangular island features.
+- **📐 Linear Slotting & Keyways**: Centerline and wide slot cutting with multiple depth passes, safe stepdowns, and side profile passes.
+- **✨ 2D Chamfering & Edge Breaking**: Outer and inner perimeter chamfering and deburring with conical V-bits and chamfer mills, calculating exact tip-offset and Z-depth.
 - **🪚 Workpiece & Spoilboard Surfacing / Facing**: Flatten rough stock or resurface spoilboards with bidirectional Zig-Zag or unidirectional Climb One-Way raster passes, customizable cutter overtravel past edges, and corner/center datum origins.
 - **✍️ Single-Line Vector Text Engraving**: High-speed CNC text engraving supporting multi-line rotated linear layouts and curved circular arc layouts (clockwise/counter-clockwise). Features 5 single-line stroke font styles (*Simplex Sans, Duplex Bold Sans, Roman Serif, Cursive Script, Industrial Block*), configurable cubic Catmull-Rom spline curve interpolation smoothing ($1\times$ to $12\times$ sampling) with sharp-corner preservation, and live tool tip flat cut width calculation.
+
 
 ### 2. Machine & Tool Management
 - **Router Speed Dial Mapping**: Automatic mapping of spindle speeds to discrete speed dial numbers for manual trim routers (e.g. DeWalt DWP611 Dial 1=16k, Dial 2=18.2k, Dial 3=20.4k, Dial 4=22.6k, Dial 5=24.8k, Dial 6=27k) with operator setup alerts and minimum RPM clamping. Supports continuous VFD / PWM spindles as well.
@@ -83,7 +87,7 @@ conversationalCNC/
 │   │   ├── static/          # CSS stylesheets and client JavaScript modules
 │   │   ├── templates/       # Jinja2 HTML templates
 │   │   └── web/             # Web frontend routing blueprint
-│   └── tests/               # 65 automated pytest unit and integration tests
+│   └── tests/               # 80 automated pytest unit and integration tests
 └── docs/
     └── API_DOCUMENTATION.md # Comprehensive REST API reference
 ```
@@ -130,10 +134,11 @@ PYTHONPATH=backend python backend/seed.py
 ```
 
 ### Step 5: Run Automated Tests
-Verify that all 65 tests pass on your machine:
+Verify that all 80 tests pass on your machine:
 ```bash
 PYTHONPATH=backend pytest backend/tests -v
 ```
+
 
 
 ### Step 6: Start the Development Server

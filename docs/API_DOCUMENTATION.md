@@ -15,11 +15,16 @@
    - [POST /api/generate/drilling/peck](#post-apigeneratedrillingpeck)
    - [POST /api/generate/thread-milling](#post-apigeneratethread-milling)
    - [POST /api/generate/pocket/circular](#post-apigeneratepocketcircular)
+   - [POST /api/generate/pocket/rectangular](#post-apigeneratepocketrectangular)
+   - [POST /api/generate/boss/rectangular](#post-apigeneratebossrectangular)
+   - [POST /api/generate/slotting/linear](#post-apigenerateslottinglinear)
+   - [POST /api/generate/chamfering/rectangular](#post-apigeneratechamferingrectangular)
    - [POST /api/generate/surfacing](#post-apigeneratesurfacing)
    - [GET /api/generate/engraving/fonts](#get-apigenerateengravingfonts)
    - [GET /api/generate/engraving/glyphs](#get-apigenerateengravingglyphs)
    - [POST /api/generate/engraving/text](#post-apigenerateengravingtext)
 4. [Machine Profiles](#4-machine-profiles)
+
 
 
 
@@ -250,9 +255,76 @@ Generates vector stroke G-code for text engraving along linear paths or wrapped 
 
 ---
 
+### `POST /api/generate/pocket/rectangular`
+Generates G-code for rectangular pockets with corner radii, concentric clearing loops, and finishing passes.
 
+#### Request Payload
+| Field | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `length_x` | `number` | **Yes** | — | Pocket length along X (mm). |
+| `width_y` | `number` | **Yes** | — | Pocket width along Y (mm). |
+| `target_depth_z` | `number` | **Yes** | — | Target pocket depth Z (mm). |
+| `origin_x` | `number` | No | `0.0` | Origin X coordinate. |
+| `origin_y` | `number` | No | `0.0` | Origin Y coordinate. |
+| `corner_radius` | `number` | No | `0.0` | Corner fillet radius (mm). |
+| `origin_mode` | `string` | No | `"center"` | `"center"` or `"corner"`. |
+| `stepdown_z` | `number` | No | `1.5` | Depth per pass (mm). |
+| `stepover_percent`| `number` | No | `60.0` | Stepover percentage of tool diameter. |
+| `finish_pass_allowance` | `number` | No | `0.3` | Wall finish allowance (mm). |
+| `entry_strategy` | `string` | No | `"helical_ramp"` | `"helical_ramp"` or `"plunge"`. |
+
+---
+
+### `POST /api/generate/boss/rectangular`
+Generates G-code for raised rectangular islands / bosses within stock boundaries.
+
+#### Request Payload
+| Field | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `boss_length_x` | `number` | **Yes** | — | Boss length along X (mm). |
+| `boss_width_y` | `number` | **Yes** | — | Boss width along Y (mm). |
+| `stock_length_x` | `number` | **Yes** | — | Stock boundary length along X (mm). |
+| `stock_width_y` | `number` | **Yes** | — | Stock boundary width along Y (mm). |
+| `target_depth_z` | `number` | **Yes** | — | Target machining depth Z (mm). |
+| `boss_origin_x` | `number` | No | `0.0` | Boss island center X (mm). |
+| `boss_origin_y` | `number` | No | `0.0` | Boss island center Y (mm). |
+| `boss_corner_radius` | `number` | No | `0.0` | Boss corner fillet radius (mm). |
+
+---
+
+### `POST /api/generate/slotting/linear`
+Generates G-code for straight linear slots with depth stepdowns.
+
+#### Request Payload
+| Field | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `start_x` | `number` | **Yes** | — | Slot start X coordinate (mm). |
+| `start_y` | `number` | **Yes** | — | Slot start Y coordinate (mm). |
+| `end_x` | `number` | **Yes** | — | Slot end X coordinate (mm). |
+| `end_y` | `number` | **Yes** | — | Slot end Y coordinate (mm). |
+| `slot_width` | `number` | **Yes** | — | Slot width in mm ($\ge D_{\text{tool}}$). |
+| `target_depth_z` | `number` | **Yes** | — | Target slot depth Z (mm). |
+| `stepdown_z` | `number` | No | `1.0` | Max depth per pass (mm). |
+
+---
+
+### `POST /api/generate/chamfering/rectangular`
+Generates G-code for 2D perimeter edge deburring and chamfering with conical V-bits.
+
+#### Request Payload
+| Field | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `length_x` | `number` | **Yes** | — | Feature length along X (mm). |
+| `width_y` | `number` | **Yes** | — | Feature width along Y (mm). |
+| `chamfer_width` | `number` | No | `0.5` | Desired chamfer cut width (mm). |
+| `vbit_angle_deg` | `number` | No | `90.0` | V-bit included angle (degrees). |
+| `feature_type` | `string` | No | `"outside"` | `"outside"` or `"inside"`. |
+| `origin_mode` | `string` | No | `"center"` | `"center"` or `"corner"`. |
+
+---
 
 ## 4. Machine Profiles
+
 
 - `GET /api/machines`: List all machine profiles.
 - `GET /api/machines/active`: Get active machine profile.

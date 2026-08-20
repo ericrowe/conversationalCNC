@@ -1,0 +1,276 @@
+{% extends "base.html" %}
+
+{% block title %}Rectangular Pocket & Boss — Conversational CNC{% endblock %}
+
+{% block content %}
+<div class="page-title-row">
+  <div>
+    <h1 class="page-title">🔲 Rectangular Pocket & Island / Boss</h1>
+    <div class="page-desc">Mill rectangular cavities with corner fillets, helical ramp entry, wall finishing passes, or machine raised island bosses.</div>
+  </div>
+</div>
+
+<!-- Soft limit warning banner -->
+<div id="warningBanner" class="alert alert-warning" style="display: none;"></div>
+
+<div class="two-col-grid">
+  <!-- Left Column: Form Controls -->
+  <div class="controls-col" id="rectPocketForm">
+
+    <!-- Mode Selector: Pocket vs Boss -->
+    <div class="card">
+      <div class="card-title">
+        <span>1. Operation Mode</span>
+      </div>
+      <div class="tab-group">
+        <button type="button" class="tab-btn op-tab active" data-mode="pocket">Rectangular Pocket</button>
+        <button type="button" class="tab-btn op-tab" data-mode="boss">Raised Boss / Island</button>
+      </div>
+    </div>
+
+    <!-- Geometry Card -->
+    <div class="card">
+      <div class="card-title">
+        <span id="geomCardTitle">2. Pocket Geometry & Dimensions</span>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="originMode">Origin Datum Reference</label>
+          <select id="originMode">
+            <option value="center" selected>Center of Feature (Xc, Yc)</option>
+            <option value="corner">Bottom-Left Corner (X0, Y0)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="originX">Origin X (mm)</label>
+          <input type="number" id="originX" step="0.1" value="50.0">
+        </div>
+        <div class="form-group">
+          <label for="originY">Origin Y (mm)</label>
+          <input type="number" id="originY" step="0.1" value="50.0">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="lengthX">Length along X (mm)</label>
+          <input type="number" id="lengthX" min="1" step="0.1" value="60.0">
+        </div>
+        <div class="form-group">
+          <label for="widthY">Width along Y (mm)</label>
+          <input type="number" id="widthY" min="1" step="0.1" value="40.0">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="cornerRadius">Corner Fillet Radius (mm)</label>
+          <input type="number" id="cornerRadius" min="0" step="0.1" value="4.0">
+        </div>
+      </div>
+
+      <!-- Boss-specific stock boundaries -->
+      <div id="bossStockInputs" style="display: none;">
+        <div class="form-row" style="margin-top: 0.5rem; border-top: 1px dashed var(--border-color); padding-top: 0.5rem;">
+          <div class="form-group">
+            <label for="stockLengthX">Stock Length X (mm)</label>
+            <input type="number" id="stockLengthX" min="1" step="0.1" value="100.0">
+          </div>
+          <div class="form-group">
+            <label for="stockWidthY">Stock Width Y (mm)</label>
+            <input type="number" id="stockWidthY" min="1" step="0.1" value="80.0">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Depths & Clearances Card -->
+    <div class="card">
+      <div class="card-title">
+        <span>3. Depths & Clearances</span>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="startZ">Top Surface Z (mm)</label>
+          <input type="number" id="startZ" step="0.1" value="0.0">
+        </div>
+        <div class="form-group">
+          <label for="targetDepth">Target Depth Z (mm)</label>
+          <input type="number" id="targetDepth" step="0.1" value="-6.0">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="stepdownZ">Max Stepdown Z (mm/pass)</label>
+          <input type="number" id="stepdownZ" min="0.1" step="0.1" value="1.5">
+        </div>
+        <div class="form-group">
+          <label for="retractZ">Safe Retract Z (mm)</label>
+          <input type="number" id="retractZ" step="0.1" value="5.0">
+        </div>
+      </div>
+    </div>
+
+    <!-- Machining Strategy & Entry -->
+    <div class="card">
+      <div class="card-title">
+        <span>4. Machining Strategy & Entry</span>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="stepoverPercent">Radial Stepover (%)</label>
+          <input type="number" id="stepoverPercent" min="10" max="95" step="5" value="60">
+        </div>
+        <div class="form-group" id="finishAllowGroup">
+          <label for="finishAllowance">Finish Wall Stock (mm)</label>
+          <input type="number" id="finishAllowance" min="0" max="2.0" step="0.05" value="0.3">
+        </div>
+      </div>
+
+      <div class="form-row" id="entryStrategyGroup">
+        <div class="form-group">
+          <label for="entryStrategy">Entry Strategy</label>
+          <select id="entryStrategy">
+            <option value="helical_ramp" selected>Helical Ramp Entry</option>
+            <option value="plunge">Straight Plunge Entry</option>
+          </select>
+        </div>
+        <div class="form-group" id="rampAngleGroup">
+          <label for="rampAngle">Ramp Angle (°)</label>
+          <input type="number" id="rampAngle" min="0.5" max="20" step="0.5" value="2.5">
+        </div>
+      </div>
+    </div>
+
+    <!-- Tooling & Feeds Card -->
+    <div class="card">
+      <div class="card-title">
+        <span>5. Tooling & Feeds/Speeds</span>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="toolSelect">Tool Library</label>
+          <select id="toolSelect">
+            <option value="">Loading tools...</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="presetSelect">Material Preset</label>
+          <select id="presetSelect">
+            <option value="">Select a tool first</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="feedRateXy">Cutting Feed (XY mm/min)</label>
+          <input type="number" id="feedRateXy" min="10" step="10" value="1200">
+        </div>
+        <div class="form-group">
+          <label for="plungeFeed">Plunge Feed (Z mm/min)</label>
+          <input type="number" id="plungeFeed" min="10" step="10" value="300">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="spindleRpm">Spindle Speed (RPM)</label>
+          <input type="number" id="spindleRpm" min="1000" step="500" value="16000">
+        </div>
+        <div class="form-group" id="routerDialGroup" style="display: none;">
+          <label for="routerDialSelect">Router Speed Dial (<span id="routerModelBadge">DeWalt 611</span>)</label>
+          <select id="routerDialSelect">
+            <option value="1">Dial 1 (16,000 RPM)</option>
+            <option value="2">Dial 2 (18,200 RPM)</option>
+            <option value="3">Dial 3 (20,400 RPM)</option>
+            <option value="4">Dial 4 (22,600 RPM)</option>
+            <option value="5">Dial 5 (24,800 RPM)</option>
+            <option value="6">Dial 6 (27,000 RPM)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="unitsSelect">Units</label>
+          <select id="unitsSelect">
+            <option value="mm" selected>Metric (mm - G21)</option>
+            <option value="inch">Imperial (inch - G20)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div style="margin-top: 1.5rem; margin-bottom: 2rem;">
+      <button type="button" class="btn btn-primary" id="generateGCodeBtn" style="width: 100%; padding: 0.85rem; font-size: 1.05rem;">
+        ⚡ Generate Rectangular G-Code
+      </button>
+    </div>
+
+  </div>
+
+  <!-- Right Column: Visualizer & G-Code Output -->
+  <div class="preview-col">
+    <!-- Visualizer Canvas Card -->
+    <div class="card">
+      <div class="card-title">
+        <span>Toolpath Live Preview</span>
+        <button type="button" class="btn btn-secondary" id="resetViewBtn" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">Auto Fit</button>
+      </div>
+      <div class="canvas-container">
+        <canvas id="toolpathCanvas" width="600" height="420"></canvas>
+      </div>
+    </div>
+
+    <!-- Statistics Panel -->
+    <div class="stats-panel">
+      <div class="stat-box">
+        <span class="stat-label">Cavity Size</span>
+        <span class="stat-value" id="statPocketSize">60 x 40 mm</span>
+      </div>
+      <div class="stat-box">
+        <span class="stat-label">Passes</span>
+        <span class="stat-value" id="statPasses">4 passes</span>
+      </div>
+      <div class="stat-box">
+        <span class="stat-label">Est. Time</span>
+        <span class="stat-value" id="statTime">--</span>
+      </div>
+      <div class="stat-box">
+        <span class="stat-label">Dialect</span>
+        <span class="stat-value" id="statDialect">GRBL</span>
+      </div>
+    </div>
+
+    <!-- G-Code Output Card -->
+    <div class="card">
+      <div class="card-title">
+        <span>Generated G-Code</span>
+        <div style="display: flex; gap: 0.5rem;">
+          <button type="button" class="btn btn-secondary" id="copyGcodeBtn" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">📋 Copy</button>
+          <button type="button" class="btn btn-secondary" id="downloadGcodeBtn" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">💾 Download .nc</button>
+        </div>
+      </div>
+      <div class="gcode-editor-container">
+        <pre id="gcodeOutput">// Configure rectangular pocket parameters and click "Generate Rectangular G-Code"</pre>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/visualizer.js') }}"></script>
+<script src="{{ url_for('static', filename='js/rectangular_pocket.js') }}"></script>
+{% endblock %}

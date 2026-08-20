@@ -181,8 +181,62 @@ const API = {
       throw new Error(data.message || data.error || "Generation failed");
     }
     return data;
+  },
+
+  async generateRectangularPocket(payload) {
+    const res = await fetch("/api/generate/pocket/rectangular", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.message || data.error || "Generation failed");
+    }
+    return data;
+  },
+
+  async generateRectangularBoss(payload) {
+    const res = await fetch("/api/generate/boss/rectangular", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.message || data.error || "Generation failed");
+    }
+    return data;
+  },
+
+  async generateLinearSlot(payload) {
+    const res = await fetch("/api/generate/slotting/linear", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.message || data.error || "Generation failed");
+    }
+    return data;
+  },
+
+  async generateRectangularChamfer(payload) {
+    const res = await fetch("/api/generate/chamfering/rectangular", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.message || data.error || "Generation failed");
+    }
+    return data;
   }
 };
+
+
 
 
 
