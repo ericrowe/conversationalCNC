@@ -55,6 +55,10 @@ def test_dialect_registry():
     grblhal = get_postprocessor("grblhal")
     assert isinstance(grblhal, GrblPostProcessor)
 
+    smoothie = get_postprocessor("smoothieware")
+    assert isinstance(smoothie, GrblPostProcessor)
+
     standard = get_postprocessor("standard")
     assert isinstance(standard, StandardPostProcessor)
     assert standard.supports_canned_cycles is True
+

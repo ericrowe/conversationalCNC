@@ -174,9 +174,12 @@ DIALECT_REGISTRY: Dict[str, Type[BasePostProcessor]] = {
     "grbl": GrblPostProcessor,
     "grblhal": GrblPostProcessor,
     "fluidnc": GrblPostProcessor,
+    "smoothie": GrblPostProcessor,
+    "smoothieware": GrblPostProcessor,
     "standard": StandardPostProcessor,
     "linuxcnc": StandardPostProcessor,
 }
+
 
 def get_postprocessor(dialect_name: str = "grbl") -> BasePostProcessor:
     """
