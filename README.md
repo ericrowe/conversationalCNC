@@ -251,7 +251,15 @@ Comprehensive documentation for all generation, machine profile, tool library, a
 
 ---
 
-## 🧪 Running Tests
+## 🧪 Physical Machine Integration & Commissioning Test Plan
+
+A step-by-step progressive-risk commissioning guide and test reversion protocol for bringing up physical CNC machines is available in:
+👉 [docs/MACHINE_INTEGRATION_TEST_PLAN.md](docs/MACHINE_INTEGRATION_TEST_PLAN.md)
+
+---
+
+## 🧪 Running Automated Tests
+
 
 ```bash
 # Run all unit and integration tests
