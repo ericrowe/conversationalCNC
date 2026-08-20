@@ -12,11 +12,13 @@
 
 <div class="two-col-grid">
   <!-- Left Column: SVG Import & Depth Configuration Form -->
-  <div class="controls-col">
+  <div class="controls-col" id="svgForm">
     
     <!-- 1. File Upload & Source Card -->
-    <div class="card" style="margin-bottom: 1rem;">
-      <h3 style="margin-bottom: 0.75rem; font-size: 1.05rem;">1. Select SVG Vector File</h3>
+    <div class="card">
+      <div class="card-title">
+        <span>1. Select SVG Vector File</span>
+      </div>
       
       <div class="form-group">
         <label for="svgFileInput">Choose .svg File</label>
@@ -35,8 +37,10 @@
     </div>
 
     <!-- 2. Grayscale Shading & Depth Mapping Card -->
-    <div class="card" style="margin-bottom: 1rem;">
-      <h3 style="margin-bottom: 0.75rem; font-size: 1.05rem;">2. Grayscale Shading to Depth Mapping</h3>
+    <div class="card">
+      <div class="card-title">
+        <span>2. Grayscale Shading to Depth Mapping</span>
+      </div>
 
       <div class="form-row">
         <div class="form-group">
@@ -75,8 +79,10 @@
     </div>
 
     <!-- 3. Parsed Vector Elements Card -->
-    <div class="card" id="geometrySummaryCard" style="margin-bottom: 1rem;">
-      <h3 style="margin-bottom: 0.75rem; font-size: 1.05rem;">3. Detected Vector Elements & Depth Table</h3>
+    <div class="card" id="geometrySummaryCard">
+      <div class="card-title">
+        <span>3. Detected Vector Elements & Depth Table</span>
+      </div>
       <div style="font-size: 0.85rem; line-height: 1.5; color: var(--text-secondary);">
         <div><strong>Canvas Dimensions:</strong> <span id="spanBbox" style="color: var(--text-primary);">None</span></div>
         <div><strong>Vector Elements:</strong> <span id="spanEntities" style="color: var(--text-primary);">0</span> (<span id="spanChainCount">0</span> Paths / <span id="spanCircleCount">0</span> Holes)</div>
@@ -102,8 +108,10 @@
     </div>
 
     <!-- 4. Machining Strategy Card -->
-    <div class="card" style="margin-bottom: 1rem;">
-      <h3 style="margin-bottom: 0.75rem; font-size: 1.05rem;">4. Machining Strategy & Depth Steps</h3>
+    <div class="card">
+      <div class="card-title">
+        <span>4. Machining Strategy & Depth Steps</span>
+      </div>
 
       <div class="form-row">
         <div class="form-group">
@@ -152,8 +160,10 @@
     </div>
 
     <!-- 5. Unified Tool & Speeds Card -->
-    <div class="card" style="margin-bottom: 1rem;">
-      <h3 style="margin-bottom: 0.75rem; font-size: 1.05rem;">5. Tool & Speeds</h3>
+    <div class="card">
+      <div class="card-title">
+        <span>5. Tool & Speeds</span>
+      </div>
       
       <div class="form-group">
         <label for="toolSelect">Endmill Cutting Tool</label>
@@ -206,16 +216,20 @@
         <input type="number" id="plungeFeed" step="10" value="250">
       </div>
 
-      <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
-        <button type="button" class="btn btn-primary" id="generateSvgBtn" style="flex: 2;">⚡ Generate SVG G-Code & Preview</button>
-        <button type="button" class="btn btn-secondary" id="queueOpBtn" style="flex: 1;">➕ Queue Op</button>
+      <div style="display: grid; grid-template-columns: 1fr auto; gap: 0.5rem; margin-top: 0.75rem;">
+        <button type="button" class="btn btn-primary" id="generateSvgBtn">
+          ⚡ Generate SVG G-Code & Preview
+        </button>
+        <button type="button" class="btn btn-secondary" id="queueOpBtn" title="Add this SVG operation to the Multi-Op Job Builder Queue">
+          ➕ Queue Op
+        </button>
       </div>
     </div>
 
   </div>
 
   <!-- Right Column: 3D Backplotter, Telemetry & Interactive Inspector -->
-  <div class="preview-column">
+  <div class="visualizer-col">
     <!-- 3D Toolpath Visualizer & Simulation Panel -->
     {% include 'components/visualizer_panel.html' %}
 

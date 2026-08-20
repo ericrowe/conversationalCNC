@@ -3,9 +3,19 @@
 {% block title %}Step-and-Repeat Array Nesting & Soft Jaw Fixturing - Conversational CNC{% endblock %}
 
 {% block content %}
-<div class="operation-layout">
+<div class="page-title-row">
+  <div>
+    <h1 class="page-title">📦 Step-and-Repeat Array Nesting & Soft Jaw Fixturing</h1>
+    <div class="page-desc">Step-and-repeat 2D/3D part arrays across stock grids, and create custom milled vise soft jaws with rectangular or round cavity clamping.</div>
+  </div>
+</div>
+
+<!-- Soft limit warning banner -->
+<div id="warningBanner" class="alert alert-warning" style="display: none;"></div>
+
+<div class="two-col-grid">
   <!-- Left Column: Setup & Parameters Form -->
-  <div class="form-col">
+  <div class="controls-col" id="nestingForm">
     <!-- Mode Selection Card -->
     <div class="card">
       <div class="card-title">
@@ -199,7 +209,7 @@ G0 Z5.000</textarea>
         <input type="number" id="plungeFeed" step="10" value="250">
       </div>
 
-      <div style="display: grid; grid-template-columns: 1fr auto; gap: 0.5rem; margin-top: 0.5rem;">
+      <div style="display: grid; grid-template-columns: 1fr auto; gap: 0.5rem; margin-top: 0.75rem;">
         <button type="button" class="btn btn-primary" id="generateSoftJawBtn">
           ⚡ Generate Soft Jaw G-Code & Preview
         </button>
@@ -236,8 +246,6 @@ G0 Z5.000</textarea>
         </div>
       </div>
 
-      <div id="warningBanner" style="display: none; margin-top: 0.75rem; background: #7f1d1d; border: 1px solid #ef4444; border-radius: 4px; padding: 0.5rem; color: #fecaca; font-size: 0.85rem;"></div>
-
       <!-- Generated G-Code Viewer -->
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; margin-top: 1rem;">
         <label style="margin: 0; font-weight: 600;">Interactive G-Code Program</label>
@@ -250,6 +258,7 @@ G0 Z5.000</textarea>
     </div>
   </div>
 </div>
+
 
 {% endblock %}
 

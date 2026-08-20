@@ -208,19 +208,16 @@
           </select>
         </div>
       </div>
+
+      <div style="display: grid; grid-template-columns: 1fr auto; gap: 0.5rem; margin-top: 0.75rem;">
+        <button type="button" class="btn btn-primary" id="generateGCodeBtn">
+          ⚡ Generate Rectangular G-Code & Preview
+        </button>
+        <button type="button" class="btn btn-secondary" id="addToJobQueueBtn" title="Add this rectangular pocket/boss to the Multi-Op Job Builder Queue">
+          ➕ Queue Op
+        </button>
+      </div>
     </div>
-
-    <!-- Action Buttons -->
-    <div style="display: grid; grid-template-columns: 1fr auto; gap: 0.5rem; margin-top: 1.5rem; margin-bottom: 2rem;">
-      <button type="button" class="btn btn-primary" id="generateGCodeBtn" style="padding: 0.85rem; font-size: 1.05rem;">
-        ⚡ Generate Rectangular G-Code
-      </button>
-      <button type="button" class="btn btn-secondary" id="addToJobQueueBtn" title="Add this rectangular pocket/boss to the Multi-Op Job Builder Queue" style="padding: 0.85rem 1.25rem; font-size: 1rem;">
-        ➕ Queue Op
-      </button>
-    </div>
-
-
   </div>
 
   <!-- Right Column: Visualizer & G-Code Output -->
@@ -232,22 +229,23 @@
       <!-- Statistics Panel -->
       <div class="stats-grid">
         <div class="stat-box">
-          <span class="stat-label">Cavity Size</span>
-          <span class="stat-value" id="statPocketSize">60 x 40 mm</span>
+          <div class="stat-value" id="statPocketSize">60 x 40 mm</div>
+          <div class="stat-label">Cavity Size</div>
         </div>
         <div class="stat-box">
-          <span class="stat-label">Passes</span>
-          <span class="stat-value" id="statPasses">4 passes</span>
+          <div class="stat-value" id="statPasses">4 passes</div>
+          <div class="stat-label">Passes</div>
         </div>
         <div class="stat-box">
-          <span class="stat-label">Est. Time</span>
-          <span class="stat-value" id="statTime">--</span>
+          <div class="stat-value" id="statTime">--</div>
+          <div class="stat-label">Est. Time</div>
         </div>
         <div class="stat-box">
-          <span class="stat-label">Dialect</span>
-          <span class="stat-value" id="statDialect">GRBL</span>
+          <div class="stat-value" id="statDialect">GRBL</div>
+          <div class="stat-label">Controller</div>
         </div>
       </div>
+
 
       <!-- G-Code Output Card -->
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; margin-top: 1rem;">

@@ -1,21 +1,28 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="page-header" style="margin-bottom: 1.5rem;">
-  <h2>📐 DXF 2D Vector CAD Importer & Direct-to-GCode Wizard</h2>
-  <p class="text-muted">Import standard 2D AutoCAD .dxf vector drawings, extract closed contour loops and hole centers, and generate production-ready CNC toolpaths.</p>
+<div class="page-title-row">
+  <div>
+    <h1 class="page-title">📐 DXF 2D Vector CAD Importer</h1>
+    <div class="page-desc">Import standard 2D AutoCAD .dxf vector drawings, extract closed contour loops and hole centers, and generate production-ready CNC toolpaths.</div>
+  </div>
 </div>
 
-<div class="operation-layout">
+<!-- Soft limit warning banner -->
+<div id="warningBanner" class="alert alert-warning" style="display: none;"></div>
+
+<div class="two-col-grid">
   <!-- Left Column: Input Form & Parameters -->
-  <div class="form-column">
+  <div class="controls-col" id="dxfForm">
     
     <!-- 1. DXF File Upload & Sample Source -->
-    <div class="card" style="margin-bottom: 1rem;">
-      <h3 style="margin-bottom: 0.75rem; font-size: 1.05rem;">1. Select or Upload DXF Drawing</h3>
+    <div class="card">
+      <div class="card-title">
+        <span>1. Select or Upload DXF Drawing</span>
+      </div>
       
-      <div class="form-group" style="margin-bottom: 0.75rem;">
-        <label>Upload 2D DXF File (.dxf)</label>
+      <div class="form-group">
+        <label for="dxfFileInput">Upload 2D DXF File (.dxf)</label>
         <input type="file" id="dxfFileInput" accept=".dxf" style="padding: 0.4rem; background: var(--bg-card);">
       </div>
 
@@ -25,7 +32,7 @@
       </div>
 
       <div id="dxfTextContainer" style="display: none; margin-bottom: 0.75rem;">
-        <label>Raw ASCII DXF Content</label>
+        <label for="dxfTextInput">Raw ASCII DXF Content</label>
         <textarea id="dxfTextInput" rows="6" placeholder="Paste DXF ASCII content here..." style="font-family: monospace; font-size: 0.8rem;"></textarea>
       </div>
 
@@ -33,8 +40,10 @@
     </div>
 
     <!-- 2. Detected Geometry & Layers -->
-    <div class="card" id="geometryCard" style="margin-bottom: 1rem;">
-      <h3 style="margin-bottom: 0.75rem; font-size: 1.05rem;">2. Parsed CAD Geometry</h3>
+    <div class="card" id="geometryCard">
+      <div class="card-title">
+        <span>2. Parsed CAD Geometry</span>
+      </div>
       
       <div style="background: var(--bg-card); padding: 0.6rem; border-radius: 6px; font-size: 0.85rem; margin-bottom: 0.75rem; line-height: 1.5;">
         <div><strong>Bounding Box:</strong> <span id="spanBbox">0.00 x 0.00 mm</span></div>
@@ -43,7 +52,7 @@
       </div>
 
       <div class="form-group">
-        <label>Target Machining Operation</label>
+        <label for="opTypeSelect">Target Machining Operation</label>
         <select id="opTypeSelect">
           <option value="contour" selected>📐 Perimeter & Profile Contouring</option>
           <option value="drill">⚡ Drill Extracted Circle Holes</option>
@@ -54,7 +63,7 @@
       <div id="contourOptionsGroup">
         <div class="form-row">
           <div class="form-group">
-            <label>Cutter Comp Side</label>
+            <label for="sideSelect">Cutter Comp Side</label>
             <select id="sideSelect">
               <option value="left" selected>Left (Outside / Climb)</option>
               <option value="right">Right (Inside / Conventional)</option>
@@ -62,7 +71,7 @@
             </select>
           </div>
           <div class="form-group">
-            <label>Finish Allowance (mm)</label>
+            <label for="finishAllowanceInput">Finish Allowance (mm)</label>
             <input type="number" id="finishAllowanceInput" value="0.20" step="0.05" min="0">
           </div>
         </div>
@@ -75,27 +84,31 @@
     </div>
 
     <!-- 3. Depths & Retracts -->
-    <div class="card" style="margin-bottom: 1rem;">
-      <h3 style="margin-bottom: 0.75rem; font-size: 1.05rem;">3. Cutting Depths</h3>
+    <div class="card">
+      <div class="card-title">
+        <span>3. Cutting Depths</span>
+      </div>
       <div class="form-row">
         <div class="form-group">
-          <label>Target Depth Z (mm)</label>
+          <label for="targetDepthInput">Target Depth Z (mm)</label>
           <input type="number" id="targetDepthInput" value="-6.0" step="0.5">
         </div>
         <div class="form-group">
-          <label>Stepdown Z (mm/pass)</label>
+          <label for="stepdownInput">Stepdown Z (mm/pass)</label>
           <input type="number" id="stepdownInput" value="1.5" step="0.5" min="0.1">
         </div>
         <div class="form-group">
-          <label>Safe Retract Z (mm)</label>
+          <label for="retractZInput">Safe Retract Z (mm)</label>
           <input type="number" id="retractZInput" value="5.0" step="0.5">
         </div>
       </div>
     </div>
 
     <!-- 4. Unified Tool & Feeds/Speeds Card -->
-    <div class="card" style="margin-bottom: 1rem;">
-      <h3 style="margin-bottom: 0.75rem; font-size: 1.05rem;">4. Tool & Speeds</h3>
+    <div class="card">
+      <div class="card-title">
+        <span>4. Tool & Speeds</span>
+      </div>
       
       <div class="form-group">
         <label for="toolSelect">Endmill Cutting Tool</label>
@@ -148,17 +161,19 @@
         <input type="number" id="plungeFeed" step="10" value="250">
       </div>
 
-      <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
-        <button type="button" class="btn btn-primary" id="generateDxfBtn" style="flex: 2;">⚡ Generate DXF G-Code & Preview</button>
-        <button type="button" class="btn btn-secondary" id="queueOpBtn" style="flex: 1;">➕ Queue Op</button>
+      <div style="display: grid; grid-template-columns: 1fr auto; gap: 0.5rem; margin-top: 0.75rem;">
+        <button type="button" class="btn btn-primary" id="generateDxfBtn">
+          ⚡ Generate DXF G-Code & Preview
+        </button>
+        <button type="button" class="btn btn-secondary" id="queueOpBtn" title="Add this DXF operation to the Multi-Op Job Builder Queue">
+          ➕ Queue Op
+        </button>
       </div>
     </div>
-
-
   </div>
 
   <!-- Right Column: 3D Backplotter, Telemetry & Interactive Inspector -->
-  <div class="preview-column">
+  <div class="visualizer-col">
     <!-- 3D Toolpath Visualizer & Simulation Panel -->
     {% include 'components/visualizer_panel.html' %}
 
@@ -183,8 +198,6 @@
         </div>
       </div>
 
-      <div id="warningBanner" style="display: none; margin-top: 0.75rem; background: #7f1d1d; border: 1px solid #ef4444; border-radius: 4px; padding: 0.5rem; color: #fecaca; font-size: 0.85rem;"></div>
-
       <!-- Generated G-Code Viewer -->
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; margin-top: 1rem;">
         <label style="margin: 0; font-weight: 600;">Interactive G-Code Program</label>
@@ -197,6 +210,7 @@
     </div>
   </div>
 </div>
+
 {% endblock %}
 
 {% block scripts %}

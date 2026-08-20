@@ -268,7 +268,7 @@
         </div>
       </div>
 
-      <div style="display: grid; grid-template-columns: 1fr auto; gap: 0.5rem; margin-top: 0.5rem;">
+      <div style="display: grid; grid-template-columns: 1fr auto; gap: 0.5rem; margin-top: 0.75rem;">
         <button type="button" class="btn btn-primary" id="generateGCodeBtn">
           ⚡ Generate Helical G-Code & Preview
         </button>
@@ -279,9 +279,11 @@
     </div>
   </div>
 
-
+  <!-- Right Column: Visualizer & G-Code Viewer -->
+  <div class="visualizer-col">
     <!-- 3D Toolpath Visualizer & Simulation Panel -->
     {% include 'components/visualizer_panel.html' %}
+
 
     <div class="card" style="margin-top: 1rem;">
       <!-- Quick Metrics Grid -->
