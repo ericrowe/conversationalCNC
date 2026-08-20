@@ -3,7 +3,7 @@
 Stateless, deterministic Python/Flask G-code generator and SQLite configuration manager designed for conversational CNC machining on Raspberry Pi (targeting Grbl / X-Carve and expandable to other machines).
 
 ## Architecture Highlights
-- **Pure Operation Generators**: Zero database or web framework dependencies in the mathematical G-code generation functions (`app/generators/`).
+- **Pure Operation Generators**: Zero database or web framework dependencies in the mathematical G-code generation functions (`app/generators/`) covering Straight Plunge Drilling, Peck Drilling, Helical Thread Milling, Circular Pocketing, Surfacing/Facing, and Single-Line Vector Text Engraving.
 - **Modular Post-Processor / Dialect Strategy**: Abstract base class (`app/postprocessors/base.py`) with concrete implementations (`GrblPostProcessor`, `StandardPostProcessor`) to support Grbl (no canned cycles) as well as standard CNC controllers.
 - **Router & Spindle Support**: Handles manual trim routers (DeWalt DWP611 with 16,000–27,000 RPM speed dial mapping) and continuous VFD/PWM spindles.
 - **Machine Modularity**: Store and dynamically switch active machine profiles (`MachineProfile`) with distinct work envelopes, max feed rates, probe thickness, and controller dialects.
@@ -11,7 +11,7 @@ Stateless, deterministic Python/Flask G-code generator and SQLite configuration 
 
 ## Documentation
 Complete REST API documentation with endpoint schemas, request/response examples, and error formats is available in:
-👉 [docs/API_DOCUMENTATION.md](file:///Volumes/T9/Sync/Working/Shop/Conversational%20CNC%20Controller/docs/API_DOCUMENTATION.md)
+👉 [docs/API_DOCUMENTATION.md](../docs/API_DOCUMENTATION.md)
 
 ## Getting Started
 
@@ -29,8 +29,9 @@ PYTHONPATH=backend python backend/seed.py
 
 ### 3. Run Automated Tests
 ```bash
-PYTHONPATH=backend pytest backend/tests
+PYTHONPATH=backend pytest backend/tests -v
 ```
+
 
 ### 4. Start Development Server
 ```bash

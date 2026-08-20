@@ -17,8 +17,11 @@
    - [POST /api/generate/pocket/circular](#post-apigeneratepocketcircular)
    - [POST /api/generate/surfacing](#post-apigeneratesurfacing)
    - [GET /api/generate/engraving/fonts](#get-apigenerateengravingfonts)
+   - [GET /api/generate/engraving/glyphs](#get-apigenerateengravingglyphs)
    - [POST /api/generate/engraving/text](#post-apigenerateengravingtext)
 4. [Machine Profiles](#4-machine-profiles)
+
+
 
 
    - [GET /api/machines](#get-apimachines)
