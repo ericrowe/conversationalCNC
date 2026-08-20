@@ -154,9 +154,14 @@ class GCodeInspector {
     }
 
 
+    if (block.cleanCode.startsWith("$J=")) {
+      return `Jog Motion: Manual jog move (${block.cleanCode})`;
+    }
+
     if (block.cleanCode.includes("G38.2") || block.cleanCode.includes("G38.")) {
       return `Z-Probe Touch: Probing downward toward touch plate to establish physical Z-Zero`;
     }
+
 
     if (block.cleanCode.includes("G10 L20")) {
       return `WCS Coordinate Calibration: Setting Work Coordinate System offset to touch plate thickness`;

@@ -205,7 +205,17 @@ Implemented in `app/generators/probing.py`:
 
 ---
 
-## 10. Development Status & Roadmap
+## 10. Manual Jog Controller & Live DRO Architecture
+
+Implemented in `app/generators/jog.py` and `app/static/js/jog.js`:
+1. **Dialect-Compliant Jog Commands**: Emits Grbl/Smoothie `$J=G91 ...` commands and Standard `G91 G1 ... G90` moves.
+2. **Work Coordinate Origin Calibration**: Emits `G10 L20 P1` commands to set individual axis zero or all axes simultaneously.
+3. **Safe Return to Origin**: Executes a 2-stage sequence (`G0 Z<retract>` $\to$ `G0 X0 Y0`) to prevent dragging cutters across clamps.
+4. **Interactive Pendant UI**: 8-way directional pad, step selector (`0.01mm` to `100mm`), keyboard shortcuts (`Arrow keys`, `PgUp/PgDn`, `Shift`), and live simulated/reported DRO.
+
+---
+
+## 11. Development Status & Roadmap
 
 - **Phase 1 (Completed)**: Core architecture, SQLite schema, Straight Plunge drilling, Grbl post-processor, DeWalt DWP611 dial mapping.
 - **Phase 2 (Completed)**: Helical Thread Milling, Peck Drilling (G73/G83), Circular Pocketing, Surfacing/Facing, Single-Line Vector Text Engraving with 5 fonts and spline smoothing, 2D vector toolpath visualizer.
@@ -215,6 +225,12 @@ Implemented in `app/generators/probing.py`:
 - **Phase 6 (Completed)**: G-Code Transformations (Shift, Rotate, Mirror, Overrides) & Multi-Tool Program File Splitter.
 - **Phase 7 (Completed)**: Physics-Based Feeds & Speeds, Radial Chip Thinning, MRR, and Spindle Power Engine.
 - **Phase 8 (Completed)**: Machine Probing Assistant (Z-Touch Plate, Corner XYZ Block, Homing) and explicit `G54` safety headers.
+- **Phase 9 (Completed)**: Manual Jog Controller & Live DRO Pendant with keyboard hotkeys and quick-zero actions.
+- **Phase 10 (Planned)**: Multi-Operation Job Program Sequencer / Builder.
+- **Phase 11 (Planned)**: 2.5D Arbitrary Profile / Contour Milling.
+- **Phase 12 (Planned)**: Step-and-Repeat Array Nesting & Soft Jaw Fixturing Wizard.
+- **Phase 13 (Planned)**: DXF / 2D Vector CAD Importer.
+
 
 
 

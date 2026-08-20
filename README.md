@@ -2,7 +2,7 @@
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![Flask 3.0+](https://img.shields.io/badge/flask-3.0+-green.svg)](https://flask.palletsprojects.com/)
-[![Tests](https://img.shields.io/badge/tests-104%20passed-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-115%20passed-brightgreen.svg)]()
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 A web-based, locally executing **Conversational CNC Controller** designed for rapid, on-the-fly machining without launching heavyweight CAD/CAM software. Built with a zero-build-step architecture optimized for offline Raspberry Pi 4/5 setups and desktop workstations driving Grbl-based CNCs (such as the Inventables X-Carve, Shapeoko, PrintNC) and standard CNC controllers.
@@ -28,7 +28,7 @@ A web-based, locally executing **Conversational CNC Controller** designed for ra
 - **Bi-Directional Selection Sync**: Clicking any line in the interactive G-code editor jumps the 3D cutter tool directly to that position and highlights the active motion vector in glowing yellow.
 
 ### 3. G-Code "Hints" & Live Modal State Inspector
-- **Plain English Explainer**: Decodes complex G-code blocks (arcs, canned cycles, spindle start, dwell, probe touches) into clear conversational explanations with calculated travel distances, radius, and descent angles.
+- **Plain English Explainer**: Decodes complex G-code blocks (arcs, canned cycles, spindle start, dwell, probe touches, jog commands) into clear conversational explanations with calculated travel distances, radius, and descent angles.
 - **Live Modal State Dashboard**: Real-time modal registers (`WCS`, `Plane`, `Units`, `Distance Mode`, `Motion`, `Tool`, `Spindle`, `Feed`).
 
 ### 4. G-Code Transformations & Multi-Tool Program Splitter
@@ -47,6 +47,13 @@ A web-based, locally executing **Conversational CNC Controller** designed for ra
 - **Z-Touch Plate Probing Generator**: 2-stage (fast search + slow fine touch) probing macros (`G38.2` $\to$ `G10 L20 P1 Z...`) referencing the active machine's saved plate thickness.
 - **Corner XYZ Touch Block Generator**: 3-axis corner probe calculating tool radius and block lip offsets to calibrate $(X0, Y0, Z0)$ simultaneously in `G54`.
 - **Machine Homing (`$H`) & Safety Header `G54`**: Ensures work coordinates are locked to the workpiece datum on every program.
+
+### 7. Manual Jog Controller & Live DRO Panel
+- **Interactive Directional Jog Pad**: 8-way $XY$ directional jog buttons, $+Z/-Z$ column, discrete micro-step selectors (`0.01mm` to `100mm`), and feed rate slider.
+- **Global Keyboard Hotkeys**: Arrow keys for $XY$, PageUp/PageDown for $Z$, `Shift` for rapid speed, and `J` key to summon pendant anywhere.
+- **Quick-Zero & Origin Return**: 1-click zeroing for $X0, Y0, Z0$ or $XYZ$ all (`G10 L20 P1`), plus safe return to part origin (`G0 Z<retract>` $\to$ `G0 X0 Y0`).
+- **Live Digital Readout (DRO)**: Real-time high-visibility coordinates display and manual spindle on/off toggle.
+
 
 
 
@@ -104,7 +111,7 @@ conversationalCNC/
 │   │   ├── static/          # CSS stylesheets and client JavaScript modules
 │   │   ├── templates/       # Jinja2 HTML templates
 │   │   └── web/             # Web frontend routing blueprint
-│   └── tests/               # 104 automated pytest unit and integration tests
+│   └── tests/               # 115 automated pytest unit and integration tests
 └── docs/
     └── API_DOCUMENTATION.md # Comprehensive REST API reference
 ```
@@ -151,10 +158,11 @@ PYTHONPATH=backend python backend/seed.py
 ```
 
 ### Step 5: Run Automated Tests
-Verify that all 104 tests pass on your machine:
+Verify that all 115 tests pass on your machine:
 ```bash
 PYTHONPATH=backend pytest backend/tests -v
 ```
+
 
 
 

@@ -11,6 +11,7 @@ from .api import (
     transform_bp,
     calculator_bp,
     probing_bp,
+    jog_bp,
 )
 from .web import web_bp
 
@@ -39,7 +40,9 @@ def create_app(config_class=DevelopmentConfig):
     app.register_blueprint(transform_bp)
     app.register_blueprint(calculator_bp)
     app.register_blueprint(probing_bp)
+    app.register_blueprint(jog_bp)
     app.register_blueprint(web_bp)
+
 
 
 

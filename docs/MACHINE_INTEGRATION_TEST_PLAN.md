@@ -62,8 +62,16 @@ A systematic, progressive-risk commissioning framework for bringing up a new or 
   - Command `G91 G0 X100 F1000`.
   - Measure actual travel: Must equal $100.00\text{mm} \pm 0.1\text{mm}$.
   - Repeat for Y-axis and Z-axis ($50.00\text{mm}$ on Z).
+- [ ] **1.5 Manual Jog Controller & Live DRO Verification**:
+  - Open **"🕹️ Jog & DRO"** pendant (or press `J`).
+  - Set step distance to `10.0mm`. Click `+X`, `-X`, `+Y`, `-Y`, `+Z`, `-Z`.
+  - Verify live DRO coordinates update cleanly in real-time.
+  - Test keyboard navigation: Press `ArrowUp`, `ArrowDown`, `PageUp`, `PageDown`, and `Shift` for rapid speed.
+  - Test quick zero buttons (`Zero X`, `Zero Y`, `Zero Z`, `Zero XYZ`) and verify `G10 L20 P1` executes.
+  - Test `Go To Origin`: Verify machine safely lifts Z before moving XY to part origin.
 
 ---
+
 
 ## 🎯 Phase 2: Probing, Tool Setting & Work Coordinate Systems (`G54`)
 

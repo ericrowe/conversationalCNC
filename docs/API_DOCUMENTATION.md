@@ -36,7 +36,12 @@
    - [POST /api/probing/z-touch-plate](#post-apiprobingz-touch-plate)
    - [POST /api/probing/corner-xyz](#post-apiprobingcorner-xyz)
    - [GET /api/probing/homing](#get-apiprobinghoming)
-7. [Machine Profiles](#7-machine-profiles)
+7. [Manual Jog Controller & Machine Control](#7-manual-jog-controller--machine-control)
+   - [POST /api/jog/step](#post-apijogstep)
+   - [POST /api/jog/zero](#post-apijogzero)
+   - [POST /api/jog/goto-origin](#post-apijoggoto-origin)
+   - [POST /api/jog/spindle](#post-apijogspindle)
+8. [Machine Profiles](#8-machine-profiles)
    - [GET /api/machines](#get-apimachines)
    - [GET /api/machines/active](#get-apimachinesactive)
    - [POST /api/machines/:id/activate](#post-apimachinesidactivate)
@@ -44,19 +49,20 @@
    - [GET /api/machines/:id](#get-apimachinesid)
    - [PUT /api/machines/:id](#put-apimachinesid)
    - [DELETE /api/machines/:id](#delete-apimachinesid)
-8. [Tool Library](#8-tool-library)
+9. [Tool Library](#9-tool-library)
    - [GET /api/tools](#get-apitools)
    - [GET /api/tools/:id](#get-apitoolsid)
    - [POST /api/tools](#post-apitools)
    - [PUT /api/tools/:id](#put-apitoolsid)
    - [DELETE /api/tools/:id](#delete-apitoolsid)
-9. [Material Presets](#9-material-presets)
+10. [Material Presets](#10-material-presets)
    - [GET /api/materials](#get-apimaterials)
    - [GET /api/materials/:id](#get-apimaterialsid)
    - [POST /api/materials/tool/:tool_id](#post-apimaterialstooltool_id)
    - [PUT /api/materials/:id](#put-apimaterialsid)
    - [DELETE /api/materials/:id](#delete-apimaterialsid)
-10. [Error Handling Format](#10-error-handling-format)
+11. [Error Handling Format](#11-error-handling-format)
+
 
 
 ---
@@ -475,9 +481,68 @@ Generates the standard machine homing sequence (`$H`) and coordinate verificatio
 
 ---
 
-## 7. Machine Profiles
+## 7. Manual Jog Controller & Machine Control
+
+### `POST /api/jog/step`
+Generates an incremental jog move command ($J=G91 for Grbl/Smoothie, G91 G1 for Standard).
+
+#### Request Payload
+```json
+{
+  "axis": "X",
+  "distance": 10.0,
+  "feed_rate": 1200.0,
+  "units": "mm",
+  "dialect": "grbl"
+}
+```
+
+---
+
+### `POST /api/jog/zero`
+Generates coordinate zeroing command (`G10 L20 P1`) for specified axes.
+
+#### Request Payload
+```json
+{
+  "axes": ["X", "Y", "Z"],
+  "wcs_slot": 1
+}
+```
+
+---
+
+### `POST /api/jog/goto-origin`
+Generates a safe 2-stage rapid return to Work Coordinate Origin (lifts Z to safe clearance then rapids XY to X0 Y0).
+
+#### Request Payload
+```json
+{
+  "safe_z_retract": 5.0,
+  "units": "mm"
+}
+```
+
+---
+
+### `POST /api/jog/spindle`
+Generates manual spindle toggle commands (`M3 S<rpm>` / `M5`).
+
+#### Request Payload
+```json
+{
+  "rpm": 16000,
+  "state": true,
+  "clockwise": true
+}
+```
+
+---
+
+## 8. Machine Profiles
 
 - `GET /api/machines`: List all machine profiles.
+
 - `GET /api/machines/active`: Get active machine profile.
 
 - `POST /api/machines/:id/activate`: Set active machine profile.

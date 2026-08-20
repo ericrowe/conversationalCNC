@@ -317,8 +317,53 @@ const API = {
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || data.error || "Homing macro failed");
     return data;
+  },
+
+  async jogStep(payload) {
+    const res = await fetch("/api/jog/step", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || data.error || "Jog failed");
+    return data;
+  },
+
+  async jogZero(payload) {
+    const res = await fetch("/api/jog/zero", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload || {}),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || data.error || "Zero failed");
+    return data;
+  },
+
+  async jogGotoOrigin(payload) {
+    const res = await fetch("/api/jog/goto-origin", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload || {}),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || data.error || "Go to origin failed");
+    return data;
+  },
+
+  async jogSpindle(payload) {
+    const res = await fetch("/api/jog/spindle", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || data.error || "Spindle command failed");
+    return data;
   }
 };
+
 
 
 
