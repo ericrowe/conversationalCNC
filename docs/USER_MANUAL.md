@@ -3,8 +3,26 @@
 
 ---
 
+> [!CAUTION]
+> ### ⚠️ EXPERIMENTAL & UNTESTED SOFTWARE DISCLAIMER
+> **Conversational CNC is an active open-source project and is AS OF YET UNTESTED ON PHYSICAL CNC MACHINERY.**
+>
+> CNC milling machines and routers are powerful, high-energy tools capable of severe physical injury, tool breakage, workpiece damage, electrical fire, or machine destruction if commanded incorrectly. While this software contains an extensive automated mathematical and API test suite (154 passing unit tests), **no guarantee is made that generated G-code is bug-free, safe for your particular machine setup, or free of unexpected motion commands.**
+>
+> **MANDATORY SAFE STARTUP & INITIAL COMMISSIONING PROTOCOL:**
+> If you choose to use this software on a physical CNC machine, you MUST follow the progressive-risk startup procedures detailed in [MACHINE_INTEGRATION_TEST_PLAN.md](MACHINE_INTEGRATION_TEST_PLAN.md):
+> 1. **Phase 0–3 Air Cuts (Spindle UNPLUGGED)**: Always physically disconnect AC power from your router or spindle. Set your work datum ($Z0$) high above the spoilboard in mid-air and execute full dry runs while observing travel directions, clearance planes, and rapid paths.
+> 2. **Verify Axis Motion Polarities**: Confirm right-hand rule directions ($+X$ Right, $+Y$ Away from operator, $+Z$ Up away from bed).
+> 3. **Verify Limit Switches & Soft Limits**: Ensure emergency stops, physical limit switches, and software travel limits (`$20=1` in Grbl) are active and tested.
+> 4. **Keep Hand on Physical E-Stop**: Never leave the machine unattended during operation. Maintain immediate physical access to your hardware Emergency Stop button.
+> 5. **Phase 5 Soft Material Testing**: First live cuts must always be performed in scrap rigid insulation foam or lightweight scrap MDF before attempting hardwoods, acrylic, or metals.
+> 6. **Pre-Flight Visual Inspection**: Always verify generated toolpaths using the built-in 3D WebGL orbital backplotter and read the plain-English G-code explanation before sending code to machine hardware.
+
+---
+
 ## Table of Contents
-1. [Interface Overview & Layout Architecture](#1-interface-overview--layout-architecture)
+1. [Safety Disclaimer & Initial Startup Testing](#table-of-contents)
+2. [Interface Overview & Layout Architecture](#1-interface-overview--layout-architecture)
 2. [Machine Coordinates, Probing & Zeroing (WCS G54–G59)](#2-machine-coordinates-probing--zeroing-wcs-g54g59)
    - [2.1 The Coordinate Hierarchy (MPOS vs WPOS)](#21-the-coordinate-hierarchy-mpos-vs-wpos)
    - [2.2 Z-Surface Touchplate Probing](#22-z-surface-touchplate-probing)

@@ -4,6 +4,14 @@ A systematic, progressive-risk commissioning framework for bringing up a new or 
 
 ---
 
+> [!CAUTION]
+> ### ⚠️ MANDATORY PHYSICAL COMMISSIONING NOTICE
+> **This software is AS OF YET UNTESTED ON LIVE PHYSICAL MACHINERY.**
+>
+> Never attempt to run G-code programs on a physical CNC machine without completing this progressive commissioning protocol. Always execute **Phase 0 through Phase 3 (Spindle UNPLUGGED Air Cuts)** before powering on spindle hardware or introducing cutting tools to raw material.
+
+---
+
 ## 🎯 Objectives & Philosophy
 
 1. **Progressive Risk Escalation (Envelope Expansion)**:

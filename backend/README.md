@@ -2,6 +2,16 @@
 
 Stateless, deterministic Python/Flask G-code generator and SQLite configuration manager designed for conversational CNC machining on Raspberry Pi (targeting Grbl / X-Carve and expandable to other machines).
 
+---
+
+> [!CAUTION]
+> ### ⚠️ EXPERIMENTAL & UNTESTED SOFTWARE DISCLAIMER
+> **Conversational CNC is an active open-source project and is AS OF YET UNTESTED ON PHYSICAL CNC MACHINERY.**
+>
+> CNC milling machines and routers are capable of severe physical injury, tool breakage, and machine damage if commanded improperly. Always execute the safe startup testing protocol detailed in [docs/MACHINE_INTEGRATION_TEST_PLAN.md](../docs/MACHINE_INTEGRATION_TEST_PLAN.md) (including Spindle UNPLUGGED Air Cuts) before attempting physical cutting on live hardware.
+
+---
+
 ## Architecture Highlights
 - **Pure Operation Generators**: Zero database or web framework dependencies in the mathematical G-code generation functions (`app/generators/`) covering Straight Plunge Drilling, Peck Drilling, Bolt Circle & Grid Pattern calculation, Helical Thread Milling, Circular Pocketing, Rectangular Pocketing & Boss Machining, Linear Slotting, 2D Chamfering, Surfacing/Facing, Single-Line Vector Text Engraving, 2.5D Arbitrary Profile & Contour Milling with cutter compensation, Step-and-Repeat Array Nesting & Soft Jaw Fixturing, DXF 2D Vector CAD Importer, and SVG 2D Vector CAD Importer with Grayscale Depth Mapping.
 - **Machine Probing & Setup Engine**: 2-stage precision Z-touch plate probing macros, 3-axis Corner XYZ touch block macros with tool radius and block lip offset compensation, and machine homing cycles (`$H`).
