@@ -22,7 +22,10 @@ def generate_text_engraving(
     font_size: float = 10.0,  # Cap height in mm
     letter_spacing: float = 1.0,  # Extra spacing between characters (mm)
     font_name: str = "simplex_sans",  # Font style key
+    curve_subdivisions: int = 4,  # Curve interpolation sampling steps (1=coarse, 4=smooth, 8=ultra-fine)
     target_depth_z: float = -0.5,
+
+
 
 
     stepdown_z: float = 0.5,
@@ -107,7 +110,7 @@ def generate_text_engraving(
 
         # Strip line breaks for arc text (single line wrapped around arc)
         arc_text = text.replace("\n", " ").strip()
-        glyphs = [get_glyph(c, font_name=font_name) for c in arc_text]
+        glyphs = [get_glyph(c, font_name=font_name, curve_subdivisions=curve_subdivisions) for c in arc_text]
 
         # Calculate character advance positions along the arc
         char_widths = [g["w"] * scale + letter_spacing for g in glyphs]
@@ -160,9 +163,10 @@ def generate_text_engraving(
 
         lines_text = text.split("\n")
         for line_idx, line_str in enumerate(lines_text):
-            glyphs = [get_glyph(c, font_name=font_name) for c in line_str]
+            glyphs = [get_glyph(c, font_name=font_name, curve_subdivisions=curve_subdivisions) for c in line_str]
             char_widths = [g["w"] * scale + letter_spacing for g in glyphs]
             line_width = sum(char_widths) - (letter_spacing if char_widths else 0.0)
+
 
 
             # Alignment offset along line

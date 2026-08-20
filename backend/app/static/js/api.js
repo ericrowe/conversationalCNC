@@ -164,6 +164,12 @@ const API = {
     return await res.json();
   },
 
+  async getEngravingGlyphs() {
+    const res = await fetch("/api/generate/engraving/glyphs");
+    return await res.json();
+  },
+
+
   async generateTextEngraving(payload) {
     const res = await fetch("/api/generate/engraving/text", {
       method: "POST",

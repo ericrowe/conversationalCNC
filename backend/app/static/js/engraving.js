@@ -13,8 +13,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   const engravingTextInput = document.getElementById("engravingText");
   const fontSelect = document.getElementById("fontSelect");
+  const curveSubdivisionsSelect = document.getElementById("curveSubdivisions");
   const fontSizeInput = document.getElementById("fontSize");
   const letterSpacingInput = document.getElementById("letterSpacing");
+
 
 
   const startXInput = document.getElementById("startX");
@@ -259,12 +261,16 @@ document.addEventListener("DOMContentLoaded", async () => {
         fontSize: parseFloat(fontSizeInput.value) || 10.0,
         letterSpacing: parseFloat(letterSpacingInput.value) || 1.0,
         fontName: fontSelect ? fontSelect.value : "simplex_sans",
+        curveSubdivisions: curveSubdivisionsSelect ? parseInt(curveSubdivisionsSelect.value, 10) || 4 : 4,
       },
     });
   }
 
   document.querySelectorAll("#engravingForm input, #engravingForm select, #engravingForm textarea").forEach((el) => {
-    el.addEventListener("input", () => updatePreview());
+    el.addEventListener("input", () => {
+      visualizer.clearGCode();
+      updatePreview();
+    });
   });
 
   document.getElementById("zoomInBtn")?.addEventListener("click", () => visualizer.zoom(1.2));
@@ -294,7 +300,9 @@ document.addEventListener("DOMContentLoaded", async () => {
       font_size: parseFloat(fontSizeInput.value) || 10.0,
       letter_spacing: parseFloat(letterSpacingInput.value) || 1.0,
       font_name: fontSelect ? fontSelect.value : "simplex_sans",
+      curve_subdivisions: curveSubdivisionsSelect ? parseInt(curveSubdivisionsSelect.value, 10) || 4 : 4,
       target_depth_z: parseFloat(targetDepthInput.value) || -0.5,
+
       stepdown_z: parseFloat(stepdownZInput.value) || 0.5,
       start_z: 0.0,
       retract_z: parseFloat(retractZInput.value) || 2.0,
@@ -327,6 +335,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         warningBanner.style.display = "none";
       }
 
+      visualizer.loadGCode(currentGeneratedGCode);
+
       copyGcodeBtn.disabled = false;
       downloadGcodeBtn.disabled = false;
     } catch (err) {
@@ -336,6 +346,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       generateBtn.textContent = "⚡ Generate Engraving G-Code & Preview";
     }
   });
+
 
   copyGcodeBtn.addEventListener("click", () => {
     if (!currentGeneratedGCode) return;

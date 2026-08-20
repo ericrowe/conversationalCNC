@@ -23,6 +23,7 @@ class TextEngravingPayloadSchema(BaseModel):
     font_size: float = Field(default=10.0, gt=0, description="Cap height in mm")
     letter_spacing: float = Field(default=1.0, ge=0, description="Extra spacing between characters in mm")
     font_name: str = Field(default="simplex_sans", description="Font name e.g. 'simplex_sans', 'duplex_sans', 'roman_serif', 'cursive_script', 'block_stencil'")
+    curve_subdivisions: int = Field(default=4, ge=1, le=16, description="Curve interpolation smoothing steps per segment (1-16)")
 
 
     # Depths & stepdowns

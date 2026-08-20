@@ -89,4 +89,14 @@ def test_engraving_fonts_api(client):
     assert "roman_serif" in data["fonts"]
     assert "cursive_script" in data["fonts"]
 
+def test_engraving_glyphs_api(client):
+    res = client.get("/api/generate/engraving/glyphs")
+    assert res.status_code == 200
+    data = res.get_json()
+    assert "fonts" in data
+    assert "simplex_sans" in data["fonts"]
+    assert "A" in data["fonts"]["simplex_sans"]
+    assert "strokes" in data["fonts"]["simplex_sans"]["A"]
+
+
 

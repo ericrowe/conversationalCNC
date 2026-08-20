@@ -216,6 +216,9 @@ Returns the available single-line vector fonts catalog for CNC text engraving.
 }
 ```
 
+### `GET /api/generate/engraving/glyphs`
+Returns the complete vector stroke polylines database for all single-line engraving fonts.
+
 ---
 
 ### `POST /api/generate/engraving/text`
@@ -236,12 +239,14 @@ Generates vector stroke G-code for text engraving along linear paths or wrapped 
 | `font_name` | `string` | No | `"simplex_sans"` | Font style: `"simplex_sans"`, `"duplex_sans"`, `"roman_serif"`, `"cursive_script"`, `"block_stencil"`. |
 | `font_size` | `number` | No | `10.0` | Nominal font cap height in mm. |
 | `letter_spacing` | `number` | No | `1.0` | Extra spacing between characters in mm. |
+| `curve_subdivisions` | `integer` | No | `4` | Curve interpolation sampling steps (1=coarse/fast, 4=smooth, 8=ultra-fine). |
 | `target_depth_z` | `number` | No | `-0.5` | Target engraving depth Z (mm). |
 | `stepdown_z` | `number` | No | `0.5` | Maximum depth per pass (mm). |
 | `retract_z` | `number` | No | Machine safe Z (`2.0`) | Retract clearance Z between strokes. |
 | `feed_rate_xy` | `number` | No | Preset / `800.0` | Engraving feed rate (mm/min). |
 
 ---
+
 
 
 ## 4. Machine Profiles

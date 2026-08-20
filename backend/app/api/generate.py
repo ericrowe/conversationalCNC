@@ -18,9 +18,11 @@ from ..generators import (
     generate_surfacing,
     generate_text_engraving,
     get_available_fonts,
+    FONTS,
     THREAD_STANDARDS,
     WorkEnvelope,
 )
+
 
 
 
@@ -439,7 +441,16 @@ def get_engraving_fonts():
     }), 200
 
 
+@generate_bp.route("/engraving/glyphs", methods=["GET"])
+def get_engraving_glyphs():
+    """Returns full vector stroke polyline data for all engraving fonts."""
+    return jsonify({
+        "fonts": FONTS,
+    }), 200
+
+
 @generate_bp.route("/engraving/text", methods=["POST"])
+
 def generate_text_engraving_gcode():
     data = request.get_json() or {}
     try:
@@ -469,7 +480,9 @@ def generate_text_engraving_gcode():
             font_size=payload.font_size,
             letter_spacing=payload.letter_spacing,
             font_name=payload.font_name,
+            curve_subdivisions=payload.curve_subdivisions,
             target_depth_z=payload.target_depth_z,
+
             stepdown_z=payload.stepdown_z,
             start_z=payload.start_z,
             retract_z=payload.retract_z if payload.retract_z is not None else ctx["safe_z_default"],

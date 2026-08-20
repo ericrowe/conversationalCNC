@@ -181,8 +181,10 @@ class ToolpathVisualizer {
       );
     }
 
-    // Operation-specific Rendering
-    if (this.opType === "surfacing" && this.surfacing) {
+    // Operation-specific Rendering (or parsed G-Code toolpath)
+    if (this.gcodeToolpath && this.gcodeToolpath.length > 0) {
+      this.drawGCodeToolpath(ctx);
+    } else if (this.opType === "surfacing" && this.surfacing) {
       this.drawSurfacing(ctx);
     } else if (this.opType === "pocket") {
       this.drawPockets(ctx);
@@ -193,6 +195,7 @@ class ToolpathVisualizer {
     } else {
       this.drawDrillHoles(ctx);
     }
+
 
 
     // Draw Origin (0,0)
@@ -469,127 +472,411 @@ class ToolpathVisualizer {
     const e = this.engraving;
     if (!e || !e.text) return;
 
-    const fontSizePx = Math.max(8, e.fontSize * this.scale);
-    let fontFamily = "ui-monospace, SFMono-Regular, Menlo, Monaco, monospace";
-    let fontWeight = "600";
+    // Fetch or calculate vector stroke polylines
+    const polylines = this.computeEngravingPolylines(e);
+    if (!polylines || polylines.length === 0) return;
 
-    if (e.fontName === "roman_serif") {
-      fontFamily = '"Times New Roman", Times, Georgia, serif';
-      fontWeight = "500";
-    } else if (e.fontName === "cursive_script") {
-      fontFamily = '"Brush Script MT", "Segoe Script", "Apple Chancery", cursive';
-      fontWeight = "normal";
-    } else if (e.fontName === "block_stencil") {
-      fontFamily = '"Impact", "Arial Black", sans-serif';
-      fontWeight = "bold";
-    } else if (e.fontName === "duplex_sans") {
-      fontFamily = "ui-monospace, SFMono-Regular, Menlo, Monaco, monospace";
-      fontWeight = "900";
-    }
+    const tipWidth = e.tipWidth || this.toolDiameter || 0.20;
+    const strokeWidthPx = Math.max(1.5, Math.min(6, tipWidth * this.scale * 1.5));
 
-    ctx.font = `${fontWeight} ${fontSizePx}px ${fontFamily}`;
-    ctx.fillStyle = "#38bdf8";
-    ctx.strokeStyle = "rgba(56, 189, 248, 0.8)";
-    ctx.lineWidth = e.fontName === "duplex_sans" ? 2.5 : 1.5;
-
-
+    // 1. Draw Guides (Arc Pitch Circle or Linear Origin)
     if (e.layoutMode === "arc") {
-      // Arc / Circular preview
       const center = this.toScreen(e.centerX, e.centerY);
       const radiusPx = e.arcRadius * this.scale;
 
-      // Draw dashed pitch circle
+      // Dashed pitch circle
       ctx.beginPath();
       ctx.arc(center.x, center.y, radiusPx, 0, 2 * Math.PI);
-      ctx.strokeStyle = "rgba(148, 163, 184, 0.4)";
+      ctx.strokeStyle = "rgba(148, 163, 184, 0.35)";
+      ctx.lineWidth = 1;
       ctx.setLineDash([4, 4]);
       ctx.stroke();
       ctx.setLineDash([]);
 
-      // Draw Center Crosshair
+      // Center crosshair
       ctx.beginPath();
-      ctx.arc(center.x, center.y, 3, 0, 2 * Math.PI);
-      ctx.fillStyle = "#f59e0b";
-      ctx.fill();
-
-      // Render curved characters
-      const str = e.text.replace(/\n/g, " ").trim();
-      const numChars = str.length;
-      if (numChars === 0) return;
-
-      const approxCharWidth = (e.fontSize * 0.6 + (e.letterSpacing || 1.0)) * this.scale;
-      const totalArcLength = approxCharWidth * numChars;
-      const totalAngle = totalArcLength / radiusPx;
-      const isCw = e.arcDirection === "clockwise";
-
-      let baseAngle = (e.startAngleDeg * Math.PI) / 180.0;
-      if (e.align === "center") {
-        baseAngle += isCw ? totalAngle / 2.0 : -totalAngle / 2.0;
-      }
-
-      ctx.save();
-      for (let i = 0; i < numChars; i++) {
-        const char = str[i];
-        const distAlongArc = (i * approxCharWidth) + (approxCharWidth / 2.0);
-        const charAngle = isCw
-          ? baseAngle - (distAlongArc / radiusPx)
-          : baseAngle + (distAlongArc / radiusPx);
-
-        const charX = center.x + radiusPx * Math.cos(charAngle);
-        const charY = center.y - radiusPx * Math.sin(charAngle); // Flip Y for canvas screen space
-
-        ctx.save();
-        ctx.translate(charX, charY);
-        // Correct rotation angle so letters are right-side up and read left-to-right along the arc
-        const rotAngle = isCw
-          ? -charAngle + (Math.PI / 2)
-          : -charAngle + (3 * Math.PI / 2);
-        ctx.rotate(rotAngle);
-        ctx.textAlign = "center";
-        ctx.textBaseline = isCw ? "bottom" : "top";
-        ctx.fillText(char, 0, 0);
-        ctx.restore();
-      }
-      ctx.restore();
-
+      ctx.strokeStyle = "#f59e0b";
+      ctx.lineWidth = 1.2;
+      ctx.moveTo(center.x - 7, center.y);
+      ctx.lineTo(center.x + 7, center.y);
+      ctx.moveTo(center.x, center.y - 7);
+      ctx.lineTo(center.x, center.y + 7);
+      ctx.stroke();
 
       ctx.fillStyle = "#94a3b8";
-      ctx.font = "11px sans-serif";
-      ctx.fillText(`R${e.arcRadius}mm`, center.x + 8, center.y - radiusPx - 6);
-
+      ctx.font = "10px sans-serif";
+      ctx.fillText(`Center (${e.centerX}, ${e.centerY}) R${e.arcRadius}mm`, center.x + 10, center.y + 12);
     } else {
-      // Linear layout preview
       const start = this.toScreen(e.startX, e.startY);
 
       // Start coordinate point
       ctx.beginPath();
-      ctx.arc(start.x, start.y, 3.5, 0, 2 * Math.PI);
+      ctx.arc(start.x, start.y, 4, 0, 2 * Math.PI);
       ctx.fillStyle = "#10b981";
       ctx.fill();
 
-      ctx.save();
-      ctx.translate(start.x, start.y);
-      const rotRad = -((e.rotationDeg || 0.0) * Math.PI) / 180.0;
-      ctx.rotate(rotRad);
-
-      ctx.textAlign = e.align || "left";
-      ctx.textBaseline = "bottom";
-
-      const lines = e.text.split("\n");
-      const lineStep = (e.fontSize * (e.lineSpacingMult || 1.4)) * this.scale;
-
-      lines.forEach((line, idx) => {
-        ctx.fillText(line, 0, idx * lineStep);
-      });
-
-      ctx.restore();
-
       ctx.fillStyle = "#94a3b8";
-      ctx.font = "11px sans-serif";
-      ctx.fillText(`Origin (${e.startX}, ${e.startY})`, start.x + 6, start.y - 6);
+      ctx.font = "10px sans-serif";
+      ctx.fillText(`Start (${e.startX}, ${e.startY})`, start.x + 8, start.y - 6);
     }
+
+    // 2. Draw Rapid Moves Between Strokes (G0 in dashed red/pink)
+    ctx.beginPath();
+    ctx.strokeStyle = "rgba(244, 63, 94, 0.75)";
+    ctx.lineWidth = 1.2;
+    ctx.setLineDash([3, 3]);
+
+    let lastPoint = null;
+    polylines.forEach((poly) => {
+      if (poly.length === 0) return;
+      const firstPt = this.toScreen(poly[0][0], poly[0][1]);
+      if (lastPoint) {
+        ctx.moveTo(lastPoint.x, lastPoint.y);
+        ctx.lineTo(firstPt.x, firstPt.y);
+      }
+      const lastVertex = poly[poly.length - 1];
+      lastPoint = this.toScreen(lastVertex[0], lastVertex[1]);
+    });
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // 3. Draw Cutting Feeds Along Polylines (G1 in solid bright cyan)
+    ctx.strokeStyle = "#38bdf8";
+    ctx.lineWidth = strokeWidthPx;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+
+    polylines.forEach((poly) => {
+      if (poly.length < 2) return;
+      ctx.beginPath();
+      const p0 = this.toScreen(poly[0][0], poly[0][1]);
+      ctx.moveTo(p0.x, p0.y);
+      for (let i = 1; i < poly.length; i++) {
+        const pi = this.toScreen(poly[i][0], poly[i][1]);
+        ctx.lineTo(pi.x, pi.y);
+      }
+      ctx.stroke();
+    });
+
+    // 4. Draw Plunge Points (Green) & Retract Points (Amber)
+    polylines.forEach((poly) => {
+      if (poly.length === 0) return;
+      // Plunge dot at stroke start
+      const pStart = this.toScreen(poly[0][0], poly[0][1]);
+      ctx.beginPath();
+      ctx.arc(pStart.x, pStart.y, 2.5, 0, 2 * Math.PI);
+      ctx.fillStyle = "#10b981";
+      ctx.fill();
+
+      // Retract dot at stroke end
+      const lastPt = poly[poly.length - 1];
+      const pEnd = this.toScreen(lastPt[0], lastPt[1]);
+      ctx.beginPath();
+      ctx.arc(pEnd.x, pEnd.y, 2.5, 0, 2 * Math.PI);
+      ctx.fillStyle = "#f59e0b";
+      ctx.fill();
+    });
   }
 
+  computeEngravingPolylines(e) {
+    const text = e.text || "";
+    const scale = (e.fontSize || 10.0) / 10.0;
+    const letterSpacing = e.letterSpacing !== undefined ? e.letterSpacing : 1.0;
+    const fontName = e.fontName || "simplex_sans";
+    const polylines = [];
+
+    const getGlyph = (char) => {
+      if (ToolpathVisualizer.FONT_GLYPHS && ToolpathVisualizer.FONT_GLYPHS[fontName] && ToolpathVisualizer.FONT_GLYPHS[fontName][char]) {
+        return ToolpathVisualizer.FONT_GLYPHS[fontName][char];
+      }
+      if (ToolpathVisualizer.FONT_GLYPHS && ToolpathVisualizer.FONT_GLYPHS["simplex_sans"] && ToolpathVisualizer.FONT_GLYPHS["simplex_sans"][char]) {
+        return ToolpathVisualizer.FONT_GLYPHS["simplex_sans"][char];
+      }
+      return ToolpathVisualizer.FALLBACK_SIMPLEX[char] || ToolpathVisualizer.FALLBACK_SIMPLEX["?"] || { w: 4.0, strokes: [] };
+    };
+
+    if (e.layoutMode === "arc") {
+      const arcRadius = e.arcRadius || 30.0;
+      if (arcRadius <= 0) return polylines;
+
+      const arcText = text.replace(/\n/g, " ").trim();
+      const glyphs = Array.from(arcText).map(getGlyph);
+      const charWidths = glyphs.map((g) => g.w * scale + letterSpacing);
+      const totalArcLen = charWidths.reduce((a, b) => a + b, 0);
+      const totalAngleRad = totalArcLen / arcRadius;
+
+      const startAngleRad = ((e.startAngleDeg !== undefined ? e.startAngleDeg : 90.0) * Math.PI) / 180.0;
+      const isCw = e.arcDirection !== "counter_clockwise";
+
+      let baseAngleRad = startAngleRad;
+      if (e.align === "center") {
+        baseAngleRad += isCw ? totalAngleRad / 2.0 : -totalAngleRad / 2.0;
+      } else if (e.align === "right") {
+        baseAngleRad += isCw ? totalAngleRad : -totalAngleRad;
+      }
+
+      let currDist = 0.0;
+      for (let i = 0; i < arcText.length; i++) {
+        const g = glyphs[i];
+        const charW = g.w * scale;
+        const charCenterDist = currDist + charW / 2.0;
+        const charAngle = isCw
+          ? baseAngleRad - charCenterDist / arcRadius
+          : baseAngleRad + charCenterDist / arcRadius;
+
+        for (const rawStroke of g.strokes) {
+          const stroke = this.smoothStroke(rawStroke, e.curveSubdivisions || 4);
+          const poly = [];
+          for (const [gx, gy] of stroke) {
+            const tOffset = (gx - g.w / 2.0) * scale;
+            const tAngleDelta = !isCw ? tOffset / arcRadius : -tOffset / arcRadius;
+            const ptAngle = charAngle + tAngleDelta;
+            const ptRadius = arcRadius + gy * scale;
+
+            const px = e.centerX + ptRadius * Math.cos(ptAngle);
+            const py = e.centerY + ptRadius * Math.sin(ptAngle);
+            poly.push([px, py]);
+          }
+          if (poly.length > 0) {
+            polylines.push(poly);
+          }
+        }
+        currDist += charW + letterSpacing;
+      }
+    } else {
+      // Linear layout
+      const radRot = ((e.rotationDeg || 0.0) * Math.PI) / 180.0;
+      const cosRot = Math.cos(radRot);
+      const sinRot = Math.sin(radRot);
+      const lineSpacingMult = e.lineSpacingMult || 1.4;
+
+      const lines = text.split("\n");
+      lines.forEach((lineStr, lineIdx) => {
+        const glyphs = Array.from(lineStr).map(getGlyph);
+        const charWidths = glyphs.map((g) => g.w * scale + letterSpacing);
+        const lineWidth = charWidths.reduce((a, b) => a + b, 0) - (charWidths.length > 0 ? letterSpacing : 0);
+
+        let alignXOffset = 0.0;
+        if (e.align === "center") {
+          alignXOffset = -lineWidth / 2.0;
+        } else if (e.align === "right") {
+          alignXOffset = -lineWidth;
+        }
+
+        const lineYOffset = -lineIdx * (e.fontSize * lineSpacingMult);
+        let currCharX = 0.0;
+
+        for (let i = 0; i < lineStr.length; i++) {
+          const g = glyphs[i];
+          for (const rawStroke of g.strokes) {
+            const stroke = this.smoothStroke(rawStroke, e.curveSubdivisions || 4);
+            const poly = [];
+            for (const [gx, gy] of stroke) {
+              const lx = alignXOffset + currCharX + gx * scale;
+              const ly = lineYOffset + gy * scale;
+
+              const px = e.startX + (lx * cosRot - ly * sinRot);
+              const py = e.startY + (lx * sinRot + ly * cosRot);
+              poly.push([px, py]);
+            }
+            if (poly.length > 0) {
+              polylines.push(poly);
+            }
+          }
+          currCharX += g.w * scale + letterSpacing;
+        }
+      });
+    }
+
+    return polylines;
+  }
+
+  smoothStroke(poly, steps = 4, cornerThresholdDeg = 65.0) {
+    if (!poly || poly.length < 3 || steps <= 1) return poly;
+    const isClosed = (poly[0][0] === poly[poly.length - 1][0] && poly[0][1] === poly[poly.length - 1][1]);
+    const n = poly.length;
+    const result = [];
+
+    const angleBetween = (v1, v2) => {
+      const dot = v1[0] * v2[0] + v1[1] * v2[1];
+      const m1 = Math.hypot(v1[0], v1[1]);
+      const m2 = Math.hypot(v2[0], v2[1]);
+      if (m1 === 0 || m2 === 0) return 0;
+      const cosVal = Math.max(-1.0, Math.min(1.0, dot / (m1 * m2)));
+      return (Math.acos(cosVal) * 180.0) / Math.PI;
+    };
+
+    for (let i = 0; i < n - 1; i++) {
+      const p1 = poly[i];
+      const p2 = poly[i + 1];
+
+      let isSharp1 = false;
+      let isSharp2 = false;
+
+      if (!isClosed) {
+        if (i === 0) isSharp1 = true;
+        if (i + 1 === n - 1) isSharp2 = true;
+      }
+
+      if (i > 0 && !isSharp1) {
+        const pPrev = poly[i - 1];
+        const vIn = [p1[0] - pPrev[0], p1[1] - pPrev[1]];
+        const vOut = [p2[0] - p1[0], p2[1] - p1[1]];
+        if (angleBetween(vIn, vOut) > cornerThresholdDeg) isSharp1 = true;
+      }
+
+      if (i + 2 < n && !isSharp2) {
+        const pNext = poly[i + 2];
+        const vIn = [p2[0] - p1[0], p2[1] - p1[1]];
+        const vOut = [pNext[0] - p2[0], pNext[1] - p2[1]];
+        if (angleBetween(vIn, vOut) > cornerThresholdDeg) isSharp2 = true;
+      }
+
+      let p0, p3;
+      if (isClosed) {
+        p0 = !isSharp1 ? poly[(i - 1 + n - 1) % (n - 1)] : p1;
+        p3 = !isSharp2 ? poly[(i + 2) % (n - 1)] : p2;
+      } else {
+        p0 = (i > 0 && !isSharp1) ? poly[i - 1] : [2 * p1[0] - p2[0], 2 * p1[1] - p2[1]];
+        p3 = (i + 2 < n && !isSharp2) ? poly[i + 2] : [2 * p2[0] - p1[0], 2 * p2[1] - p1[1]];
+      }
+
+      const numPoints = (i < n - 2) ? steps : steps + 1;
+      for (let s = 0; s < numPoints; s++) {
+        const t = s / steps;
+        const t2 = t * t;
+        const t3 = t2 * t;
+
+        const x = 0.5 * ((2 * p1[0]) + (-p0[0] + p2[0]) * t + (2 * p0[0] - 5 * p1[0] + 4 * p2[0] - p3[0]) * t2 + (-p0[0] + 3 * p1[0] - 3 * p2[0] + p3[0]) * t3);
+        const y = 0.5 * ((2 * p1[1]) + (-p0[1] + p2[1]) * t + (2 * p0[1] - 5 * p1[1] + 4 * p2[1] - p3[1]) * t2 + (-p0[1] + 3 * p1[1] - 3 * p2[1] + p3[1]) * t3);
+        result.push([x, y]);
+      }
+    }
+
+    return result;
+  }
+
+
+
+
+  loadGCode(gcodeText) {
+    if (!gcodeText) return;
+    this.gcodeToolpath = this.parseGCode(gcodeText);
+    this.draw();
+  }
+
+  clearGCode() {
+    this.gcodeToolpath = null;
+    this.draw();
+  }
+
+  parseGCode(gcodeText) {
+    const lines = gcodeText.split("\n");
+    const segments = [];
+    let curX = 0, curY = 0, curZ = 2.0;
+    let curMotion = "G0";
+
+    for (let rawLine of lines) {
+      // Strip comments
+      let line = rawLine.replace(/\(.*?\)/g, "").split(";")[0].trim().toUpperCase();
+      if (!line) continue;
+
+      const tokens = line.split(/\s+/);
+      let newX = curX, newY = curY, newZ = curZ;
+      let hasMove = false;
+
+      for (let t of tokens) {
+        if (t === "G0" || t === "G00") { curMotion = "G0"; }
+        else if (t === "G1" || t === "G01") { curMotion = "G1"; }
+        else if (t === "G2" || t === "G02") { curMotion = "G2"; }
+        else if (t === "G3" || t === "G03") { curMotion = "G3"; }
+        else if (t.startsWith("X")) {
+          const v = parseFloat(t.slice(1));
+          if (!isNaN(v)) { newX = v; hasMove = true; }
+        } else if (t.startsWith("Y")) {
+          const v = parseFloat(t.slice(1));
+          if (!isNaN(v)) { newY = v; hasMove = true; }
+        } else if (t.startsWith("Z")) {
+          const v = parseFloat(t.slice(1));
+          if (!isNaN(v)) { newZ = v; hasMove = true; }
+        }
+      }
+
+      if (hasMove) {
+        segments.push({
+          type: curMotion === "G0" ? "rapid" : "feed",
+          x1: curX, y1: curY, z1: curZ,
+          x2: newX, y2: newY, z2: newZ,
+        });
+        curX = newX;
+        curY = newY;
+        curZ = newZ;
+      }
+    }
+
+    return segments;
+  }
+
+  drawGCodeToolpath(ctx) {
+    if (!this.gcodeToolpath || this.gcodeToolpath.length === 0) return;
+
+    // 1. Draw Rapid Moves (G0) in dashed pink/red
+    ctx.beginPath();
+    ctx.strokeStyle = "rgba(244, 63, 94, 0.75)";
+    ctx.lineWidth = 1.2;
+    ctx.setLineDash([3, 3]);
+
+    for (let seg of this.gcodeToolpath) {
+      if (seg.type === "rapid") {
+        const p1 = this.toScreen(seg.x1, seg.y1);
+        const p2 = this.toScreen(seg.x2, seg.y2);
+        if (Math.hypot(p2.x - p1.x, p2.y - p1.y) > 0.5) {
+          ctx.moveTo(p1.x, p1.y);
+          ctx.lineTo(p2.x, p2.y);
+        }
+      }
+    }
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // 2. Draw Cutting Feed Moves (G1) in vibrant solid cyan
+    const tipWidth = this.engraving?.tipWidth || this.toolDiameter || 0.20;
+    const strokeWidthPx = Math.max(1.8, Math.min(5, tipWidth * this.scale * 1.5));
+    ctx.strokeStyle = "#38bdf8";
+    ctx.lineWidth = strokeWidthPx;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.beginPath();
+
+    for (let seg of this.gcodeToolpath) {
+      if (seg.type === "feed") {
+        const p1 = this.toScreen(seg.x1, seg.y1);
+        const p2 = this.toScreen(seg.x2, seg.y2);
+        if (Math.hypot(p2.x - p1.x, p2.y - p1.y) > 0.1) {
+          ctx.moveTo(p1.x, p1.y);
+          ctx.lineTo(p2.x, p2.y);
+        }
+      }
+    }
+    ctx.stroke();
+
+    // 3. Draw Plunge Points (green) & Retract Points (amber)
+    for (let seg of this.gcodeToolpath) {
+      if (seg.type === "feed" && seg.z1 > 0 && seg.z2 <= 0) {
+        const p = this.toScreen(seg.x2, seg.y2);
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 2.5, 0, 2 * Math.PI);
+        ctx.fillStyle = "#10b981";
+        ctx.fill();
+      } else if (seg.type === "rapid" && seg.z1 <= 0 && seg.z2 > 0) {
+        const p = this.toScreen(seg.x1, seg.y1);
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 2.5, 0, 2 * Math.PI);
+        ctx.fillStyle = "#f59e0b";
+        ctx.fill();
+      }
+    }
+  }
 
   drawGrid(ctx) {
     const gridSpacing = 50 * this.scale;
@@ -615,3 +902,69 @@ class ToolpathVisualizer {
     }
   }
 }
+
+// Global Glyph Cache & Fallbacks
+ToolpathVisualizer.FONT_GLYPHS = null;
+ToolpathVisualizer.initGlyphs = async function() {
+  try {
+    const res = await fetch("/api/generate/engraving/glyphs");
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.fonts) {
+        ToolpathVisualizer.FONT_GLYPHS = data.fonts;
+      }
+    }
+  } catch (err) {
+    console.warn("Could not fetch remote glyph tables, using fallback:", err);
+  }
+};
+
+// Start fetching glyph tables immediately
+if (typeof window !== "undefined") {
+  ToolpathVisualizer.initGlyphs();
+}
+
+ToolpathVisualizer.FALLBACK_SIMPLEX = {
+  " ": { w: 4.0, strokes: [] },
+  "!": { w: 2.5, strokes: [[[1.25, 10.0], [1.25, 3.0]], [[1.25, 1.0], [1.25, 0.0]]] },
+  "0": { w: 6.0, strokes: [[[1.0, 0.0], [1.0, 10.0], [5.0, 10.0], [5.0, 0.0], [1.0, 0.0], [5.0, 10.0]]] },
+  "1": { w: 4.5, strokes: [[[1.0, 7.5], [2.5, 10.0], [2.5, 0.0]], [[1.0, 0.0], [4.0, 0.0]]] },
+  "2": { w: 6.0, strokes: [[[1.0, 8.0], [2.0, 10.0], [4.5, 10.0], [5.5, 8.0], [5.5, 6.0], [1.0, 0.0], [5.5, 0.0]]] },
+  "3": { w: 6.0, strokes: [[[1.0, 8.5], [2.0, 10.0], [4.5, 10.0], [5.5, 8.5], [5.5, 6.0], [3.0, 5.0], [5.5, 4.0], [5.5, 1.5], [4.5, 0.0], [2.0, 0.0], [1.0, 1.5]]] },
+  "4": { w: 6.0, strokes: [[[4.5, 0.0], [4.5, 10.0], [1.0, 3.0], [5.5, 3.0]]] },
+  "5": { w: 6.0, strokes: [[[5.5, 10.0], [1.0, 10.0], [1.0, 5.5], [4.5, 5.5], [5.5, 4.0], [5.5, 1.5], [4.5, 0.0], [2.0, 0.0], [1.0, 1.5]]] },
+  "6": { w: 6.0, strokes: [[[5.0, 8.5], [3.0, 10.0], [1.0, 7.0], [1.0, 2.0], [2.5, 0.0], [4.5, 0.0], [5.5, 1.5], [5.5, 4.0], [4.0, 5.5], [1.0, 5.5]]] },
+  "7": { w: 6.0, strokes: [[[1.0, 10.0], [5.5, 10.0], [2.5, 0.0]]] },
+  "8": { w: 6.0, strokes: [[[2.5, 10.0], [1.0, 8.0], [1.0, 6.5], [2.5, 5.0], [4.5, 5.0], [5.5, 6.5], [5.5, 8.0], [4.0, 10.0], [2.5, 10.0], [2.5, 5.0], [1.0, 3.5], [1.0, 1.5], [2.5, 0.0], [4.5, 0.0], [5.5, 1.5], [5.5, 3.5], [4.5, 5.0]]] },
+  "9": { w: 6.0, strokes: [[[5.0, 4.5], [2.0, 4.5], [1.0, 6.0], [1.0, 8.5], [2.5, 10.0], [4.5, 10.0], [5.5, 8.0], [5.5, 3.0], [3.5, 0.0], [1.5, 1.5]]] },
+  "A": { w: 6.5, strokes: [[[0.5, 0.0], [3.25, 10.0], [6.0, 0.0]], [[1.7, 4.0], [4.8, 4.0]]] },
+  "B": { w: 6.0, strokes: [[[1.0, 0.0], [1.0, 10.0], [4.5, 10.0], [5.5, 8.5], [5.5, 6.5], [4.5, 5.0], [1.0, 5.0]], [[4.5, 5.0], [5.5, 3.5], [5.5, 1.5], [4.5, 0.0], [1.0, 0.0]]] },
+  "C": { w: 6.5, strokes: [[[5.5, 8.0], [4.0, 10.0], [2.0, 10.0], [0.5, 7.5], [0.5, 2.5], [2.0, 0.0], [4.0, 0.0], [5.5, 2.0]]] },
+  "D": { w: 6.5, strokes: [[[1.0, 0.0], [1.0, 10.0], [4.0, 10.0], [6.0, 7.5], [6.0, 2.5], [4.0, 0.0], [1.0, 0.0]]] },
+  "E": { w: 5.5, strokes: [[[5.0, 10.0], [1.0, 10.0], [1.0, 0.0], [5.0, 0.0]], [[1.0, 5.0], [4.0, 5.0]]] },
+  "F": { w: 5.5, strokes: [[[1.0, 0.0], [1.0, 10.0], [5.0, 10.0]], [[1.0, 5.0], [4.0, 5.0]]] },
+  "G": { w: 6.5, strokes: [[[5.5, 8.0], [4.0, 10.0], [2.0, 10.0], [0.5, 7.5], [0.5, 2.5], [2.0, 0.0], [4.5, 0.0], [6.0, 1.5], [6.0, 5.0], [3.5, 5.0]]] },
+  "H": { w: 6.5, strokes: [[[1.0, 10.0], [1.0, 0.0]], [[5.5, 10.0], [5.5, 0.0]], [[1.0, 5.0], [5.5, 5.0]]] },
+  "I": { w: 3.0, strokes: [[[1.5, 10.0], [1.5, 0.0]], [[0.5, 10.0], [2.5, 10.0]], [[0.5, 0.0], [2.5, 0.0]]] },
+  "J": { w: 4.5, strokes: [[[3.5, 10.0], [3.5, 2.5], [2.5, 0.0], [1.0, 0.0], [0.5, 1.5]]] },
+  "K": { w: 6.0, strokes: [[[1.0, 10.0], [1.0, 0.0]], [[5.0, 10.0], [1.0, 4.0]], [[2.5, 5.5], [5.5, 0.0]]] },
+  "L": { w: 5.0, strokes: [[[1.0, 10.0], [1.0, 0.0], [4.5, 0.0]]] },
+  "M": { w: 7.5, strokes: [[[1.0, 0.0], [1.0, 10.0], [3.75, 0.0], [6.5, 10.0], [6.5, 0.0]]] },
+  "N": { w: 6.5, strokes: [[[1.0, 0.0], [1.0, 10.0], [5.5, 0.0], [5.5, 10.0]]] },
+  "O": { w: 6.5, strokes: [[[2.0, 0.0], [0.5, 2.5], [0.5, 7.5], [2.0, 10.0], [4.5, 10.0], [6.0, 7.5], [6.0, 2.5], [4.5, 0.0], [2.0, 0.0]]] },
+  "P": { w: 6.0, strokes: [[[1.0, 0.0], [1.0, 10.0], [4.5, 10.0], [5.5, 8.5], [5.5, 6.5], [4.5, 5.0], [1.0, 5.0]]] },
+  "Q": { w: 6.5, strokes: [[[2.0, 0.0], [0.5, 2.5], [0.5, 7.5], [2.0, 10.0], [4.5, 10.0], [6.0, 7.5], [6.0, 2.5], [4.5, 0.0], [2.0, 0.0]], [[4.0, 2.0], [6.5, -1.0]]] },
+  "R": { w: 6.0, strokes: [[[1.0, 0.0], [1.0, 10.0], [4.5, 10.0], [5.5, 8.5], [5.5, 6.5], [4.5, 5.0], [1.0, 5.0]], [[3.5, 5.0], [5.5, 0.0]]] },
+  "S": { w: 6.0, strokes: [[[5.0, 8.5], [4.0, 10.0], [2.0, 10.0], [0.5, 8.5], [0.5, 6.5], [2.0, 5.0], [4.0, 5.0], [5.5, 3.5], [5.5, 1.5], [4.0, 0.0], [2.0, 0.0], [0.5, 1.5]]] },
+  "T": { w: 6.0, strokes: [[[0.5, 10.0], [5.5, 10.0]], [[3.0, 10.0], [3.0, 0.0]]] },
+  "U": { w: 6.5, strokes: [[[1.0, 10.0], [1.0, 2.5], [2.5, 0.0], [4.5, 0.0], [6.0, 2.5], [6.0, 10.0]]] },
+  "V": { w: 6.5, strokes: [[[0.5, 10.0], [3.25, 0.0], [6.0, 10.0]]] },
+  "W": { w: 8.5, strokes: [[[0.5, 10.0], [2.5, 0.0], [4.25, 7.0], [6.0, 0.0], [8.0, 10.0]]] },
+  "X": { w: 6.0, strokes: [[[0.5, 10.0], [5.5, 0.0]], [[5.5, 10.0], [0.5, 0.0]]] },
+  "Y": { w: 6.0, strokes: [[[0.5, 10.0], [3.0, 5.0], [5.5, 10.0]], [[3.0, 5.0], [3.0, 0.0]]] },
+  "Z": { w: 6.0, strokes: [[[0.5, 10.0], [5.5, 10.0], [0.5, 0.0], [5.5, 0.0]]] },
+  "?": { w: 5.5, strokes: [[[1.0, 8.5], [2.0, 10.0], [4.0, 10.0], [5.0, 8.5], [5.0, 6.5], [2.75, 4.5], [2.75, 2.5]], [[2.75, 1.0], [2.75, 0.0]]] },
+  "-": { w: 4.5, strokes: [[[0.5, 5.0], [4.0, 5.0]]] },
+  ".": { w: 2.5, strokes: [[[1.25, 1.0], [1.25, 0.0]]] },
+};
+

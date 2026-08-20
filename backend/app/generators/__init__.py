@@ -4,7 +4,7 @@ from .thread_milling import generate_helical_thread_milling, THREAD_STANDARDS
 from .circular_pocket import generate_circular_pocket
 from .surfacing import generate_surfacing
 from .engraving import generate_text_engraving
-from .engraving_font import get_available_fonts
+from .engraving_font import get_available_fonts, FONTS
 
 __all__ = [
     "BoundingBox",
@@ -17,8 +17,10 @@ __all__ = [
     "generate_surfacing",
     "generate_text_engraving",
     "get_available_fonts",
+    "FONTS",
     "THREAD_STANDARDS",
 ]
+
 
 
 

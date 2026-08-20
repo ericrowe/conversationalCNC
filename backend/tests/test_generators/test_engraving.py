@@ -97,6 +97,31 @@ def test_arc_circular_text_engraving():
     assert prog.bounds.max_y > 60.0
 
 def test_engraving_empty_text_error():
-
     with pytest.raises(ValueError, match="cannot be empty"):
         generate_text_engraving(text="", font_size=10.0)
+
+def test_curve_subdivisions_sampling():
+    # Coarse (1x)
+    prog_coarse = generate_text_engraving(
+        text="O 8 C S",
+        font_name="simplex_sans",
+        curve_subdivisions=1,
+    )
+    # Smooth (4x)
+    prog_smooth = generate_text_engraving(
+        text="O 8 C S",
+        font_name="simplex_sans",
+        curve_subdivisions=4,
+    )
+    # Ultra-Fine (8x)
+    prog_ultra = generate_text_engraving(
+        text="O 8 C S",
+        font_name="simplex_sans",
+        curve_subdivisions=8,
+    )
+
+    # Smooth path should have significantly higher point density / lines than coarse
+    assert prog_smooth.line_count > prog_coarse.line_count
+    assert prog_ultra.line_count > prog_smooth.line_count
+    assert "Text Engraving" in prog_smooth.gcode
+

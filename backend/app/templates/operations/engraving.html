@@ -28,16 +28,29 @@
         <textarea id="engravingText" rows="3" style="width: 100%; background: var(--bg-input); color: var(--text-main); border: 1px solid var(--border-color); border-radius: 6px; padding: 0.5rem; font-family: var(--font-mono); font-size: 0.95rem; resize: vertical;">CNC MADE</textarea>
       </div>
 
-      <div class="form-group">
-        <label for="fontSelect">Engraving Font Style</label>
-        <select id="fontSelect">
-          <option value="simplex_sans" selected>Simplex Sans (Clean Single-Stroke)</option>
-          <option value="duplex_sans">Duplex Bold Sans (Double-Stroke)</option>
-          <option value="roman_serif">Roman Serif (Classic Formal)</option>
-          <option value="cursive_script">Cursive Script (Flowing Elegance)</option>
-          <option value="block_stencil">Industrial Block (Technical / Chamfered)</option>
-        </select>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="fontSelect">Engraving Font Style</label>
+          <select id="fontSelect">
+            <option value="simplex_sans" selected>Simplex Sans (Clean Single-Stroke)</option>
+            <option value="duplex_sans">Duplex Bold Sans (Double-Stroke)</option>
+            <option value="roman_serif">Roman Serif (Classic Formal)</option>
+            <option value="cursive_script">Cursive Script (Flowing Elegance)</option>
+            <option value="block_stencil">Industrial Block (Technical / Chamfered)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="curveSubdivisions">Curve Smoothing / Sampling</label>
+          <select id="curveSubdivisions">
+            <option value="1">1x - Coarse / Faceted (Fastest)</option>
+            <option value="2">2x - Medium</option>
+            <option value="4" selected>4x - Smooth (Recommended)</option>
+            <option value="8">8x - High Definition (Fine)</option>
+            <option value="12">12x - Ultra Smooth (Micro-step)</option>
+          </select>
+        </div>
       </div>
+
 
       <div class="form-row">
         <div class="form-group">
