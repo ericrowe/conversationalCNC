@@ -43,22 +43,33 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-  // Modal open/close
-  openBtn.addEventListener("click", async () => {
-    modal.style.display = "flex";
-    // Sync thickness with active machine if available
+  async function syncWithActiveMachine() {
     try {
       const activeRes = await API.getActiveMachine();
-      if (activeRes && activeRes.machine) {
-        if (activeRes.machine.z_probe_thickness) {
-          zProbeThickness.value = activeRes.machine.z_probe_thickness;
-          cornerPlateZ.value = activeRes.machine.z_probe_thickness;
+      const machine = activeRes && activeRes.machine ? activeRes.machine : activeRes;
+      if (machine) {
+        if (machine.z_probe_thickness !== undefined && machine.z_probe_thickness !== null) {
+          zProbeThickness.value = machine.z_probe_thickness;
+          cornerPlateZ.value = machine.z_probe_thickness;
+        }
+        if (machine.safe_z_retract !== undefined && machine.safe_z_retract !== null) {
+          zProbeRetract.value = machine.safe_z_retract;
         }
       }
     } catch (e) {
       console.warn("Could not fetch active machine probe thickness", e);
     }
+  }
+
+  // Initial sync on page load
+  syncWithActiveMachine();
+
+  // Modal open/close
+  openBtn.addEventListener("click", async () => {
+    modal.style.display = "flex";
+    await syncWithActiveMachine();
   });
+
 
   closeBtn.addEventListener("click", () => {
     modal.style.display = "none";
