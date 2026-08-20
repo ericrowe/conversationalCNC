@@ -2,7 +2,7 @@
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![Flask 3.0+](https://img.shields.io/badge/flask-3.0+-green.svg)](https://flask.palletsprojects.com/)
-[![Tests](https://img.shields.io/badge/tests-97%20passed-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-104%20passed-brightgreen.svg)]()
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 A web-based, locally executing **Conversational CNC Controller** designed for rapid, on-the-fly machining without launching heavyweight CAD/CAM software. Built with a zero-build-step architecture optimized for offline Raspberry Pi 4/5 setups and desktop workstations driving Grbl-based CNCs (such as the Inventables X-Carve, Shapeoko, PrintNC) and standard CNC controllers.
@@ -23,12 +23,12 @@ A web-based, locally executing **Conversational CNC Controller** designed for ra
 - **✍️ Single-Line Vector Text Engraving**: High-speed CNC text engraving supporting multi-line rotated linear layouts and curved circular arc layouts (clockwise/counter-clockwise). Features 5 single-line stroke font styles (*Simplex Sans, Duplex Bold Sans, Roman Serif, Cursive Script, Industrial Block*), configurable cubic Catmull-Rom spline curve interpolation smoothing ($1\times$ to $12\times$ sampling) with sharp-corner preservation, and live tool tip flat cut width calculation.
 
 ### 2. 3D WebGL / Isometric Backplotter & Simulation
-- **Interactive 3D Toolpath Simulation**: Real-time 3D orbital canvas with pitch/yaw mouse drag, camera presets (Isometric, Top XY, Front XZ, Right YZ), and auto-fit bounding box.
+- **Interactive 3D Toolpath Simulation**: Real-time 3D orbital canvas with pitch/yaw mouse drag, camera presets (Isometric, Top XY, Front XZ, Right YZ), prominent WCS $(0,0,0)$ Part Datum crosshair target, and auto-fit bounding box.
 - **Animated Cutter Playback**: Step-by-step cutter animation along toolpaths with Play/Pause, Step Forward/Backward, progress scrubber slider, speed multipliers ($0.5\times$ to $10\times$), and live coordinates HUD ($X, Y, Z$, Feed, Step count).
 - **Bi-Directional Selection Sync**: Clicking any line in the interactive G-code editor jumps the 3D cutter tool directly to that position and highlights the active motion vector in glowing yellow.
 
 ### 3. G-Code "Hints" & Live Modal State Inspector
-- **Plain English Explainer**: Decodes complex G-code blocks (arcs, canned cycles, spindle start, dwell) into clear conversational explanations with calculated travel distances, radius, and descent angles.
+- **Plain English Explainer**: Decodes complex G-code blocks (arcs, canned cycles, spindle start, dwell, probe touches) into clear conversational explanations with calculated travel distances, radius, and descent angles.
 - **Live Modal State Dashboard**: Real-time modal registers (`WCS`, `Plane`, `Units`, `Distance Mode`, `Motion`, `Tool`, `Spindle`, `Feed`).
 
 ### 4. G-Code Transformations & Multi-Tool Program Splitter
@@ -42,6 +42,12 @@ A web-based, locally executing **Conversational CNC Controller** designed for ra
 - **Radial Chip Thinning Compensation**: Automatically boosts feed rate for shallow stepovers ($< 50\%$ tool diameter) to prevent cutter rubbing and premature tool wear.
 - **Material Removal Rate (MRR) & Spindle Power**: Calculates volume removal rate ($\text{cm}^3/\text{min}$) and estimates required spindle cutting power (kW/HP) across woods, plastics, brass, and aluminum.
 - **Deflection Warning Advisor**: Flags high tool stickout ratios ($> 4.5\times$ diameter) and power overloads for hobby trim routers (e.g. DeWalt DWP611).
+
+### 6. Machine Probing & WCS Zeroing Assistant
+- **Z-Touch Plate Probing Generator**: 2-stage (fast search + slow fine touch) probing macros (`G38.2` $\to$ `G10 L20 P1 Z...`) referencing the active machine's saved plate thickness.
+- **Corner XYZ Touch Block Generator**: 3-axis corner probe calculating tool radius and block lip offsets to calibrate $(X0, Y0, Z0)$ simultaneously in `G54`.
+- **Machine Homing (`$H`) & Safety Header `G54`**: Ensures work coordinates are locked to the workpiece datum on every program.
+
 
 
 ## 🏗️ Architecture & Philosophy
@@ -98,7 +104,7 @@ conversationalCNC/
 │   │   ├── static/          # CSS stylesheets and client JavaScript modules
 │   │   ├── templates/       # Jinja2 HTML templates
 │   │   └── web/             # Web frontend routing blueprint
-│   └── tests/               # 97 automated pytest unit and integration tests
+│   └── tests/               # 104 automated pytest unit and integration tests
 └── docs/
     └── API_DOCUMENTATION.md # Comprehensive REST API reference
 ```
@@ -145,10 +151,11 @@ PYTHONPATH=backend python backend/seed.py
 ```
 
 ### Step 5: Run Automated Tests
-Verify that all 97 tests pass on your machine:
+Verify that all 104 tests pass on your machine:
 ```bash
 PYTHONPATH=backend pytest backend/tests -v
 ```
+
 
 
 

@@ -3,7 +3,15 @@ from flask import Flask, jsonify
 from flask_cors import CORS
 from .config import Config, DevelopmentConfig
 from .models import db
-from .api import machines_bp, tools_bp, materials_bp, generate_bp, transform_bp, calculator_bp
+from .api import (
+    machines_bp,
+    tools_bp,
+    materials_bp,
+    generate_bp,
+    transform_bp,
+    calculator_bp,
+    probing_bp,
+)
 from .web import web_bp
 
 def create_app(config_class=DevelopmentConfig):
@@ -30,7 +38,9 @@ def create_app(config_class=DevelopmentConfig):
     app.register_blueprint(generate_bp)
     app.register_blueprint(transform_bp)
     app.register_blueprint(calculator_bp)
+    app.register_blueprint(probing_bp)
     app.register_blueprint(web_bp)
+
 
 
 

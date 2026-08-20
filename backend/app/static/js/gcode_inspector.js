@@ -147,6 +147,25 @@ class GCodeInspector {
       return `${arcDir} Circular Arc to (X: ${block.endX.toFixed(3)}, Y: ${block.endY.toFixed(3)}) | Center: (${centerX}, ${centerY}), Radius: ${radius}mm | Feed: ${block.feed} mm/min`;
     }
 
+    if (block.cleanCode.includes("G21") || block.cleanCode.includes("G20") || block.cleanCode.includes("G90")) {
+      const snap = block.modalSnapshot || this.modalState || {};
+      const wcsMsg = block.cleanCode.includes("G54") ? " | Work Datum G54 Active" : "";
+      return `Safety Header: ${snap.units || "G21"} | ${snap.distanceMode || "G90"} | ${snap.plane || "G17"}${wcsMsg}`;
+    }
+
+
+    if (block.cleanCode.includes("G38.2") || block.cleanCode.includes("G38.")) {
+      return `Z-Probe Touch: Probing downward toward touch plate to establish physical Z-Zero`;
+    }
+
+    if (block.cleanCode.includes("G10 L20")) {
+      return `WCS Coordinate Calibration: Setting Work Coordinate System offset to touch plate thickness`;
+    }
+
+    if (block.cleanCode.includes("M0") || block.cleanCode.includes("M00")) {
+      return `Operator Pause (M0): Execution paused for manual action (e.g. attach/remove probe clip, flip stock)`;
+    }
+
     if (block.cleanCode.includes("G4") || block.cleanCode.includes("G04")) {
       return `Dwell / Pause: Spindle pause for spinup stabilization or hole bottom dwell`;
     }
@@ -165,6 +184,7 @@ class GCodeInspector {
 
     return `Standard CNC block: ${block.cleanCode}`;
   }
+
 
   renderInteractiveEditor(containerEl, gcodeText, onLineSelected) {
     if (!containerEl) return;

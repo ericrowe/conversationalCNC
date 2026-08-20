@@ -195,7 +195,17 @@ Implemented in `app/generators/feeds_speeds.py`:
 
 ---
 
-## 9. Development Status & Roadmap
+## 9. Machine Probing, Homing & WCS Zeroing Architecture
+
+Implemented in `app/generators/probing.py`:
+1. **2-Stage Z-Touch Plate Probing**: Fast search probe (`G38.2`), 1.5mm lift, fine precision touch, sets `G10 L20 P1 Z<plate_thickness>` in `G54`, and safe lift to clearance height.
+2. **3-Axis Corner XYZ Touch Block Macro**: Touch Z top, touch X outside edge (with cutter radius $D/2$ and block lip offset), touch Y outside edge to zero $(X0, Y0, Z0)$ simultaneously in `G54`.
+3. **Machine Homing (`$H`)**: Establishes machine hardware limits (`G53`) on startup.
+4. **Safety Header `G54` Enforcement**: Every cutting program explicitly locks into Work Coordinate System 1.
+
+---
+
+## 10. Development Status & Roadmap
 
 - **Phase 1 (Completed)**: Core architecture, SQLite schema, Straight Plunge drilling, Grbl post-processor, DeWalt DWP611 dial mapping.
 - **Phase 2 (Completed)**: Helical Thread Milling, Peck Drilling (G73/G83), Circular Pocketing, Surfacing/Facing, Single-Line Vector Text Engraving with 5 fonts and spline smoothing, 2D vector toolpath visualizer.
@@ -204,5 +214,7 @@ Implemented in `app/generators/feeds_speeds.py`:
 - **Phase 5 (Completed)**: Plain English G-Code Hints ("X-Ray Vision") and live Modal State Inspector.
 - **Phase 6 (Completed)**: G-Code Transformations (Shift, Rotate, Mirror, Overrides) & Multi-Tool Program File Splitter.
 - **Phase 7 (Completed)**: Physics-Based Feeds & Speeds, Radial Chip Thinning, MRR, and Spindle Power Engine.
+- **Phase 8 (Completed)**: Machine Probing Assistant (Z-Touch Plate, Corner XYZ Block, Homing) and explicit `G54` safety headers.
+
 
 

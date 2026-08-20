@@ -32,7 +32,11 @@
 5. [Feeds & Speeds Physics Engine](#5-feeds--speeds-physics-engine)
    - [GET /api/calculator/materials-catalog](#get-apicalculatormaterials-catalog)
    - [POST /api/calculator/feeds-speeds](#post-apicalculatorfeeds-speeds)
-6. [Machine Profiles](#6-machine-profiles)
+6. [Machine Probing & Setup Macros](#6-machine-probing--setup-macros)
+   - [POST /api/probing/z-touch-plate](#post-apiprobingz-touch-plate)
+   - [POST /api/probing/corner-xyz](#post-apiprobingcorner-xyz)
+   - [GET /api/probing/homing](#get-apiprobinghoming)
+7. [Machine Profiles](#7-machine-profiles)
    - [GET /api/machines](#get-apimachines)
    - [GET /api/machines/active](#get-apimachinesactive)
    - [POST /api/machines/:id/activate](#post-apimachinesidactivate)
@@ -40,19 +44,20 @@
    - [GET /api/machines/:id](#get-apimachinesid)
    - [PUT /api/machines/:id](#put-apimachinesid)
    - [DELETE /api/machines/:id](#delete-apimachinesid)
-7. [Tool Library](#7-tool-library)
+8. [Tool Library](#8-tool-library)
    - [GET /api/tools](#get-apitools)
    - [GET /api/tools/:id](#get-apitoolsid)
    - [POST /api/tools](#post-apitools)
    - [PUT /api/tools/:id](#put-apitoolsid)
-   - [DELETE /api/tools/:id](#delete-apiposid)
-8. [Material Presets](#8-material-presets)
+   - [DELETE /api/tools/:id](#delete-apitoolsid)
+9. [Material Presets](#9-material-presets)
    - [GET /api/materials](#get-apimaterials)
    - [GET /api/materials/:id](#get-apimaterialsid)
    - [POST /api/materials/tool/:tool_id](#post-apimaterialstooltool_id)
    - [PUT /api/materials/:id](#put-apimaterialsid)
    - [DELETE /api/materials/:id](#delete-apimaterialsid)
-9. [Error Handling Format](#9-error-handling-format)
+10. [Error Handling Format](#10-error-handling-format)
+
 
 ---
 
@@ -428,10 +433,53 @@ Calculates optimal spindle RPM, feed rate XY, plunge feed, Radial Chip Thinning 
 
 ---
 
-## 6. Machine Profiles
+## 6. Machine Probing & Setup Macros
+
+### `POST /api/probing/z-touch-plate`
+Generates a 2-stage (fast search + fine precision touch) Z-touch plate probing macro with `G38.2`, sets `G10 L20 P1 Z<plate_thickness>`, and lifts to safe clearance.
+
+#### Request Payload
+```json
+{
+  "plate_thickness": 14.85,
+  "search_dist": 30.0,
+  "fast_feed": 150.0,
+  "slow_feed": 25.0,
+  "retract_height": 20.0
+}
+```
+
+---
+
+### `POST /api/probing/corner-xyz`
+Generates a 3-axis corner touch block probing macro (Z surface, X edge with tool radius offset, Y edge with tool radius offset) to set $(X0, Y0, Z0)$ in `G54`.
+
+#### Request Payload
+```json
+{
+  "tool_diameter": 6.35,
+  "plate_thickness": 14.85,
+  "block_x_lip": 10.0,
+  "block_y_lip": 10.0,
+  "search_dist": 25.0,
+  "fast_feed": 150.0,
+  "slow_feed": 25.0,
+  "retract_z": 15.0
+}
+```
+
+---
+
+### `GET /api/probing/homing`
+Generates the standard machine homing sequence (`$H`) and coordinate verification commands.
+
+---
+
+## 7. Machine Profiles
 
 - `GET /api/machines`: List all machine profiles.
 - `GET /api/machines/active`: Get active machine profile.
+
 - `POST /api/machines/:id/activate`: Set active machine profile.
 - `POST /api/machines`: Create a machine profile.
 - `GET /api/machines/:id`: Retrieve profile by ID.

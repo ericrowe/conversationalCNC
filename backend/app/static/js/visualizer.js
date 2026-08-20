@@ -381,12 +381,39 @@ class ToolpathVisualizer {
       ctx.fillText("Z", zEnd.x + 3, zEnd.y + 3);
     }
 
-    // Origin marker
+    // Prominent WCS (0,0,0) Part Datum Crosshair Target & Badge
+    ctx.save();
+    // Outer target ring
+    ctx.strokeStyle = "rgba(56, 189, 248, 0.8)";
+    ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.arc(origin.x, origin.y, 4, 0, 2 * Math.PI);
-    ctx.fillStyle = "#10b981";
+    ctx.arc(origin.x, origin.y, 8, 0, 2 * Math.PI);
+    ctx.stroke();
+
+    // Crosshair ticks
+    ctx.beginPath();
+    ctx.moveTo(origin.x - 12, origin.y);
+    ctx.lineTo(origin.x + 12, origin.y);
+    ctx.moveTo(origin.x, origin.y - 12);
+    ctx.lineTo(origin.x, origin.y + 12);
+    ctx.stroke();
+
+    // Center glowing core
+    ctx.beginPath();
+    ctx.arc(origin.x, origin.y, 3.5, 0, 2 * Math.PI);
+    ctx.fillStyle = "#38bdf8";
+    ctx.shadowColor = "#38bdf8";
+    ctx.shadowBlur = 6;
     ctx.fill();
+
+    // Label badge
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = "#94a3b8";
+    ctx.font = "bold 9px sans-serif";
+    ctx.fillText("WCS (0,0)", origin.x + 10, origin.y + 12);
+    ctx.restore();
   }
+
 
   drawEnvelopeBox(ctx) {
     const ex = this.machineEnvelope.x;

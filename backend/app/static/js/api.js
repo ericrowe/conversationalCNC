@@ -288,8 +288,38 @@ const API = {
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || data.error || "Split failed");
     return data;
+  },
+
+  async generateZProbeMacro(payload) {
+    const res = await fetch("/api/probing/z-touch-plate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || data.error || "Z-probe generation failed");
+    return data;
+  },
+
+  async generateCornerXYZMacro(payload) {
+    const res = await fetch("/api/probing/corner-xyz", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || data.error || "Corner probe generation failed");
+    return data;
+  },
+
+  async generateHomingMacro() {
+    const res = await fetch("/api/probing/homing", { method: "GET" });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || data.error || "Homing macro failed");
+    return data;
   }
 };
+
 
 
 
