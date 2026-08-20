@@ -108,7 +108,7 @@
       <div class="form-row">
         <div class="form-group">
           <label for="stepdownZ">Max Stepdown Z (mm/pass)</label>
-          <input type="number" id="stepdownZ" min="0.1" step="0.1" value="1.5">
+          <input type="number" id="stepdownZ" min="0.1" step="0.1" value="1.0">
         </div>
         <div class="form-group">
           <label for="retractZ">Safe Retract Z (mm)</label>
@@ -126,11 +126,11 @@
       <div class="form-row">
         <div class="form-group">
           <label for="stepoverPercent">Radial Stepover (%)</label>
-          <input type="number" id="stepoverPercent" min="10" max="95" step="5" value="60">
+          <input type="number" id="stepoverPercent" min="10" max="95" step="5" value="50">
         </div>
         <div class="form-group" id="finishAllowGroup">
           <label for="finishAllowance">Finish Wall Stock (mm)</label>
-          <input type="number" id="finishAllowance" min="0" max="2.0" step="0.05" value="0.3">
+          <input type="number" id="finishAllowance" min="0" max="2.0" step="0.05" value="0.2">
         </div>
       </div>
 
@@ -173,13 +173,14 @@
       <div class="form-row">
         <div class="form-group">
           <label for="feedRateXy">Cutting Feed (XY mm/min)</label>
-          <input type="number" id="feedRateXy" min="10" step="10" value="1200">
+          <input type="number" id="feedRateXy" min="10" step="10" value="800">
         </div>
         <div class="form-group">
           <label for="plungeFeed">Plunge Feed (Z mm/min)</label>
-          <input type="number" id="plungeFeed" min="10" step="10" value="300">
+          <input type="number" id="plungeFeed" min="10" step="10" value="200">
         </div>
       </div>
+
 
       <div class="form-row">
         <div class="form-group">

@@ -95,7 +95,7 @@
         </div>
         <div class="form-group">
           <label for="stepdownInput">Stepdown Z (mm/pass)</label>
-          <input type="number" id="stepdownInput" value="1.5" step="0.5" min="0.1">
+          <input type="number" id="stepdownInput" value="1.0" step="0.2" min="0.1">
         </div>
         <div class="form-group">
           <label for="retractZInput">Safe Retract Z (mm)</label>
@@ -158,8 +158,9 @@
 
       <div class="form-group">
         <label for="plungeFeed">Plunge Feed (mm/min)</label>
-        <input type="number" id="plungeFeed" step="10" value="250">
+        <input type="number" id="plungeFeed" step="10" value="200">
       </div>
+
 
       <div style="display: grid; grid-template-columns: 1fr auto; gap: 0.5rem; margin-top: 0.75rem;">
         <button type="button" class="btn btn-primary" id="generateDxfBtn">
