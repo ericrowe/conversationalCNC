@@ -384,5 +384,64 @@ document.addEventListener("DOMContentLoaded", async () => {
     URL.revokeObjectURL(url);
   });
 
+  // Add to Job Queue Handler
+  const addToJobQueueBtn = document.getElementById("addToJobQueueBtn");
+  if (addToJobQueueBtn) {
+    addToJobQueueBtn.addEventListener("click", () => {
+      const text = engravingTextInput.value;
+      if (!text.trim()) {
+        alert("Please enter text to engrave first.");
+        return;
+      }
+      const toolId = toolSelect.value ? parseInt(toolSelect.value, 10) : 1;
+      const selectedTool = toolsList.find((t) => t.id === toolId);
+      const fSize = parseFloat(fontSizeInput.value) || 10.0;
+
+      const opPayload = {
+        op_name: `Engrave "${text.substring(0, 12)}${text.length > 12 ? '...' : ''}" (${fSize}mm)`,
+        op_type: "engraving",
+        tool_number: selectedTool ? selectedTool.tool_number : 1,
+        tool_name: selectedTool ? selectedTool.name : "V-Bit",
+        tool_diameter: selectedTool ? selectedTool.diameter : parseFloat(toolDiameterInput.value) || 3.175,
+        spindle_speed: parseInt(spindleRpmInput.value, 10) || 16000,
+        feed_rate_xy: parseFloat(feedRateXyInput.value) || 1000.0,
+        plunge_feed: parseFloat(plungeFeedInput.value) || 300.0,
+        params: {
+          text: text,
+          layout_mode: activeLayout,
+          start_x: parseFloat(startXInput.value) || 0.0,
+          start_y: parseFloat(startYInput.value) || 0.0,
+          rotation_deg: parseFloat(rotationDegInput.value) || 0.0,
+          align: activeLayout === "linear" ? alignSelect.value : arcAlignSelect.value,
+          center_x: parseFloat(centerXInput.value) || 0.0,
+          center_y: parseFloat(centerYInput.value) || 0.0,
+          arc_radius: parseFloat(arcRadiusInput.value) || 30.0,
+          start_angle_deg: parseFloat(startAngleInput.value) || 90.0,
+          arc_direction: arcDirectionSelect.value,
+          font_size: fSize,
+          font_style: fontSelect ? fontSelect.value : "simplex",
+          curve_subdivisions: curveSubdivisionsSelect ? parseInt(curveSubdivisionsSelect.value, 10) : 4,
+          target_depth_z: parseFloat(targetDepthInput.value) || -0.5,
+          start_z: 0.0,
+          retract_z: parseFloat(retractZInput.value) || 5.0,
+          feed_rate_xy: parseFloat(feedRateXyInput.value) || 1000.0,
+          plunge_feed: parseFloat(plungeFeedInput.value) || 300.0,
+          spindle_speed: parseInt(spindleRpmInput.value, 10) || 16000,
+          tool_id: toolId,
+        },
+        raw_gcode: currentGeneratedGCode || null,
+      };
+
+      if (window.JobBuilder) {
+        window.JobBuilder.addOperation(opPayload);
+        const origText = addToJobQueueBtn.textContent;
+        addToJobQueueBtn.textContent = "✅ Queued!";
+        setTimeout(() => (addToJobQueueBtn.textContent = origText), 1500);
+      }
+    });
+  }
+
+
   await initData();
 });
+

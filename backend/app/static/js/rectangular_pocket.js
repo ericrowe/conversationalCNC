@@ -378,5 +378,91 @@ document.addEventListener("DOMContentLoaded", async () => {
     URL.revokeObjectURL(url);
   });
 
+  // Add to Job Queue Handler
+  const addToJobQueueBtn = document.getElementById("addToJobQueueBtn");
+  if (addToJobQueueBtn) {
+    addToJobQueueBtn.addEventListener("click", () => {
+      const selectedToolId = toolSelect.value ? parseInt(toolSelect.value, 10) : 1;
+      const selectedTool = toolsList.find((t) => t.id === selectedToolId);
+      const lx = parseFloat(lengthXInput.value) || 50;
+      const wy = parseFloat(widthYInput.value) || 40;
+
+      let opPayload;
+      if (activeMode === "pocket") {
+        opPayload = {
+          op_name: `Rect Pocket (${lx}x${wy}mm)`,
+          op_type: "rectangular_pocket",
+          tool_number: selectedTool ? selectedTool.tool_number : 1,
+          tool_name: selectedTool ? selectedTool.name : "Endmill",
+          tool_diameter: selectedTool ? selectedTool.diameter : 3.175,
+          spindle_speed: parseInt(spindleRpmInput.value, 10) || 16000,
+          feed_rate_xy: parseFloat(feedRateXyInput.value) || 800,
+          plunge_feed: parseFloat(plungeFeedInput.value) || 300,
+          params: {
+            origin_x: parseFloat(originXInput.value) || 0,
+            origin_y: parseFloat(originYInput.value) || 0,
+            length_x: lx,
+            width_y: wy,
+            corner_radius: parseFloat(cornerRadiusInput.value) || 0,
+            origin_mode: originModeSelect.value || "center",
+            start_z: parseFloat(startZInput.value) || 0,
+            target_depth_z: parseFloat(targetDepthInput.value) || -5.0,
+            stepdown_z: parseFloat(stepdownZInput.value) || 1.5,
+            retract_z: parseFloat(retractZInput.value) || 5.0,
+            stepover_percent: parseFloat(stepoverPercentInput.value) || 50,
+            finish_pass_allowance: parseFloat(finishAllowanceInput.value) || 0.2,
+            entry_strategy: entryStrategySelect.value || "helical",
+            ramp_angle_deg: parseFloat(rampAngleInput.value) || 3.0,
+            feed_rate_xy: parseFloat(feedRateXyInput.value) || 800,
+            plunge_feed: parseFloat(plungeFeedInput.value) || 300,
+            spindle_speed: parseInt(spindleRpmInput.value, 10) || 16000,
+            tool_id: selectedToolId,
+          },
+          raw_gcode: currentGeneratedGCode || null,
+        };
+      } else {
+        opPayload = {
+          op_name: `Rect Boss (${lx}x${wy}mm)`,
+          op_type: "rectangular_boss",
+          tool_number: selectedTool ? selectedTool.tool_number : 1,
+          tool_name: selectedTool ? selectedTool.name : "Endmill",
+          tool_diameter: selectedTool ? selectedTool.diameter : 3.175,
+          spindle_speed: parseInt(spindleRpmInput.value, 10) || 16000,
+          feed_rate_xy: parseFloat(feedRateXyInput.value) || 800,
+          plunge_feed: parseFloat(plungeFeedInput.value) || 300,
+          params: {
+            boss_origin_x: parseFloat(originXInput.value) || 0,
+            boss_origin_y: parseFloat(originYInput.value) || 0,
+            boss_length_x: lx,
+            boss_width_y: wy,
+            stock_length_x: parseFloat(stockLengthXInput.value) || 80,
+            stock_width_y: parseFloat(stockWidthYInput.value) || 60,
+            boss_corner_radius: parseFloat(cornerRadiusInput.value) || 0,
+            boss_origin_mode: originModeSelect.value || "center",
+            start_z: parseFloat(startZInput.value) || 0,
+            target_depth_z: parseFloat(targetDepthInput.value) || -5.0,
+            stepdown_z: parseFloat(stepdownZInput.value) || 1.5,
+            retract_z: parseFloat(retractZInput.value) || 5.0,
+            stepover_percent: parseFloat(stepoverPercentInput.value) || 50,
+            finish_pass_allowance: parseFloat(finishAllowanceInput.value) || 0.2,
+            feed_rate_xy: parseFloat(feedRateXyInput.value) || 800,
+            plunge_feed: parseFloat(plungeFeedInput.value) || 300,
+            spindle_speed: parseInt(spindleRpmInput.value, 10) || 16000,
+            tool_id: selectedToolId,
+          },
+          raw_gcode: currentGeneratedGCode || null,
+        };
+      }
+
+      if (window.JobBuilder) {
+        window.JobBuilder.addOperation(opPayload);
+        const origText = addToJobQueueBtn.textContent;
+        addToJobQueueBtn.textContent = "✅ Queued!";
+        setTimeout(() => (addToJobQueueBtn.textContent = origText), 1500);
+      }
+    });
+  }
+
   await initData();
 });
+

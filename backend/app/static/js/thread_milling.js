@@ -363,5 +363,60 @@ document.addEventListener("DOMContentLoaded", async () => {
     URL.revokeObjectURL(url);
   });
 
+  // Add to Job Queue Handler
+  const addToJobQueueBtn = document.getElementById("addToJobQueueBtn");
+  if (addToJobQueueBtn) {
+    addToJobQueueBtn.addEventListener("click", () => {
+      const holes = getHoleCoordinates();
+      if (holes.length === 0) {
+        alert("Please configure at least one hole coordinate first.");
+        return;
+      }
+      const toolId = toolSelect.value ? parseInt(toolSelect.value, 10) : 1;
+      const selectedTool = toolsList.find((t) => t.id === toolId);
+      const majorDia = parseFloat(nominalDiaInput.value) || 10.0;
+      const pitchVal = parseFloat(threadPitchInput.value) || 1.5;
+
+      const opPayload = {
+        op_name: `Thread Mill M${majorDia}x${pitchVal} (${holes.length} holes)`,
+        op_type: "thread_milling",
+        tool_number: selectedTool ? selectedTool.tool_number : 1,
+        tool_name: selectedTool ? selectedTool.name : "Thread Mill",
+        tool_diameter: selectedTool ? selectedTool.diameter : parseFloat(toolDiameterInput.value) || 6.0,
+        spindle_speed: parseInt(spindleRpmInput.value, 10) || 16000,
+        feed_rate_xy: parseFloat(feedRateXyInput.value) || 300.0,
+        plunge_feed: parseFloat(plungeFeedInput.value) || 200.0,
+        params: {
+          holes: holes,
+          nominal_diameter: majorDia,
+          pitch: pitchVal,
+          thread_length: parseFloat(threadLengthInput.value) || 12.0,
+          tool_diameter: parseFloat(toolDiameterInput.value) || 6.0,
+          thread_type: threadTypeSelect ? threadTypeSelect.value : "internal",
+          thread_hand: threadHandSelect ? threadHandSelect.value : "right",
+          milling_direction: millingDirectionSelect ? millingDirectionSelect.value : "climb",
+          radial_passes: parseInt(radialPassesSelect.value, 10) || 2,
+          spring_passes: parseInt(springPassesSelect.value, 10) || 1,
+          start_z: 0.0,
+          retract_z: parseFloat(retractZInput.value) || 5.0,
+          feed_rate_xy: parseFloat(feedRateXyInput.value) || 300.0,
+          plunge_feed: parseFloat(plungeFeedInput.value) || 200.0,
+          spindle_speed: parseInt(spindleRpmInput.value, 10) || 16000,
+          tool_id: toolId,
+        },
+        raw_gcode: currentGeneratedGCode || null,
+      };
+
+      if (window.JobBuilder) {
+        window.JobBuilder.addOperation(opPayload);
+        const origText = addToJobQueueBtn.textContent;
+        addToJobQueueBtn.textContent = "✅ Queued!";
+        setTimeout(() => (addToJobQueueBtn.textContent = origText), 1500);
+      }
+    });
+  }
+
+
   await initData();
 });
+

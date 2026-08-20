@@ -332,7 +332,50 @@ document.addEventListener("DOMContentLoaded", async () => {
     URL.revokeObjectURL(url);
   });
 
+  // Add to Job Queue Handler
+  const addToJobQueueBtn = document.getElementById("addToJobQueueBtn");
+  if (addToJobQueueBtn) {
+    addToJobQueueBtn.addEventListener("click", () => {
+      const holes = getHoleCoordinates();
+      if (holes.length === 0) {
+        alert("Please configure at least one hole coordinate first.");
+        return;
+      }
+      const toolId = toolSelect.value ? parseInt(toolSelect.value, 10) : 1;
+      const selectedTool = toolsList.find((t) => t.id === toolId);
+
+      const opPayload = {
+        op_name: `Drill Holes (${holes.length} pts)`,
+        op_type: "drilling",
+        tool_number: selectedTool ? selectedTool.tool_number : 1,
+        tool_name: selectedTool ? selectedTool.name : "Drill",
+        tool_diameter: selectedTool ? selectedTool.diameter : 3.175,
+        spindle_speed: parseInt(spindleRpmInput.value, 10) || 16000,
+        feed_rate_xy: 800,
+        plunge_feed: parseFloat(plungeFeedInput.value) || 200,
+        params: {
+          holes: holes,
+          target_depth_z: parseFloat(targetDepthInput.value) || -5.0,
+          start_z: parseFloat(startZInput.value) || 0.0,
+          retract_z: parseFloat(retractZInput.value) || 5.0,
+          dwell_seconds: parseFloat(dwellSecondsInput.value) || 0.0,
+          spindle_speed: parseInt(spindleRpmInput.value, 10) || 16000,
+          tool_id: toolId,
+        },
+        raw_gcode: currentGeneratedGCode || null,
+      };
+
+      if (window.JobBuilder) {
+        window.JobBuilder.addOperation(opPayload);
+        const origText = addToJobQueueBtn.textContent;
+        addToJobQueueBtn.textContent = "✅ Queued!";
+        setTimeout(() => (addToJobQueueBtn.textContent = origText), 1500);
+      }
+    });
+  }
+
   // Initialize
   await initData();
   updatePreview();
 });
+

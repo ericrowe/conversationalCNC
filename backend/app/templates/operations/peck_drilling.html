@@ -189,11 +189,17 @@
         </div>
       </div>
 
-      <button type="button" class="btn btn-primary" id="generateGCodeBtn">
-        ⚡ Generate Peck G-Code & Preview
-      </button>
+      <div style="display: grid; grid-template-columns: 1fr auto; gap: 0.5rem; margin-top: 0.5rem;">
+        <button type="button" class="btn btn-primary" id="generateGCodeBtn">
+          ⚡ Generate Peck G-Code & Preview
+        </button>
+        <button type="button" class="btn btn-secondary" id="addToJobQueueBtn" title="Add this peck drilling operation to the Multi-Op Job Builder Queue">
+          ➕ Queue Op
+        </button>
+      </div>
     </div>
   </div>
+
 
   <!-- Right Column: Visualizer & G-Code Viewer -->
   <div class="visualizer-col">

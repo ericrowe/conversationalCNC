@@ -211,11 +211,15 @@
     </div>
 
     <!-- Action Buttons -->
-    <div style="margin-top: 1.5rem; margin-bottom: 2rem;">
-      <button type="button" class="btn btn-primary" id="generateGCodeBtn" style="width: 100%; padding: 0.85rem; font-size: 1.05rem;">
+    <div style="display: grid; grid-template-columns: 1fr auto; gap: 0.5rem; margin-top: 1.5rem; margin-bottom: 2rem;">
+      <button type="button" class="btn btn-primary" id="generateGCodeBtn" style="padding: 0.85rem; font-size: 1.05rem;">
         ⚡ Generate Rectangular G-Code
       </button>
+      <button type="button" class="btn btn-secondary" id="addToJobQueueBtn" title="Add this rectangular pocket/boss to the Multi-Op Job Builder Queue" style="padding: 0.85rem 1.25rem; font-size: 1rem;">
+        ➕ Queue Op
+      </button>
     </div>
+
 
   </div>
 

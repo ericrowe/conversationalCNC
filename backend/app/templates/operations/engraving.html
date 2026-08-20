@@ -230,11 +230,17 @@
         <input type="number" id="plungeFeed" step="25" value="300">
       </div>
 
-      <button type="button" class="btn btn-primary" id="generateGCodeBtn">
-        ⚡ Generate Engraving G-Code & Preview
-      </button>
+      <div style="display: grid; grid-template-columns: 1fr auto; gap: 0.5rem; margin-top: 0.5rem;">
+        <button type="button" class="btn btn-primary" id="generateGCodeBtn">
+          ⚡ Generate Engraving G-Code & Preview
+        </button>
+        <button type="button" class="btn btn-secondary" id="addToJobQueueBtn" title="Add this engraving operation to the Multi-Op Job Builder Queue">
+          ➕ Queue Op
+        </button>
+      </div>
     </div>
   </div>
+
 
   <!-- Right Column: Visualizer & G-Code Viewer -->
   <div class="visualizer-col">

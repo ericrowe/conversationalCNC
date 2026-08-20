@@ -361,8 +361,20 @@ const API = {
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || data.error || "Spindle command failed");
     return data;
+  },
+
+  async generateJobSequence(payload) {
+    const res = await fetch("/api/generate/job-sequence", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || data.error || "Job sequence generation failed");
+    return data;
   }
 };
+
 
 
 

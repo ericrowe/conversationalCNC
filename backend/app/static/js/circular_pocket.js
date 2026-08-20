@@ -335,5 +335,55 @@ document.addEventListener("DOMContentLoaded", async () => {
     URL.revokeObjectURL(url);
   });
 
+  // Add to Job Queue Handler
+  const addToJobQueueBtn = document.getElementById("addToJobQueueBtn");
+  if (addToJobQueueBtn) {
+    addToJobQueueBtn.addEventListener("click", () => {
+      const pockets = getPocketCoordinates();
+      if (pockets.length === 0) {
+        alert("Please configure at least one pocket location first.");
+        return;
+      }
+      const toolId = toolSelect.value ? parseInt(toolSelect.value, 10) : 1;
+      const selectedTool = toolsList.find((t) => t.id === toolId);
+      const dia = parseFloat(pocketDiameterInput.value) || 20.0;
+
+      const opPayload = {
+        op_name: `Circular Pocket (${dia}mm dia, ${pockets.length} locs)`,
+        op_type: "circular_pocket",
+        tool_number: selectedTool ? selectedTool.tool_number : 1,
+        tool_name: selectedTool ? selectedTool.name : "Endmill",
+        tool_diameter: selectedTool ? selectedTool.diameter : parseFloat(toolDiameterInput.value) || 3.175,
+        spindle_speed: parseInt(spindleRpmInput.value, 10) || 16000,
+        feed_rate_xy: parseFloat(feedRateXyInput.value) || 800.0,
+        plunge_feed: parseFloat(plungeFeedInput.value) || 300.0,
+        params: {
+          pockets: pockets,
+          pocket_diameter: dia,
+          target_depth_z: parseFloat(targetDepthInput.value) || -5.0,
+          tool_diameter: parseFloat(toolDiameterInput.value) || 3.175,
+          stepdown_z: parseFloat(stepdownZInput.value) || 1.5,
+          stepover_percent: parseFloat(stepoverPercentInput.value) || 50.0,
+          finish_allowance: parseFloat(finishAllowanceInput.value) || 0.2,
+          feed_rate_xy: parseFloat(feedRateXyInput.value) || 800.0,
+          plunge_feed: parseFloat(plungeFeedInput.value) || 300.0,
+          retract_z: parseFloat(retractZInput.value) || 5.0,
+          spindle_speed: parseInt(spindleRpmInput.value, 10) || 16000,
+          tool_id: toolId,
+        },
+        raw_gcode: currentGeneratedGCode || null,
+      };
+
+      if (window.JobBuilder) {
+        window.JobBuilder.addOperation(opPayload);
+        const origText = addToJobQueueBtn.textContent;
+        addToJobQueueBtn.textContent = "✅ Queued!";
+        setTimeout(() => (addToJobQueueBtn.textContent = origText), 1500);
+      }
+    });
+  }
+
+
   await initData();
 });
+

@@ -268,11 +268,17 @@
         </div>
       </div>
 
-      <button type="button" class="btn btn-primary" id="generateGCodeBtn">
-        ⚡ Generate Helical G-Code & Preview
-      </button>
+      <div style="display: grid; grid-template-columns: 1fr auto; gap: 0.5rem; margin-top: 0.5rem;">
+        <button type="button" class="btn btn-primary" id="generateGCodeBtn">
+          ⚡ Generate Helical G-Code & Preview
+        </button>
+        <button type="button" class="btn btn-secondary" id="addToJobQueueBtn" title="Add this thread milling operation to the Multi-Op Job Builder Queue">
+          ➕ Queue Op
+        </button>
+      </div>
     </div>
   </div>
+
 
     <!-- 3D Toolpath Visualizer & Simulation Panel -->
     {% include 'components/visualizer_panel.html' %}

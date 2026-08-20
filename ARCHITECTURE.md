@@ -215,7 +215,17 @@ Implemented in `app/generators/jog.py` and `app/static/js/jog.js`:
 
 ---
 
-## 11. Development Status & Roadmap
+## 11. Multi-Operation Job Program Sequencer Architecture
+
+Implemented in `app/generators/sequencer.py` and `app/static/js/job_builder.js`:
+1. **Unified Multi-Op Program Generation**: Combines multiple operations into a single `.nc` file with a top-level safety header (`G21 G90 G94 G17 G54`) and a clean single footer (`M5`, `G0 Z`, `G0 X0 Y0`, `M2`).
+2. **Tool Change Optimization**: Eliminates redundant `M6` / `M0` tool change pauses when consecutive operations share the same tool number.
+3. **Safe Inter-Operation Transitions**: Enforces safe intermediate Z-retracts (`G0 Z<safe_z>`) and coordinate continuity between operations.
+4. **Slide-Over Job Builder UI**: Persistent queue state with drag-and-drop / up-down reordering, live 3D combined toolpath simulation, and 1-click export.
+
+---
+
+## 12. Development Status & Roadmap
 
 - **Phase 1 (Completed)**: Core architecture, SQLite schema, Straight Plunge drilling, Grbl post-processor, DeWalt DWP611 dial mapping.
 - **Phase 2 (Completed)**: Helical Thread Milling, Peck Drilling (G73/G83), Circular Pocketing, Surfacing/Facing, Single-Line Vector Text Engraving with 5 fonts and spline smoothing, 2D vector toolpath visualizer.
@@ -226,10 +236,11 @@ Implemented in `app/generators/jog.py` and `app/static/js/jog.js`:
 - **Phase 7 (Completed)**: Physics-Based Feeds & Speeds, Radial Chip Thinning, MRR, and Spindle Power Engine.
 - **Phase 8 (Completed)**: Machine Probing Assistant (Z-Touch Plate, Corner XYZ Block, Homing) and explicit `G54` safety headers.
 - **Phase 9 (Completed)**: Manual Jog Controller & Live DRO Pendant with keyboard hotkeys and quick-zero actions.
-- **Phase 10 (Planned)**: Multi-Operation Job Program Sequencer / Builder.
+- **Phase 10 (Completed)**: Multi-Operation Job Program Sequencer / Builder with tool change optimization.
 - **Phase 11 (Planned)**: 2.5D Arbitrary Profile / Contour Milling.
 - **Phase 12 (Planned)**: Step-and-Repeat Array Nesting & Soft Jaw Fixturing Wizard.
 - **Phase 13 (Planned)**: DXF / 2D Vector CAD Importer.
+
 
 
 

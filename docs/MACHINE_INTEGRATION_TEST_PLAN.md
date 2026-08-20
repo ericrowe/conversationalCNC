@@ -127,7 +127,16 @@ Generate test programs from Conversational CNC UI with workpiece origin set to $
   - Tool lifts rapidly to safe Z between distinct character strokes.
   - Spline curve moves stream with smooth motion velocity profile.
 
+### Test 3.5: Multi-Operation Job Sequencer & Tool Transition Verification
+- **Parameters**: 3-operation part program built in **📋 Job Builder** (`Op 1: Surfacing Face` with T1 $\to$ `Op 2: Rectangular Pocket` with T2 $\to$ `Op 3: Drill Holes` with T2).
+- **Verification**:
+  - Program starts with a single top-level safety header (`G21 G90 G94 G17 G54`).
+  - Transition from Op 1 (T1) to Op 2 (T2) executes safe Z-retract (`G0 Z5`), stops spindle (`M5`), and prompts tool change (`M6 T2` / `M0`).
+  - Transition from Op 2 (T2) to Op 3 (T2) recognizes identical tool number and immediately proceeds without redundant tool change pauses.
+  - Program completes with single unified footer (`M5`, `G0 Z`, `G0 X0 Y0`, `M2`).
+
 ---
+
 
 ## 🌪️ Phase 4: Spindle Integration & EMI Noise Baseline
 

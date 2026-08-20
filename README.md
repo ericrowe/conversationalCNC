@@ -2,7 +2,7 @@
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![Flask 3.0+](https://img.shields.io/badge/flask-3.0+-green.svg)](https://flask.palletsprojects.com/)
-[![Tests](https://img.shields.io/badge/tests-115%20passed-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-118%20passed-brightgreen.svg)]()
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 A web-based, locally executing **Conversational CNC Controller** designed for rapid, on-the-fly machining without launching heavyweight CAD/CAM software. Built with a zero-build-step architecture optimized for offline Raspberry Pi 4/5 setups and desktop workstations driving Grbl-based CNCs (such as the Inventables X-Carve, Shapeoko, PrintNC) and standard CNC controllers.
@@ -53,6 +53,13 @@ A web-based, locally executing **Conversational CNC Controller** designed for ra
 - **Global Keyboard Hotkeys**: Arrow keys for $XY$, PageUp/PageDown for $Z$, `Shift` for rapid speed, and `J` key to summon pendant anywhere.
 - **Quick-Zero & Origin Return**: 1-click zeroing for $X0, Y0, Z0$ or $XYZ$ all (`G10 L20 P1`), plus safe return to part origin (`G0 Z<retract>` $\to$ `G0 X0 Y0`).
 - **Live Digital Readout (DRO)**: Real-time high-visibility coordinates display and manual spindle on/off toggle.
+
+### 8. Multi-Operation Job Program Sequencer & Builder
+- **Complete Part Machining Assembler**: Queue multiple conversational operations (facing $\to$ pocketing $\to$ drilling $\to$ chamfering $\to$ engraving) into a single cohesive `.nc` job file.
+- **Intelligent Tool Change Optimization**: Tracks active tools and eliminates redundant tool changes when consecutive operations share the same tool.
+- **Safe Inter-Op Retracts & Coordinate Continuity**: Enforces safe Z-retracts and G54 coordinate continuity throughout the entire job run.
+- **Slide-Over Job Builder Drawer**: Reorder operations with up/down controls, group by tool, preview combined toolpaths, and export full `.nc` programs with 1-click.
+
 
 
 
@@ -111,7 +118,7 @@ conversationalCNC/
 │   │   ├── static/          # CSS stylesheets and client JavaScript modules
 │   │   ├── templates/       # Jinja2 HTML templates
 │   │   └── web/             # Web frontend routing blueprint
-│   └── tests/               # 115 automated pytest unit and integration tests
+│   └── tests/               # 118 automated pytest unit and integration tests
 └── docs/
     └── API_DOCUMENTATION.md # Comprehensive REST API reference
 ```
@@ -158,10 +165,11 @@ PYTHONPATH=backend python backend/seed.py
 ```
 
 ### Step 5: Run Automated Tests
-Verify that all 115 tests pass on your machine:
+Verify that all 118 tests pass on your machine:
 ```bash
 PYTHONPATH=backend pytest backend/tests -v
 ```
+
 
 
 

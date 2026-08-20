@@ -41,7 +41,9 @@
    - [POST /api/jog/zero](#post-apijogzero)
    - [POST /api/jog/goto-origin](#post-apijoggoto-origin)
    - [POST /api/jog/spindle](#post-apijogspindle)
-8. [Machine Profiles](#8-machine-profiles)
+8. [Multi-Operation Job Program Sequencer](#8-multi-operation-job-program-sequencer)
+   - [POST /api/generate/job-sequence](#post-apigeneratejob-sequence)
+9. [Machine Profiles](#9-machine-profiles)
    - [GET /api/machines](#get-apimachines)
    - [GET /api/machines/active](#get-apimachinesactive)
    - [POST /api/machines/:id/activate](#post-apimachinesidactivate)
@@ -49,19 +51,20 @@
    - [GET /api/machines/:id](#get-apimachinesid)
    - [PUT /api/machines/:id](#put-apimachinesid)
    - [DELETE /api/machines/:id](#delete-apimachinesid)
-9. [Tool Library](#9-tool-library)
+10. [Tool Library](#10-tool-library)
    - [GET /api/tools](#get-apitools)
    - [GET /api/tools/:id](#get-apitoolsid)
    - [POST /api/tools](#post-apitools)
    - [PUT /api/tools/:id](#put-apitoolsid)
    - [DELETE /api/tools/:id](#delete-apitoolsid)
-10. [Material Presets](#10-material-presets)
+11. [Material Presets](#11-material-presets)
    - [GET /api/materials](#get-apimaterials)
    - [GET /api/materials/:id](#get-apimaterialsid)
    - [POST /api/materials/tool/:tool_id](#post-apimaterialstooltool_id)
    - [PUT /api/materials/:id](#put-apimaterialsid)
    - [DELETE /api/materials/:id](#delete-apimaterialsid)
-11. [Error Handling Format](#11-error-handling-format)
+12. [Error Handling Format](#12-error-handling-format)
+
 
 
 
@@ -539,9 +542,62 @@ Generates manual spindle toggle commands (`M3 S<rpm>` / `M5`).
 
 ---
 
-## 8. Machine Profiles
+## 8. Multi-Operation Job Program Sequencer
+
+### `POST /api/generate/job-sequence`
+Assembles multiple conversational machining operations into a single cohesive, production-ready `.nc` job file with unified safety headers, intelligent tool change optimization, safe retracts, and program footers.
+
+#### Request Payload
+```json
+{
+  "job_name": "Bracket_Machining_Job",
+  "operations": [
+    {
+      "op_name": "Surface Top Face",
+      "op_type": "surfacing",
+      "tool_number": 1,
+      "tool_name": "Flycutter 25mm",
+      "tool_diameter": 25.0,
+      "spindle_speed": 14000,
+      "params": {
+        "length_x": 100.0,
+        "width_y": 80.0,
+        "total_depth_z": 1.0,
+        "stepdown_z": 1.0,
+        "stepover_percent": 60.0
+      }
+    },
+    {
+      "op_name": "Center Bearing Bore",
+      "op_type": "circular_pocket",
+      "tool_number": 2,
+      "tool_name": "1/4 Endmill",
+      "tool_diameter": 6.35,
+      "spindle_speed": 16000,
+      "params": {
+        "pockets": [[50.0, 40.0]],
+        "pocket_diameter": 30.0,
+        "target_depth_z": -5.0,
+        "stepdown_z": 2.5
+      }
+    }
+  ],
+  "safe_z_retract": 5.0,
+  "units": "mm",
+  "dialect": "grbl",
+  "optimize_tool_order": false,
+  "park_x": 0.0,
+  "park_y": 0.0,
+  "park_z": 5.0
+}
+```
+
+---
+
+## 9. Machine Profiles
 
 - `GET /api/machines`: List all machine profiles.
+
 
 - `GET /api/machines/active`: Get active machine profile.
 

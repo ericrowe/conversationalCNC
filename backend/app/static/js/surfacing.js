@@ -287,5 +287,55 @@ document.addEventListener("DOMContentLoaded", async () => {
     URL.revokeObjectURL(url);
   });
 
+  // Add to Job Queue Handler
+  const addToJobQueueBtn = document.getElementById("addToJobQueueBtn");
+  if (addToJobQueueBtn) {
+    addToJobQueueBtn.addEventListener("click", () => {
+      const selectedToolId = toolSelect.value ? parseInt(toolSelect.value, 10) : 1;
+      const selectedTool = toolsList.find((t) => t.id === selectedToolId);
+      const lx = parseFloat(lengthXInput.value) || 100;
+      const wy = parseFloat(widthYInput.value) || 80;
+
+      const opPayload = {
+        op_name: `Surface Face (${lx}x${wy}mm)`,
+        op_type: "surfacing",
+        tool_number: selectedTool ? selectedTool.tool_number : 1,
+        tool_name: selectedTool ? selectedTool.name : "Flycutter",
+        tool_diameter: selectedTool ? selectedTool.diameter : parseFloat(toolDiameterInput.value) || 25.0,
+        spindle_speed: parseInt(spindleRpmInput.value, 10) || 16000,
+        feed_rate_xy: parseFloat(feedRateXyInput.value) || 1200,
+        plunge_feed: parseFloat(plungeFeedInput.value) || 300,
+        params: {
+          length_x: lx,
+          width_y: wy,
+          origin_x: 0.0,
+          origin_y: 0.0,
+          origin_mode: originModeSelect.value || "corner",
+          total_depth_z: parseFloat(totalDepthInput.value) || 1.0,
+          stepdown_z: parseFloat(stepdownZInput.value) || 1.0,
+          tool_diameter: parseFloat(toolDiameterInput.value) || 25.0,
+          stepover_percent: parseFloat(stepoverPercentInput.value) || 60,
+          cut_direction: cutDirectionSelect.value || "zigzag",
+          overtravel: parseFloat(overtravelInput.value) || 5.0,
+          start_z: 0.0,
+          retract_z: parseFloat(retractZInput.value) || 5.0,
+          feed_rate_xy: parseFloat(feedRateXyInput.value) || 1200,
+          plunge_feed: parseFloat(plungeFeedInput.value) || 300,
+          spindle_speed: parseInt(spindleRpmInput.value, 10) || 16000,
+          tool_id: selectedToolId,
+        },
+        raw_gcode: currentGeneratedGCode || null,
+      };
+
+      if (window.JobBuilder) {
+        window.JobBuilder.addOperation(opPayload);
+        const origText = addToJobQueueBtn.textContent;
+        addToJobQueueBtn.textContent = "✅ Queued!";
+        setTimeout(() => (addToJobQueueBtn.textContent = origText), 1500);
+      }
+    });
+  }
+
   await initData();
 });
+
