@@ -110,7 +110,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       const selected = vbitDefault || toolsList[0];
       if (selected) {
         toolSelect.value = selected.id;
-        toolDiameterInput.value = selected.diameter;
+        const isVbit = selected.tool_type === "vbit" || selected.name.toLowerCase().includes("v-bit") || selected.name.toLowerCase().includes("engrav");
+        toolDiameterInput.value = isVbit ? 0.20 : selected.diameter;
         populatePresets(selected);
       }
 
@@ -118,6 +119,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     } catch (err) {
       console.error("Init error:", err);
     }
+
 
   }
 
@@ -177,7 +179,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     const selectedId = parseInt(toolSelect.value, 10);
     const tool = toolsList.find((t) => t.id === selectedId);
     if (tool) {
-      toolDiameterInput.value = tool.diameter;
+      const isVbit = tool.tool_type === "vbit" || tool.name.toLowerCase().includes("v-bit") || tool.name.toLowerCase().includes("engrav");
+      toolDiameterInput.value = isVbit ? 0.20 : tool.diameter;
       populatePresets(tool);
     }
     updatePreview();
@@ -216,7 +219,27 @@ document.addEventListener("DOMContentLoaded", async () => {
     const zPasses = Math.max(1, Math.ceil(Math.abs(targetZ) / stepZ));
     statZPasses.textContent = zPasses;
 
+    // Estimate stroke width on surface
+    const tipWidth = parseFloat(toolDiameterInput.value) || 0.20;
+    const cutDepth = Math.abs(targetZ);
+    const selectedToolId = parseInt(toolSelect.value, 10);
+    const selectedTool = toolsList.find((t) => t.id === selectedToolId);
+    const isVbit = selectedTool ? (selectedTool.tool_type === "vbit" || selectedTool.name.toLowerCase().includes("v-bit") || selectedTool.name.toLowerCase().includes("engrav")) : true;
+
+    let estWidth = tipWidth;
+    if (isVbit) {
+      const angleDeg = selectedTool?.name.includes("90") ? 90 : 60;
+      const halfAngleRad = (angleDeg / 2.0) * (Math.PI / 180.0);
+      estWidth = tipWidth + 2.0 * cutDepth * Math.tan(halfAngleRad);
+    }
+
+    const estWidthEl = document.getElementById("estimatedStrokeWidth");
+    if (estWidthEl) {
+      estWidthEl.textContent = `~${estWidth.toFixed(2)} mm (${isVbit ? "V-groove at Z" + targetZ.toFixed(2) : "Cutter width"})`;
+    }
+
     const envelope = activeMachine ? { x: activeMachine.work_area_x, y: activeMachine.work_area_y } : null;
+
 
     visualizer.setData({
       opType: "engraving",

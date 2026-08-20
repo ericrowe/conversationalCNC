@@ -168,14 +168,22 @@
 
       <div class="form-row">
         <div class="form-group">
-          <label for="toolDiameter">Tool / Tip Diameter (mm)</label>
-          <input type="number" id="toolDiameter" step="0.05" value="3.175">
+          <label for="toolDiameter">Tip Flat / Bit Width (mm)</label>
+          <input type="number" id="toolDiameter" step="0.05" min="0.05" value="0.20">
+          <span style="font-size: 0.75rem; color: var(--text-muted);">Tip flat width (e.g. 0.1–0.2mm for V-bits) or ball/flat diameter</span>
         </div>
         <div class="form-group">
           <label for="presetSelect">Material Preset</label>
           <select id="presetSelect"></select>
         </div>
       </div>
+
+      <!-- Estimated Line Width Info Box -->
+      <div id="strokeWidthInfoBox" style="background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 6px; padding: 0.5rem 0.75rem; margin-bottom: 1rem; font-size: 0.8rem; display: flex; justify-content: space-between; align-items: center;">
+        <span style="color: var(--text-muted);">Estimated Engraved Line Width on Surface:</span>
+        <strong id="estimatedStrokeWidth" style="color: #38bdf8; font-family: var(--font-mono);">~0.55 mm</strong>
+      </div>
+
 
       <!-- Router Dial Setting -->
       <div id="routerDialGroup" class="form-group" style="background: rgba(2, 132, 199, 0.1); padding: 0.75rem; border-radius: 6px; border: 1px solid rgba(56, 189, 248, 0.3);">
