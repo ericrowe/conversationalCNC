@@ -7,7 +7,7 @@
 > ### ⚠️ EXPERIMENTAL & UNTESTED SOFTWARE DISCLAIMER
 > **Conversational CNC is an active open-source project and is AS OF YET UNTESTED ON PHYSICAL CNC MACHINERY.**
 >
-> CNC milling machines and routers are powerful, high-energy tools capable of severe physical injury, tool breakage, workpiece damage, electrical fire, or machine destruction if commanded incorrectly. While this software contains an extensive automated mathematical and API test suite (154 passing unit tests), **no guarantee is made that generated G-code is bug-free, safe for your particular machine setup, or free of unexpected motion commands.**
+> CNC milling machines and routers are powerful, high-energy tools capable of severe physical injury, tool breakage, workpiece damage, electrical fire, or machine destruction if commanded incorrectly. While this software contains an extensive automated mathematical and API test suite (174 passing unit tests), **no guarantee is made that generated G-code is bug-free, safe for your particular machine setup, or free of unexpected motion commands.**
 >
 > **MANDATORY SAFE STARTUP & INITIAL COMMISSIONING PROTOCOL:**
 > If you choose to use this software on a physical CNC machine, you MUST follow the progressive-risk startup procedures detailed in [MACHINE_INTEGRATION_TEST_PLAN.md](MACHINE_INTEGRATION_TEST_PLAN.md):
@@ -23,35 +23,36 @@
 ## Table of Contents
 1. [Safety Disclaimer & Initial Startup Testing](#table-of-contents)
 2. [Interface Overview & Layout Architecture](#1-interface-overview--layout-architecture)
-2. [Machine Coordinates, Probing, Zeroing & Mesh Leveling (WCS G54–G59)](#2-machine-coordinates-probing--zeroing-wcs-g54g59)
+3. [Machine Coordinates, Probing, Zeroing & Mesh Leveling (WCS G54–G59)](#2-machine-coordinates-probing--zeroing-wcs-g54g59)
    - [2.1 The Coordinate Hierarchy (MPOS vs WPOS)](#21-the-coordinate-hierarchy-mpos-vs-wpos)
    - [2.2 Z-Surface Touchplate Probing](#22-z-surface-touchplate-probing)
    - [2.3 Corner XYZ Edge Finding & Lip Offsets](#23-corner-xyz-edge-finding--lip-offsets)
    - [2.4 Workpiece Surface Mesh Leveling & Arbitrary Geometry Auto-Warping](#24-workpiece-surface-mesh-leveling--arbitrary-geometry-auto-warping)
    - [2.5 Manual Jog Controller & Live DRO](#25-manual-jog-controller--live-dro)
-3. [Feeds, Speeds & Machine Rigidity Guide](#3-feeds-speeds--machine-rigidity-guide)
+4. [Feeds, Speeds & Machine Rigidity Guide](#3-feeds-speeds--machine-rigidity-guide)
    - [3.1 Belt-Driven CNC Physics & Machine Flex](#31-belt-driven-cnc-physics--machine-flex)
    - [3.2 Router Speed Dials (DeWalt DWP611 & Makita RT0701)](#32-router-speed-dials-dewalt-dwp611--makita-rt0701)
    - [3.3 Comprehensive Feeds, Speeds & Stepdown Table](#33-comprehensive-feeds-speeds--stepdown-table)
    - [3.4 Radial Chip Thinning Factor (RCTF) Explained](#34-radial-chip-thinning-factor-rctf-explained)
-4. [Milling Operations — Detailed Field & Setting Reference](#4-milling-operations--detailed-field--setting-reference)
+5. [Milling Operations — Detailed Field & Setting Reference](#4-milling-operations--detailed-field--setting-reference)
    - [4.1 Workpiece & Spoilboard Surfacing](#41-workpiece--spoilboard-surfacing)
    - [4.2 Rectangular & Circular Pocketing / Island Bosses](#42-rectangular--circular-pocketing--island-bosses)
    - [4.3 2.5D Contouring, Holding Tabs & Lead-Ins](#43-25d-contouring-holding-tabs--lead-ins)
    - [4.4 Straight Plunge & Deep Hole Peck Drilling](#44-straight-plunge--deep-hole-peck-drilling)
    - [4.5 Linear Slotting & Corner Chamfering](#45-linear-slotting--corner-chamfering)
    - [4.6 Single-Point Helical Thread Milling](#46-single-point-helical-thread-milling)
-5. [Vector CAD Importers (SVG & DXF)](#5-vector-cad-importers-svg--dxf)
+6. [Vector CAD Importers (SVG & DXF)](#5-vector-cad-importers-svg--dxf)
    - [5.1 SVG Importer with Grayscale Luminance-to-Depth Mapping](#51-svg-importer-with-grayscale-luminance-to-depth-mapping)
    - [5.2 DXF 2D CAD Vector Importer & Automatic Closed Loops](#52-dxf-2d-cad-vector-importer--automatic-closed-loops)
-6. [Single-Line Hershey Typography & Text Engraving](#6-single-line-hershey-typography--text-engraving)
-7. [Nesting & Vise Soft Jaw Fixturing](#7-nesting--vise-soft-jaw-fixturing)
-8. [Multi-Operation Job Builder & Tool Change Sequencer](#8-multi-operation-job-builder--tool-change-sequencer)
-9. [3D WebGL Toolpath Inspector & Simulation Scrubber](#9-3d-webgl-toolpath-inspector--simulation-scrubber)
-10. [End-to-End Machining Tutorials](#10-end-to-end-machining-tutorials)
+7. [Single-Line Hershey Typography & Text Engraving](#6-single-line-hershey-typography--text-engraving)
+8. [Nesting & Vise Soft Jaw Fixturing](#7-nesting--vise-soft-jaw-fixturing)
+9. [Multi-Operation Job Builder & Tool Change Sequencer](#8-multi-operation-job-builder--tool-change-sequencer)
+10. [3D WebGL Toolpath Inspector & Simulation Scrubber](#9-3d-webgl-toolpath-inspector--simulation-scrubber)
+11. [End-to-End Machining Tutorials](#10-end-to-end-machining-tutorials)
     - [Tutorial 1: Spoilboard Flattening & Raw Stock Resurfacing](#tutorial-1-spoilboard-flattening--raw-stock-resurfacing)
     - [Tutorial 2: Precision Bracket Cutout with Holding Tabs](#tutorial-2-precision-bracket-cutout-with-holding-tabs)
     - [Tutorial 3: Multi-Depth Badge Carving from SVG Graphic](#tutorial-3-multi-depth-badge-carving-from-svg-graphic)
+    - [Tutorial 4: Custom Bolt Fabrication from Round Stock](#tutorial-4-custom-bolt-fabrication-from-round-stock)
 
 ---
 
@@ -596,6 +597,48 @@ Every screen features a synchronized 3D WebGL backplotter:
    - `Lead-In Arc`: `90° Tangential Arc`
    - `Tool Selection`: `T1: 1/8" Endmill` (or 60° V-bit)
 4. **Generate & Inspect**: Click **`⚡ Generate SVG G-Code & Preview`**. The multi-depth 3D backplotter will display stepped toolpath tiers corresponding directly to your artwork's shading.
+
+---
+
+### Tutorial 4: Custom Bolt Fabrication from Round Stock
+
+**Goal**: Machine a custom $M10 \times 1.5$ threaded hex bolt from a piece of $25.0\text{mm}$ round bar stock using the **Job Builder** multi-operation sequencer.
+
+1. **Workholding & WCS Setup**:
+   - Secure the $25\text{mm}$ round bar upright in a 3-jaw chuck, collet block, or precision soft jaws in your machine vise.
+   - Touch off and set Part Datum $(X0, Y0)$ at the exact center of the bar stock, and $Z0$ at the top face.
+
+2. **Step 1: Shaft Boss Turning (Op 1)**:
+   - Navigate to **⭕ Circular Pocket / Boss** and select the **`🔘 Circular Boss / Shaft`** tab.
+   - Set **Boss Center**: $X=0.0, Y=0.0$.
+   - Set **Finished Shaft Dia**: `10.0 mm` (or `9.85 mm` major diameter).
+   - Set **Raw Stock Boundary**: `⭕ Round Bar Stock`, **Stock Diameter**: `25.0 mm`.
+   - Set **Shaft Cut Depth Z**: `-20.0 mm`, **Stepdown Z**: `1.0 mm`, **Radial Stepover**: `50%`, **Finish Allowance**: `0.2 mm`.
+   - Select **Tool**: `Tool 1 (6.35mm Flat Endmill)`.
+   - Click **`⚡ Generate G-Code & Preview`** to verify concentric clearing circles and smooth tangential finish pass.
+   - Click **`➕ Queue Op`** to add to Job Builder.
+
+3. **Step 2: External Helical Thread Milling (Op 2)**:
+   - Navigate to **🧵 Thread Milling**.
+   - Select **Thread Standard**: `Metric M10x1.5 (Pitch: 1.5mm)`.
+   - Set **Thread Type**: `External (Stud / Rod)`.
+   - Set **Thread Length**: `18.0 mm`, **Center**: $X=0.0, Y=0.0$.
+   - Select **Tool**: `Tool 2 (Single-Point Thread Mill, Dia: 4.0mm)`.
+   - Click **`➕ Queue Op`** to add to Job Builder.
+
+4. **Step 3: Hex Head Contouring (Op 3)**:
+   - Navigate to **📐 Contouring / Profile**.
+   - Select **Polygon Template**: `6-Sided Regular Hexagon`, **Width Across Flats**: `17.0 mm`.
+   - Set **Cut Depth Z**: `-6.0 mm` (bolt head thickness), **Stepdown Z**: `1.0 mm`.
+   - Set **Cutter Side**: `Left / Outside (Climb Milling)`.
+   - Select **Tool**: `Tool 1 (6.35mm Flat Endmill)`.
+   - Click **`➕ Queue Op`** to add to Job Builder.
+
+5. **Step 4: Unified Job Export**:
+   - Open the **`📋 Job Builder`** drawer from the top navigation bar.
+   - Verify all 3 operations are queued in order: `Op 1 (Boss Turning)` $\to$ `Op 2 (Thread Milling)` $\to$ `Op 3 (Hex Head)`.
+   - Click **`⚡ Generate Unified Program (.nc)`**.
+   - The sequencer automatically coordinates all tool change pauses (`M6 T...`), safe intermediate retract clearances (`G0 Z5.0`), router speed dial prompts, and spindle dwells!
 
 ---
 

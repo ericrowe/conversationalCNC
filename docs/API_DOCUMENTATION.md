@@ -15,10 +15,12 @@
    - [POST /api/generate/drilling/peck](#post-apigeneratedrillingpeck)
    - [POST /api/generate/thread-milling](#post-apigeneratethread-milling)
    - [POST /api/generate/pocket/circular](#post-apigeneratepocketcircular)
+   - [POST /api/generate/pocket/circular-boss](#post-apigeneratepocketcircular-boss)
    - [POST /api/generate/pocket/rectangular](#post-apigeneratepocketrectangular)
    - [POST /api/generate/boss/rectangular](#post-apigeneratebossrectangular)
    - [POST /api/generate/slotting/linear](#post-apigenerateslottinglinear)
    - [POST /api/generate/chamfering/rectangular](#post-apigeneratechamferingrectangular)
+   - [POST /api/generate/milling/contour](#post-apigeneratemillingcontour)
    - [POST /api/generate/surfacing](#post-apigeneratesurfacing)
    - [GET /api/generate/engraving/fonts](#get-apigenerateengravingfonts)
    - [GET /api/generate/engraving/glyphs](#get-apigenerateengravingglyphs)
@@ -29,41 +31,38 @@
    - [POST /api/transform/mirror](#post-apitransformmirror)
    - [POST /api/transform/feed-speed-override](#post-apitransformfeed-speed-override)
    - [POST /api/transform/split-tools](#post-apitransformsplit-tools)
-5. [Feeds & Speeds Physics Engine](#5-feeds--speeds-physics-engine)
+5. [Step-and-Repeat Array Nesting & Soft Jaw Fixturing](#5-step-and-repeat-array-nesting--soft-jaw-fixturing)
+   - [POST /api/generate/nesting/grid](#post-apigeneratenestinggrid)
+   - [POST /api/generate/nesting/soft-jaw](#post-apigeneratenestingsoft-jaw)
+6. [DXF 2D Vector CAD Importer](#6-dxf-2d-vector-cad-importer)
+   - [POST /api/generate/dxf/parse](#post-apigeneratedxfparse)
+   - [POST /api/generate/dxf/toolpath](#post-apigeneratedxftoolpath)
+7. [SVG 2D Vector CAD Importer with Grayscale Depth Mapping](#7-svg-2d-vector-cad-importer-with-grayscale-depth-mapping)
+   - [POST /api/generate/svg/parse](#post-apigeneratesvgparse)
+   - [POST /api/generate/svg/toolpath](#post-apigeneratesvgtoolpath)
+8. [Feeds & Speeds Physics Engine](#8-feeds--speeds-physics-engine)
    - [GET /api/calculator/materials-catalog](#get-apicalculatormaterials-catalog)
    - [POST /api/calculator/feeds-speeds](#post-apicalculatorfeeds-speeds)
-6. [Machine Probing & Setup Macros](#6-machine-probing--setup-macros)
+9. [Machine Probing & Setup Macros](#9-machine-probing--setup-macros)
    - [POST /api/probing/z-touch-plate](#post-apiprobingz-touch-plate)
    - [POST /api/probing/corner-xyz](#post-apiprobingcorner-xyz)
    - [GET /api/probing/homing](#get-apiprobinghoming)
-7. [Manual Jog Controller & Machine Control](#7-manual-jog-controller--machine-control)
-   - [POST /api/jog/step](#post-apijogstep)
-   - [POST /api/jog/zero](#post-apijogzero)
-   - [POST /api/jog/goto-origin](#post-apijoggoto-origin)
-   - [POST /api/jog/spindle](#post-apijogspindle)
-8. [Multi-Operation Job Program Sequencer](#8-multi-operation-job-program-sequencer)
-   - [POST /api/generate/job-sequence](#post-apigeneratejob-sequence)
-9. [Machine Profiles](#9-machine-profiles)
-   - [GET /api/machines](#get-apimachines)
-   - [GET /api/machines/active](#get-apimachinesactive)
-   - [POST /api/machines/:id/activate](#post-apimachinesidactivate)
-   - [POST /api/machines](#post-apimachines)
-   - [GET /api/machines/:id](#get-apimachinesid)
-   - [PUT /api/machines/:id](#put-apimachinesid)
-   - [DELETE /api/machines/:id](#delete-apimachinesid)
-10. [Tool Library](#10-tool-library)
-   - [GET /api/tools](#get-apitools)
-   - [GET /api/tools/:id](#get-apitoolsid)
-   - [POST /api/tools](#post-apitools)
-   - [PUT /api/tools/:id](#put-apitoolsid)
-   - [DELETE /api/tools/:id](#delete-apitoolsid)
-11. [Material Presets](#11-material-presets)
-   - [GET /api/materials](#get-apimaterials)
-   - [GET /api/materials/:id](#get-apimaterialsid)
-   - [POST /api/materials/tool/:tool_id](#post-apimaterialstooltool_id)
-   - [PUT /api/materials/:id](#put-apimaterialsid)
-   - [DELETE /api/materials/:id](#delete-apimaterialsid)
-12. [Error Handling Format](#12-error-handling-format)
+10. [Workpiece Surface Mesh Leveling & G-Code Warper](#10-workpiece-surface-mesh-leveling--g-code-warper)
+    - [POST /api/mesh/generate-points](#post-apimeshgenerate-points)
+    - [POST /api/mesh/probe-macro](#post-apimeshprobe-macro)
+    - [POST /api/mesh/parse-log](#post-apimeshparse-log)
+    - [POST /api/mesh/warp-gcode](#post-apimeshwarp-gcode)
+11. [Manual Jog Controller & Machine Control](#11-manual-jog-controller--machine-control)
+    - [POST /api/jog/step](#post-apijogstep)
+    - [POST /api/jog/zero](#post-apijogzero)
+    - [POST /api/jog/goto-origin](#post-apijoggoto-origin)
+    - [POST /api/jog/spindle](#post-apijogspindle)
+12. [Multi-Operation Job Program Sequencer](#12-multi-operation-job-program-sequencer)
+    - [POST /api/generate/job-sequence](#post-apigeneratejob-sequence)
+13. [Machine Profiles](#13-machine-profiles)
+14. [Tool Library](#14-tool-library)
+15. [Material Presets](#15-material-presets)
+16. [Error Handling Format](#16-error-handling-format)
 
 
 
@@ -205,6 +204,27 @@ Generates circular pocketing and helical bore milling G-code.
 | `stepover_percent` | `number` | No | `50.0` | Radial stepover % (10-90%). |
 | `finish_allowance` | `number` | No | `0.2` | Wall stock allowance for finish pass (mm). |
 | `feed_rate_xy` | `number` | No | Preset / `1000.0` | Cutting feed rate (mm/min). |
+
+---
+
+### `POST /api/generate/pocket/circular-boss`
+Generates G-code for raised cylindrical bosses, studs, spigots, and custom bolt shafts machined from round bar stock or rectangular billets using outside-in concentric climb clearing loops.
+
+#### Request Body Schema
+| Field | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `boss_center_x`, `boss_center_y` | `number` | No | `0.0` | Center of finished shaft (mm). |
+| `boss_diameter` | `number` | **Yes** | — | Finished shaft diameter (mm). |
+| `stock_shape` | `string` | No | `"circle"` | `"circle"` (round bar) or `"rectangle"`. |
+| `stock_diameter` | `number` | No | `25.0` | Outer diameter of raw round stock (mm). |
+| `stock_length_x`, `stock_width_y` | `number` | No | `30.0` | Stock dimensions if rectangular billet (mm). |
+| `target_depth_z` | `number` | **Yes** | — | Shaft length / cut depth Z (e.g. `-15.0`). |
+| `tool_diameter` | `number` | No | Tool preset / `6.35` | Flat endmill diameter (mm). |
+| `stepdown_z` | `number` | No | `1.0` | Z depth per pass (mm). |
+| `stepover_percent` | `number` | No | `50.0` | Radial stepover % (10-90%). |
+| `finish_allowance` | `number` | No | `0.2` | Wall stock allowance for finish pass (mm). |
+| `feed_rate_xy` | `number` | No | Preset / `800.0` | Cutting feed rate (mm/min). |
+| `plunge_feed` | `number` | No | Preset / `250.0` | Plunge feed in open air (mm/min). |
 
 ---
 
@@ -682,7 +702,7 @@ Calculates optimal spindle RPM, feed rate XY, plunge feed, Radial Chip Thinning 
 
 ---
 
-## 6. Machine Probing & Setup Macros
+## 9. Machine Probing & Setup Macros
 
 ### `POST /api/probing/z-touch-plate`
 Generates a 2-stage (fast search + fine precision touch) Z-touch plate probing macro with `G38.2`, sets `G10 L20 P1 Z<plate_thickness>`, and lifts to safe clearance.
@@ -724,7 +744,41 @@ Generates the standard machine homing sequence (`$H`) and coordinate verificatio
 
 ---
 
-## 7. Manual Jog Controller & Machine Control
+## 10. Workpiece Surface Mesh Leveling & G-Code Warper
+
+### `POST /api/mesh/generate-points`
+Generates an array of candidate touch probe sampling points across arbitrary workpiece geometries (Rectangles, Circular Discs, Concentric Donut Rings, or Polygons) with perimeter inset margins.
+
+#### Request Payload
+```json
+{
+  "shape_type": "disc",
+  "disc_center_x": 50.0,
+  "disc_center_y": 50.0,
+  "disc_diameter": 100.0,
+  "inset_margin": 3.0,
+  "grid_spacing": 15.0
+}
+```
+
+---
+
+### `POST /api/mesh/probe-macro`
+Generates a complete multi-point touch probe routine (`G38.2`) with snake traversal, skipping excluded obstacles/clamps, with dual-stage touch feeds.
+
+---
+
+### `POST /api/mesh/parse-log`
+Parses probe console logs (`[PRB:X,Y,Z:1]` or CSV format) and calibrates surface heights $\Delta Z$ by subtracting touch plate thickness.
+
+---
+
+### `POST /api/mesh/warp-gcode`
+Applies pure-Python Delaunay triangulation and Barycentric surface interpolation to dynamically warp any external G-code program to match workpiece surface topography.
+
+---
+
+## 11. Manual Jog Controller & Machine Control
 
 ### `POST /api/jog/step`
 Generates an incremental jog move command ($J=G91 for Grbl/Smoothie, G91 G1 for Standard).
@@ -782,7 +836,7 @@ Generates manual spindle toggle commands (`M3 S<rpm>` / `M5`).
 
 ---
 
-## 8. Multi-Operation Job Program Sequencer
+## 12. Multi-Operation Job Program Sequencer
 
 ### `POST /api/generate/job-sequence`
 Assembles multiple conversational machining operations into a single cohesive, production-ready `.nc` job file with unified safety headers, intelligent tool change optimization, safe retracts, and program footers.
@@ -834,13 +888,10 @@ Assembles multiple conversational machining operations into a single cohesive, p
 
 ---
 
-## 9. Machine Profiles
+## 13. Machine Profiles
 
 - `GET /api/machines`: List all machine profiles.
-
-
 - `GET /api/machines/active`: Get active machine profile.
-
 - `POST /api/machines/:id/activate`: Set active machine profile.
 - `POST /api/machines`: Create a machine profile.
 - `GET /api/machines/:id`: Retrieve profile by ID.
@@ -849,7 +900,7 @@ Assembles multiple conversational machining operations into a single cohesive, p
 
 ---
 
-## 7. Tool Library
+## 14. Tool Library
 - `GET /api/tools`: List all tools with material presets.
 - `GET /api/tools/:id`: Retrieve tool by ID.
 - `POST /api/tools`: Add a new tool.
@@ -858,7 +909,7 @@ Assembles multiple conversational machining operations into a single cohesive, p
 
 ---
 
-## 8. Material Presets
+## 15. Material Presets
 - `GET /api/materials`: List all presets (optionally filtered with `?tool_id=1`).
 - `GET /api/materials/:id`: Retrieve preset by ID.
 - `POST /api/materials/tool/:tool_id`: Create preset attached to a tool.
@@ -867,7 +918,7 @@ Assembles multiple conversational machining operations into a single cohesive, p
 
 ---
 
-## 9. Error Handling Format
+## 16. Error Handling Format
 
 Standard JSON error payload for validation failures (`400 Bad Request`):
 ```json

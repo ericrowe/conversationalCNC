@@ -2,7 +2,7 @@
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![Flask 3.0+](https://img.shields.io/badge/flask-3.0+-green.svg)](https://flask.palletsprojects.com/)
-[![Tests](https://img.shields.io/badge/tests-154%20passed-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-174%20passed-brightgreen.svg)]()
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 A web-based, locally executing **Conversational CNC Controller** designed for rapid, on-the-fly machining without launching heavyweight CAD/CAM software. Built with a zero-build-step architecture optimized for offline Raspberry Pi 4/5 setups and desktop workstations driving Grbl-based CNCs (such as the Inventables X-Carve, Shapeoko, PrintNC) and standard CNC controllers.
@@ -13,7 +13,7 @@ A web-based, locally executing **Conversational CNC Controller** designed for ra
 > ### ⚠️ EXPERIMENTAL & UNTESTED SOFTWARE DISCLAIMER
 > **Conversational CNC is an active open-source project and is AS OF YET UNTESTED ON PHYSICAL CNC MACHINERY.**
 >
-> CNC milling machines and routers are powerful, high-energy tools capable of severe physical injury, tool breakage, workpiece damage, electrical fire, or machine destruction if commanded incorrectly. While this software contains an extensive automated mathematical and API test suite (154 passing unit tests), **no guarantee is made that generated G-code is bug-free, safe for your particular machine setup, or free of unexpected motion commands.**
+> CNC milling machines and routers are powerful, high-energy tools capable of severe physical injury, tool breakage, workpiece damage, electrical fire, or machine destruction if commanded incorrectly. While this software contains an extensive automated mathematical and API test suite (174 passing unit tests), **no guarantee is made that generated G-code is bug-free, safe for your particular machine setup, or free of unexpected motion commands.**
 >
 > **MANDATORY SAFE STARTUP & INITIAL COMMISSIONING PROTOCOL:**
 > If you choose to use this software on a physical CNC machine, you MUST follow the progressive-risk startup procedures detailed in [docs/MACHINE_INTEGRATION_TEST_PLAN.md](docs/MACHINE_INTEGRATION_TEST_PLAN.md):
@@ -32,7 +32,7 @@ A web-based, locally executing **Conversational CNC Controller** designed for ra
 - **⚡ Straight Plunge Drilling**: Single holes, rectangular grids, pitch bolt circles (PCD), and custom coordinate lists with customizable retract planes, approach clearances, and bottom dwells.
 - **🔩 Peck Drilling (Deep Hole)**: Chip clearing (`G83` full retract to safe Z) and chip breaking (`G73` lift) cycles, mathematically expanded into linear moves for Grbl controllers without native canned cycles.
 - **🧵 Helical Thread Milling**: 3D helical interpolation for internal tapped holes and external threaded studs. Supports single-point thread mills, climb/conventional milling, 180° semi-circular tangential helical lead-in/lead-out arcs, and multi-pass radial stepovers (roughing passes + spring passes). Includes a built-in catalog of standard Metric ISO (M2–M20), Imperial UNC (#2-56 to 3/4-10), and Imperial UNF (#10-32 to 1/2-20) threads.
-- **⭕ Circular Pocketing & Helical Boring**: Precision bearing bores, counterbores, and circular pockets with helical ramp entry, expanding concentric radial stepovers, and clean wall finishing passes.
+- **⭕ Circular Pocketing & Cylindrical Boss / Shaft Turning**: Precision bearing bores, counterbores, and circular pockets with helical ramp entry, plus outside-in concentric climb clearing for cylindrical bosses, studs, spigots, and custom bolt shafts from round bar or rectangular stock.
 - **🔲 Rectangular Pocket & Raised Boss / Island Machining**: Rectangular cavities with corner fillets, helical ramp entry, wall finishing passes, and outside clearing around raised rectangular island features.
 - **📐 Linear Slotting & Keyways**: Centerline and wide slot cutting with multiple depth passes, safe stepdowns, and side profile passes.
 - **✨ 2D Chamfering & Edge Breaking**: Outer and inner perimeter chamfering and deburring with conical V-bits and chamfer mills, calculating exact tip-offset and Z-depth.
@@ -41,7 +41,7 @@ A web-based, locally executing **Conversational CNC Controller** designed for ra
 - **📐 2.5D Arbitrary Profile & Contour Milling**: Mill open profiles and closed perimeter cutouts along chained lines and circular arcs. Features automatic tool radius compensation (Climb/Left, Conventional/Right, or Centerline), 90° tangential circular arc or 45° linear lead-ins and lead-outs, multi-depth stepdowns with wall finishing stock allowance, and spring passes.
 - **📦 Step-and-Repeat Array Nesting & Soft Jaw Fixturing Wizard**: Array multi-part production jobs across $N_x \times N_y$ rectangular grids or staggered honeycomb patterns with serpentine zig-zag rapids. Generate precision negative clamping pockets for vise soft jaws to hold irregular parts for secondary Op 2 operations with 45° corner dogbone reliefs.
 - **📐 DXF 2D Vector CAD Importer & Direct-to-GCode Wizard**: Drag-and-drop standard 2D AutoCAD `.dxf` CAD drawings. Automatically parses entity geometry (`LINE`, `ARC`, `CIRCLE`, `LWPOLYLINE`), chains perimeter loops, detects bolt circle drill points, and converts directly into profile contouring and drilling toolpaths.
-- **🖼️ SVG 2D Vector CAD Importer with Grayscale Depth Mapping**: Import standard 2D SVG vector artwork. Evaluates fill/stroke grayscale percentage (% luminance) to cut depth ($Z_{\text{cut}} = Z_{\text{max}} \times \text{shading}\%$), with multi-depth stepdowns and automatic drill hole detection.
+- **🖼️ SVG 2D Vector CAD Importer with Grayscale Depth Mapping**: Import standard 2D SVG vector artwork with automatic or manual dimension overrides (width/height with aspect ratio lock). Evaluates fill/stroke grayscale percentage (% luminance) to cut depth ($Z_{\text{cut}} = Z_{\text{max}} \times \text{shading}\%$), with multi-depth stepdowns and automatic drill hole detection.
 
 
 
