@@ -291,6 +291,22 @@ $$\text{Actual Chip Thickness} = f_z \times 2 \times \sqrt{\frac{\text{Stepover}
 - `Pocket (Internal Cavity)`: Clears all material *inside* the programmed dimensions down to target depth.
 - `Raised Boss / Island (Exterior Perimeter)`: Clears material *around* the outside of the shape down to target depth, leaving a raised rectangular or circular island.
 
+#### Circular Boss / Cylindrical Stud Turning Mode (Custom Bolts & Shafts)
+The **Circular Pocket** workspace includes a dedicated **🔘 Circular Boss / Shaft** mode designed specifically for turning down round bar stock or rectangular billets to machine cylindrical studs, spigots, pins, and custom bolt shafts:
+1. **Outside-In Concentric Clearing Rings**: Plunges the cutter safely in open air *outside* the raw stock diameter ($D_{stock}$), then executes concentric climb-cut radial stepover passes stepping progressively inward. This prevents high-load full-slotting and extends endmill life.
+2. **Raw Stock Geometry**:
+   - `⭕ Round Bar Stock`: Clears the outer collar between stock diameter $D_{stock}$ (e.g. $25\text{mm}$) and shaft diameter $D_{boss}$ (e.g. $10\text{mm}$).
+   - `🔲 Rectangular / Square Billet`: Clears the billet envelope $L_x \times W_y$ down to the circular boss.
+3. **Smooth Tangential Arc Finishing**: Executes a $90^\circ$ circular lead-in arc, $360^\circ$ smooth perimeter finish contour at final shaft diameter $D_{boss}$, and tangential lead-out to ensure no dwell witness marks on the cylindrical shaft.
+
+> [!TIP]
+> ### 🔩 Custom Bolt Machining Recipe in Job Builder
+> To machine a custom threaded bolt from round bar stock on your CNC router:
+> 1. **Op 1 (Circular Boss)**: Configure $D_{stock} = 25\text{mm}$, shaft diameter $D_{boss} = 10.0\text{mm}$ (or $9.85\text{mm}$ pre-thread major diameter), cut depth $Z = -20.0\text{mm}$ using a **6.35mm Flat Endmill (Tool 1)** $\to$ Click **`➕ Queue Op`**.
+> 2. **Op 2 (Thread Milling)**: Go to **Thread Milling**, select `M10x1.5` External Stud mode, thread length $18.0\text{mm}$ using a **Single-Point Thread Mill (Tool 2)** $\to$ Click **`➕ Queue Op`**.
+> 3. **Op 3 (Hex Head Contouring)**: Go to **Contouring**, configure a 6-sided regular hexagon with $17\text{mm}$ width across flats and $6\text{mm}$ depth using **Tool 1** $\to$ Click **`➕ Queue Op`**.
+> 4. **Export Unified Program**: Open the **Job Builder Drawer** and click **`⚡ Generate Unified Program (.nc)`**. The sequencer automatically coordinates tool changes (`M6 T...`), safe intermediate retract planes (`G0 Z5.0`), and spindle speed prompts!
+
 #### Card 2: Pocket Geometry
 - **Origin X & Y (mm)**: Coordinates of the pocket datum.
 - **Length X & Width Y (mm)**: Cavity dimensions (for rectangular pockets).

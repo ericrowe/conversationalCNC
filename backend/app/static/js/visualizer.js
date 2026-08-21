@@ -240,6 +240,17 @@ class ToolpathVisualizer {
       if (data.engraving !== undefined) this.engraving = data.engraving;
       if (data.rectangularPocket !== undefined) this.rectangularPocket = data.rectangularPocket;
       if (data.rectangularBoss !== undefined) this.rectangularBoss = data.rectangularBoss;
+      if (data.opType === "circular_boss" || data.bossDiameter !== undefined) {
+        this.circularBoss = {
+          centerX: data.bossCenterX !== undefined ? data.bossCenterX : 0.0,
+          centerY: data.bossCenterY !== undefined ? data.bossCenterY : 0.0,
+          bossDiameter: data.bossDiameter || 10.0,
+          stockShape: data.stockShape || "circle",
+          stockDiameter: data.stockDiameter || 25.0,
+          stockLengthX: data.stockLengthX || 30.0,
+          stockWidthY: data.stockWidthY || 30.0,
+        };
+      }
     }
     this.autoFit();
   }
@@ -294,6 +305,11 @@ class ToolpathVisualizer {
       const b = this.rectangularBoss;
       allX.push(b.bossOriginX - b.stockLengthX / 2 - 5, b.bossOriginX + b.stockLengthX / 2 + 5);
       allY.push(b.bossOriginY - b.stockWidthY / 2 - 5, b.bossOriginY + b.stockWidthY / 2 + 5);
+    } else if (this.opType === "circular_boss" && this.circularBoss) {
+      const b = this.circularBoss;
+      const r = b.stockShape === "circle" ? b.stockDiameter / 2 : Math.hypot(b.stockLengthX / 2, b.stockWidthY / 2);
+      allX.push(b.centerX - r - 5, b.centerX + r + 5);
+      allY.push(b.centerY - r - 5, b.centerY + r + 5);
     } else if (this.holes.length > 0) {
       allX.push(...this.holes.map((h) => h[0]));
       allY.push(...this.holes.map((h) => h[1]));
@@ -370,6 +386,8 @@ class ToolpathVisualizer {
       this.drawRectangularPocket(ctx);
     } else if (this.opType === "rectangular_boss" && this.rectangularBoss) {
       this.drawRectangularBoss(ctx);
+    } else if (this.opType === "circular_boss" && this.circularBoss) {
+      this.drawCircularBoss(ctx);
     } else if (this.opType === "pocket") {
       this.drawPockets(ctx);
     } else if (this.opType === "thread_milling") {
@@ -552,6 +570,7 @@ class ToolpathVisualizer {
 
       const tokens = line.split(/\s+/);
       let newX = curX, newY = curY, newZ = curZ;
+      let iVal = null, jVal = null, rVal = null;
       let hasMove = false;
 
       for (let t of tokens) {
@@ -562,11 +581,80 @@ class ToolpathVisualizer {
         else if (t.startsWith("X")) { const v = parseFloat(t.slice(1)); if (!isNaN(v)) { newX = v; hasMove = true; } }
         else if (t.startsWith("Y")) { const v = parseFloat(t.slice(1)); if (!isNaN(v)) { newY = v; hasMove = true; } }
         else if (t.startsWith("Z")) { const v = parseFloat(t.slice(1)); if (!isNaN(v)) { newZ = v; hasMove = true; } }
+        else if (t.startsWith("I")) { const v = parseFloat(t.slice(1)); if (!isNaN(v)) { iVal = v; hasMove = true; } }
+        else if (t.startsWith("J")) { const v = parseFloat(t.slice(1)); if (!isNaN(v)) { jVal = v; hasMove = true; } }
+        else if (t.startsWith("R")) { const v = parseFloat(t.slice(1)); if (!isNaN(v)) { rVal = v; hasMove = true; } }
         else if (t.startsWith("F")) { const v = parseFloat(t.slice(1)); if (!isNaN(v)) { curFeed = v; } }
       }
 
+      if (!hasMove) continue;
 
-      if (hasMove) {
+      if ((curMotion === "G2" || curMotion === "G3") && (iVal !== null || jVal !== null || rVal !== null)) {
+        // Discretize G2 (CW) or G3 (CCW) circular / helical arc
+        let centerX, centerY, radius;
+        if (iVal !== null || jVal !== null) {
+          const i = iVal !== null ? iVal : 0;
+          const j = jVal !== null ? jVal : 0;
+          centerX = curX + i;
+          centerY = curY + j;
+          radius = Math.hypot(i, j);
+        } else {
+          radius = rVal;
+          const dx = (newX - curX) / 2;
+          const dy = (newY - curY) / 2;
+          const d = Math.hypot(dx, dy);
+          const h = Math.sqrt(Math.max(0, radius * radius - d * d));
+          centerX = curX + dx + (curMotion === "G2" ? -dy : dy) * (h / (d || 1));
+          centerY = curY + dy + (curMotion === "G2" ? dx : -dx) * (h / (d || 1));
+        }
+
+        const startAngle = Math.atan2(curY - centerY, curX - centerX);
+        const endAngle = Math.atan2(newY - centerY, newX - centerX);
+        const isFullCircle = Math.hypot(newX - curX, newY - curY) < 0.001;
+
+        let sweepAngle;
+        if (isFullCircle) {
+          sweepAngle = curMotion === "G2" ? -2 * Math.PI : 2 * Math.PI;
+        } else if (curMotion === "G2") {
+          // Clockwise: angle decreases
+          sweepAngle = endAngle - startAngle;
+          if (sweepAngle >= 0) sweepAngle -= 2 * Math.PI;
+        } else {
+          // Counter-Clockwise: angle increases
+          sweepAngle = endAngle - startAngle;
+          if (sweepAngle <= 0) sweepAngle += 2 * Math.PI;
+        }
+
+        const numSteps = Math.max(8, Math.ceil(Math.abs(sweepAngle) / (Math.PI / 16)));
+        let prevX = curX, prevY = curY, prevZ = curZ;
+
+        for (let s = 1; s <= numSteps; s++) {
+          const frac = s / numSteps;
+          const angle = startAngle + sweepAngle * frac;
+          const stepX = (s === numSteps && !isFullCircle) ? newX : centerX + radius * Math.cos(angle);
+          const stepY = (s === numSteps && !isFullCircle) ? newY : centerY + radius * Math.sin(angle);
+          const stepZ = curZ + (newZ - curZ) * frac;
+
+          segments.push({
+            lineIndex: idx,
+            rawLine: raw,
+            type: "feed",
+            motion: curMotion,
+            feed: curFeed,
+            x1: prevX, y1: prevY, z1: prevZ,
+            x2: stepX, y2: stepY, z2: stepZ,
+          });
+
+          prevX = stepX;
+          prevY = stepY;
+          prevZ = stepZ;
+        }
+
+        curX = newX;
+        curY = newY;
+        curZ = newZ;
+      } else {
+        // Standard Linear G0/G1 move
         segments.push({
           lineIndex: idx,
           rawLine: raw,
@@ -971,6 +1059,85 @@ class ToolpathVisualizer {
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
+  }
+
+  drawCircularBoss(ctx) {
+    const b = this.circularBoss;
+    if (!b) return;
+    const cx = b.centerX;
+    const cy = b.centerY;
+    const bossR = b.bossDiameter / 2.0;
+
+    // 1. Draw Stock Boundary
+    ctx.lineWidth = 1.5;
+    if (b.stockShape === "circle") {
+      const stockR = b.stockDiameter / 2.0;
+      ctx.fillStyle = "rgba(100, 116, 139, 0.15)";
+      ctx.strokeStyle = "rgba(148, 163, 184, 0.6)";
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      for (let a = 0; a <= 360; a += 10) {
+        const rad = (a * Math.PI) / 180;
+        const pt = this.toScreen(cx + stockR * Math.cos(rad), cy + stockR * Math.sin(rad), 0);
+        if (a === 0) ctx.moveTo(pt.x, pt.y);
+        else ctx.lineTo(pt.x, pt.y);
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.setLineDash([]);
+    } else {
+      const minX = cx - b.stockLengthX / 2;
+      const maxX = cx + b.stockLengthX / 2;
+      const minY = cy - b.stockWidthY / 2;
+      const maxY = cy + b.stockWidthY / 2;
+      const p00 = this.toScreen(minX, minY, 0);
+      const p10 = this.toScreen(maxX, minY, 0);
+      const p11 = this.toScreen(maxX, maxY, 0);
+      const p01 = this.toScreen(minX, maxY, 0);
+      ctx.fillStyle = "rgba(100, 116, 139, 0.15)";
+      ctx.strokeStyle = "rgba(148, 163, 184, 0.6)";
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.moveTo(p00.x, p00.y);
+      ctx.lineTo(p10.x, p10.y);
+      ctx.lineTo(p11.x, p11.y);
+      ctx.lineTo(p01.x, p01.y);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    // 2. Draw Raised Cylindrical Boss Island
+    ctx.fillStyle = "rgba(16, 185, 129, 0.25)";
+    ctx.strokeStyle = "#10b981";
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    for (let a = 0; a <= 360; a += 10) {
+      const rad = (a * Math.PI) / 180;
+      const pt = this.toScreen(cx + bossR * Math.cos(rad), cy + bossR * Math.sin(rad), 0);
+      if (a === 0) ctx.moveTo(pt.x, pt.y);
+      else ctx.lineTo(pt.x, pt.y);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // 3. Center Crosshair & Label
+    const centerPt = this.toScreen(cx, cy, 0);
+    ctx.strokeStyle = "#10b981";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(centerPt.x - 8, centerPt.y);
+    ctx.lineTo(centerPt.x + 8, centerPt.y);
+    ctx.moveTo(centerPt.x, centerPt.y - 8);
+    ctx.lineTo(centerPt.x, centerPt.y + 8);
+    ctx.stroke();
+
+    ctx.fillStyle = "#10b981";
+    ctx.font = "bold 11px sans-serif";
+    ctx.fillText(`Shaft Ø${b.bossDiameter.toFixed(1)}mm`, centerPt.x + 10, centerPt.y - 5);
   }
 
 

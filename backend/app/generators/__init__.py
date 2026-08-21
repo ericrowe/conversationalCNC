@@ -6,7 +6,7 @@ from .drilling import (
     compute_grid_holes,
 )
 from .thread_milling import generate_helical_thread_milling, THREAD_STANDARDS
-from .circular_pocket import generate_circular_pocket
+from .circular_pocket import generate_circular_pocket, generate_circular_boss
 from .rectangular_pocket import generate_rectangular_pocket, generate_rectangular_boss
 from .surfacing import generate_surfacing
 from .engraving import generate_text_engraving
@@ -28,6 +28,7 @@ __all__ = [
     "compute_grid_holes",
     "generate_helical_thread_milling",
     "generate_circular_pocket",
+    "generate_circular_boss",
     "generate_rectangular_pocket",
     "generate_rectangular_boss",
     "generate_surfacing",

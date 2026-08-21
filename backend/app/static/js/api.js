@@ -146,6 +146,19 @@ const API = {
     return data;
   },
 
+  async generateCircularBoss(payload) {
+    const res = await fetch("/api/generate/pocket/circular-boss", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.message || data.error || "Generation failed");
+    }
+    return data;
+  },
+
   async generateSurfacing(payload) {
     const res = await fetch("/api/generate/surfacing", {
       method: "POST",

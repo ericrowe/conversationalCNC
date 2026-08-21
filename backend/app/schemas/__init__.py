@@ -10,6 +10,7 @@ from .peck_drilling_schema import PeckDrillingPayloadSchema
 from .thread_milling_schema import HelicalThreadMillingPayloadSchema
 from .pocket_schema import (
     CircularPocketPayloadSchema,
+    CircularBossPayloadSchema,
     RectangularPocketPayloadSchema,
     RectangularBossPayloadSchema,
 )
@@ -33,6 +34,7 @@ __all__ = [
     "PeckDrillingPayloadSchema",
     "HelicalThreadMillingPayloadSchema",
     "CircularPocketPayloadSchema",
+    "CircularBossPayloadSchema",
     "RectangularPocketPayloadSchema",
     "RectangularBossPayloadSchema",
     "SurfacingPayloadSchema",

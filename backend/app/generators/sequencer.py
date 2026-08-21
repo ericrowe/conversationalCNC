@@ -13,7 +13,7 @@ from ..postprocessors import get_postprocessor
 from .drilling import generate_straight_plunge, generate_peck_drilling
 from .thread_milling import generate_helical_thread_milling
 
-from .circular_pocket import generate_circular_pocket
+from .circular_pocket import generate_circular_pocket, generate_circular_boss
 from .rectangular_pocket import generate_rectangular_pocket, generate_rectangular_boss
 from .slotting import generate_linear_slot
 from .chamfering import generate_rectangular_chamfer
@@ -31,6 +31,7 @@ GENERATOR_MAP = {
     "peck_drilling": generate_peck_drilling,
     "thread_milling": generate_helical_thread_milling,
     "circular_pocket": generate_circular_pocket,
+    "circular_boss": generate_circular_boss,
     "rectangular_pocket": generate_rectangular_pocket,
     "rectangular_boss": generate_rectangular_boss,
     "linear_slot": generate_linear_slot,

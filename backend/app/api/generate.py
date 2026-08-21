@@ -6,6 +6,7 @@ from ..schemas import (
     PeckDrillingPayloadSchema,
     HelicalThreadMillingPayloadSchema,
     CircularPocketPayloadSchema,
+    CircularBossPayloadSchema,
     RectangularPocketPayloadSchema,
     RectangularBossPayloadSchema,
     SurfacingPayloadSchema,
@@ -26,6 +27,7 @@ from ..generators import (
     generate_peck_drilling,
     generate_helical_thread_milling,
     generate_circular_pocket,
+    generate_circular_boss,
     generate_rectangular_pocket,
     generate_rectangular_boss,
     generate_surfacing,
@@ -375,6 +377,70 @@ def generate_circular_pocket_gcode():
             units=payload.units,
             tool_number=ctx["tool_number"],
             tool_name=ctx["tool_name"],
+            spindle_type=ctx["spindle_type"],
+            router_model=ctx["router_model"],
+            router_dial=payload.router_dial,
+            min_spindle_rpm=ctx["min_rpm"],
+            max_spindle_rpm=ctx["max_rpm"],
+            postprocessor=ctx["postprocessor"],
+            work_envelope=ctx["work_envelope"],
+            park_x=payload.park_x,
+            park_y=payload.park_y,
+            park_z=payload.park_z,
+        )
+    except ValueError as val_err:
+        return jsonify({"error": "Generation error", "message": str(val_err)}), 400
+
+    return jsonify({
+        "success": True,
+        "data": program.to_dict(),
+        "machine_profile": ctx["machine"].to_dict() if ctx["machine"] else None,
+        "dialect_used": ctx["postprocessor"].dialect_name,
+    }), 200
+
+
+@generate_bp.route("/pocket/circular-boss", methods=["POST"])
+@generate_bp.route("/drilling/circular-boss", methods=["POST"])
+def generate_circular_boss_gcode():
+    data = request.get_json() or {}
+    try:
+        payload = CircularBossPayloadSchema(**data)
+    except ValidationError as e:
+        error_details = [{"loc": err.get("loc"), "msg": err.get("msg"), "type": err.get("type")} for err in e.errors()]
+        return jsonify({"error": "Validation error", "details": error_details}), 400
+
+    ctx = _resolve_context(payload)
+    tool_dia = payload.tool_diameter or ctx["tool_diameter"]
+
+    try:
+        program = generate_circular_boss(
+            boss_center_x=payload.boss_center_x,
+            boss_center_y=payload.boss_center_y,
+            boss_diameter=payload.boss_diameter,
+            stock_shape=payload.stock_shape,
+            stock_diameter=payload.stock_diameter or 25.0,
+            stock_length_x=payload.stock_length_x or 30.0,
+            stock_width_y=payload.stock_width_y or 30.0,
+            target_depth_z=payload.target_depth_z,
+            stepdown_z=payload.stepdown_z,
+            stepover_percent=payload.stepover_percent,
+            finish_allowance=payload.finish_allowance,
+            finish_feed_xy=payload.finish_feed_xy,
+            start_z=payload.start_z,
+            retract_z=payload.retract_z if payload.retract_z is not None else ctx["safe_z_default"],
+            feed_rate_xy=payload.feed_rate_xy or ctx["feed_rate_xy"],
+            plunge_feed=payload.plunge_feed or ctx["plunge_feed"],
+            rapid_feed=payload.rapid_feed or ctx["rapid_feed_default"],
+            spindle_speed=ctx["spindle_speed"],
+            spindle_dwell_seconds=(
+                payload.spindle_dwell_seconds
+                if payload.spindle_dwell_seconds is not None
+                else ctx["spindle_dwell_default"]
+            ),
+            units=payload.units,
+            tool_number=ctx["tool_number"],
+            tool_name=ctx["tool_name"],
+            tool_diameter=tool_dia,
             spindle_type=ctx["spindle_type"],
             router_model=ctx["router_model"],
             router_dial=payload.router_dial,

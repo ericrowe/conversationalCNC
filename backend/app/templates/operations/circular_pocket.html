@@ -1,12 +1,12 @@
 {% extends "base.html" %}
 
-{% block title %}Circular Pocket & Bore — Conversational CNC{% endblock %}
+{% block title %}Circular Pocket & Boss — Conversational CNC{% endblock %}
 
 {% block content %}
 <div class="page-title-row">
   <div>
-    <h1 class="page-title">⭕ Circular Pocketing & Helical Boring</h1>
-    <div class="page-desc">Mill precision circular pockets, counterbores, and bearing bores with concentric radial stepovers and finishing wall contours.</div>
+    <h1 class="page-title">⭕ Circular Pocketing & Cylindrical Boss / Shaft</h1>
+    <div class="page-desc">Mill circular pockets & bearing bores, or machine raised cylindrical bosses, studs, and spigots from round or square stock.</div>
   </div>
 </div>
 
@@ -17,10 +17,21 @@
   <!-- Left Column: Form Controls -->
   <div class="controls-col" id="pocketForm">
 
-    <!-- Pattern Card -->
+    <!-- Operation Mode Selector Card -->
     <div class="card">
       <div class="card-title">
-        <span>1. Pocket Pattern & Centers</span>
+        <span>1. Operation Mode</span>
+      </div>
+      <div class="tab-group">
+        <button type="button" class="tab-btn op-tab active" data-mode="pocket">⭕ Circular Pocket / Bore</button>
+        <button type="button" class="tab-btn op-tab" data-mode="boss">🔘 Circular Boss / Shaft</button>
+      </div>
+    </div>
+
+    <!-- POCKET MODE: Pattern Card -->
+    <div class="card" id="pocketPatternCard">
+      <div class="card-title">
+        <span>2. Pocket Pattern & Centers</span>
       </div>
 
       <div class="tab-group">
@@ -106,10 +117,10 @@
       </div>
     </div>
 
-    <!-- Pocket Dimensions & Stepovers Card -->
-    <div class="card">
+    <!-- POCKET MODE: Pocket Dimensions Card -->
+    <div class="card" id="pocketDimsCard">
       <div class="card-title">
-        <span>2. Pocket Dimensions & Passes</span>
+        <span>3. Pocket Dimensions & Passes</span>
       </div>
 
       <div class="form-row">
@@ -146,10 +157,84 @@
       </div>
     </div>
 
+    <!-- BOSS MODE: Boss & Stock Geometry Card -->
+    <div class="card" id="bossDimsCard" style="display: none;">
+      <div class="card-title">
+        <span>2. Boss & Stock Geometry</span>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="bossCenterX">Boss Center X (mm)</label>
+          <input type="number" id="bossCenterX" step="0.1" value="50.0">
+        </div>
+        <div class="form-group">
+          <label for="bossCenterY">Boss Center Y (mm)</label>
+          <input type="number" id="bossCenterY" step="0.1" value="50.0">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="bossDiameter">Finished Shaft / Boss Dia (mm)</label>
+          <input type="number" id="bossDiameter" step="0.1" value="10.0" title="Diameter of the finished cylindrical shaft">
+        </div>
+        <div class="form-group">
+          <label for="bossStockShape">Raw Stock Boundary</label>
+          <select id="bossStockShape">
+            <option value="circle" selected>⭕ Round Bar Stock</option>
+            <option value="rectangle">🔲 Rectangular / Square Billet</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Round Stock Diameter Input -->
+      <div class="form-group" id="bossRoundStockGroup">
+        <label for="bossStockDiameter">Raw Stock Diameter (mm)</label>
+        <input type="number" id="bossStockDiameter" step="0.5" value="25.0" title="Outer diameter of the raw round bar">
+      </div>
+
+      <!-- Rectangular Stock Dimensions -->
+      <div id="bossRectStockGroup" style="display: none;">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="bossStockLengthX">Stock Length X (mm)</label>
+            <input type="number" id="bossStockLengthX" step="0.5" value="30.0">
+          </div>
+          <div class="form-group">
+            <label for="bossStockWidthY">Stock Width Y (mm)</label>
+            <input type="number" id="bossStockWidthY" step="0.5" value="30.0">
+          </div>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="bossTargetDepth">Shaft Height / Cut Depth Z (mm)</label>
+          <input type="number" id="bossTargetDepth" step="0.5" value="-15.0">
+        </div>
+        <div class="form-group">
+          <label for="bossStepdownZ">Z Depth per Pass (mm)</label>
+          <input type="number" id="bossStepdownZ" step="0.2" value="1.0">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="bossStepoverPercent">Radial Stepover (%)</label>
+          <input type="number" id="bossStepoverPercent" min="10" max="90" step="5" value="50">
+        </div>
+        <div class="form-group">
+          <label for="bossFinishAllowance">Wall Finish Allowance (mm)</label>
+          <input type="number" id="bossFinishAllowance" step="0.05" min="0" value="0.2">
+        </div>
+      </div>
+    </div>
+
     <!-- Tooling & Speeds Card -->
     <div class="card">
       <div class="card-title">
-        <span>3. Tool & Speeds</span>
+        <span id="toolCardTitle">3. Tool & Speeds</span>
       </div>
 
       <div class="form-group">
@@ -160,7 +245,7 @@
       <div class="form-row">
         <div class="form-group">
           <label for="toolDiameter">Tool Diameter (mm)</label>
-          <input type="number" id="toolDiameter" step="0.01" value="3.175">
+          <input type="number" id="toolDiameter" step="0.01" value="6.35">
         </div>
         <div class="form-group">
           <label for="presetSelect">Material Preset</label>
@@ -200,12 +285,11 @@
         <input type="number" id="plungeFeed" step="10" value="200">
       </div>
 
-
       <div style="display: grid; grid-template-columns: 1fr auto; gap: 0.5rem; margin-top: 0.75rem;">
         <button type="button" class="btn btn-primary" id="generateGCodeBtn">
-          ⚡ Generate Pocket G-Code & Preview
+          ⚡ Generate G-Code & Preview
         </button>
-        <button type="button" class="btn btn-secondary" id="addToJobQueueBtn" title="Add this circular pocket to the Multi-Op Job Builder Queue">
+        <button type="button" class="btn btn-secondary" id="addToJobQueueBtn" title="Add to Multi-Op Job Builder Queue">
           ➕ Queue Op
         </button>
       </div>
@@ -217,17 +301,16 @@
     <!-- 3D Toolpath Visualizer & Simulation Panel -->
     {% include 'components/visualizer_panel.html' %}
 
-
     <div class="card" style="margin-top: 1rem;">
       <!-- Quick Metrics Grid -->
       <div class="stats-grid">
         <div class="stat-box">
           <div class="stat-value" id="statPocketCount">1</div>
-          <div class="stat-label">Pocket Count</div>
+          <div class="stat-label" id="statCountLabel">Pocket Count</div>
         </div>
         <div class="stat-box">
           <div class="stat-value" id="statZPasses">4</div>
-          <div class="stat-label">Z Passes / Pocket</div>
+          <div class="stat-label">Z Passes</div>
         </div>
         <div class="stat-box">
           <div class="stat-value" id="statTime">--</div>
@@ -247,7 +330,7 @@
           <button type="button" class="btn btn-secondary btn-sm" id="downloadGcodeBtn" disabled>💾 Download .nc</button>
         </div>
       </div>
-      <div class="gcode-editor-container" id="gcodeOutput">Click "Generate Pocket G-Code & Preview" to calculate...</div>
+      <div class="gcode-editor-container" id="gcodeOutput">Click "Generate G-Code & Preview" to calculate...</div>
     </div>
   </div>
 </div>
