@@ -15,6 +15,12 @@ document.addEventListener("DOMContentLoaded", () => {
   const btnApplyMirror = document.getElementById("btnApplyMirror");
   const btnApplyOverride = document.getElementById("btnApplyOverride");
   const btnApplySplit = document.getElementById("btnApplySplit");
+  const btnApplyMeshWarp = document.getElementById("btnApplyMeshWarp");
+
+  const btnTransformLoadSampleMesh = document.getElementById("btnTransformLoadSampleMesh");
+  const btnTransformOpenProbeModal = document.getElementById("btnTransformOpenProbeModal");
+  const transformMeshInfoText = document.getElementById("transformMeshInfoText");
+  const meshMaxSegmentLen = document.getElementById("meshMaxSegmentLen");
 
   const gcodeOutput = document.getElementById("gcodeOutput");
   const copyGcodeBtn = document.getElementById("copyGcodeBtn");
@@ -35,6 +41,10 @@ document.addEventListener("DOMContentLoaded", () => {
       else if (target === "rotate") document.getElementById("tabContentRotate").style.display = "block";
       else if (target === "mirror") document.getElementById("tabContentMirror").style.display = "block";
       else if (target === "override") document.getElementById("tabContentOverride").style.display = "block";
+      else if (target === "mesh") {
+        document.getElementById("tabContentMesh").style.display = "block";
+        updateTransformMeshUI();
+      }
       else if (target === "split") document.getElementById("tabContentSplit").style.display = "block";
     });
   });
@@ -165,16 +175,16 @@ M30`;
     }
   });
 
-  // 4. Feed/Speed Override
+  // 4. Feeds / Speeds Override
   btnApplyOverride.addEventListener("click", async () => {
     const src = sourceGCodeInput.value.trim();
     if (!src) return alert("Please enter or load source G-code first.");
 
     try {
-      const res = await API.transformOverrideFeeds({
+      const res = await API.transformOverrideFeedsSpeeds({
         gcode: src,
-        feed_percent: parseFloat(document.getElementById("overrideFeedPercent").value) || 100,
-        speed_percent: parseFloat(document.getElementById("overrideSpeedPercent").value) || 100,
+        feed_override_pct: parseFloat(document.getElementById("overrideFeedPercent").value) || 100,
+        speed_override_pct: parseFloat(document.getElementById("overrideSpeedPercent").value) || 100,
       });
       displayTransformedResult(res.gcode);
     } catch (err) {
@@ -182,21 +192,115 @@ M30`;
     }
   });
 
-  // 5. Split Tools
+  // 5. Mesh Leveling & Surface Warping
+  function updateTransformMeshUI() {
+    try {
+      const mesh = JSON.parse(localStorage.getItem("conversational_cnc_active_mesh"));
+      if (mesh && mesh.points && mesh.points.length > 0 && transformMeshInfoText) {
+        const activeCount = mesh.points.filter(p => p.active !== false).length;
+        const zs = mesh.points.map(p => p.z || 0.0);
+        const minZ = Math.min(...zs).toFixed(2);
+        const maxZ = Math.max(...zs).toFixed(2);
+        transformMeshInfoText.innerHTML = `🟢 <strong>Active ${(mesh.shape_type || "Rectangle").toUpperCase()} Mesh:</strong> ${activeCount} pts (ΔZ: ${minZ > 0 ? "+" : ""}${minZ}mm to ${maxZ > 0 ? "+" : ""}${maxZ}mm)`;
+        transformMeshInfoText.style.color = "#34d399";
+      } else if (transformMeshInfoText) {
+        transformMeshInfoText.innerHTML = `○ No Active Mesh. Open the Probing Assistant or load a test mesh below.`;
+        transformMeshInfoText.style.color = "#94a3b8";
+      }
+    } catch (e) {}
+  }
+
+  updateTransformMeshUI();
+  window.addEventListener("mesh-updated", updateTransformMeshUI);
+
+  if (btnTransformOpenProbeModal) {
+    btnTransformOpenProbeModal.addEventListener("click", () => {
+      const modal = document.getElementById("probingModal");
+      if (modal) {
+        modal.style.display = "flex";
+        const tab = modal.querySelector('.pattern-tab[data-ptab="mesh"]');
+        if (tab) tab.click();
+      }
+    });
+  }
+
+  if (btnTransformLoadSampleMesh) {
+    btnTransformLoadSampleMesh.addEventListener("click", async () => {
+      try {
+        const ptsRes = await API.generateMeshPoints({
+          shape_type: "rectangle",
+          x_min: 0,
+          y_min: 0,
+          x_max: 100,
+          y_max: 100,
+          grid_x: 5,
+          grid_y: 5
+        });
+
+        if (ptsRes && ptsRes.data) {
+          const pts = ptsRes.data.points;
+          pts.forEach(p => {
+            const d = Math.hypot(p.x - 50.0, p.y - 50.0);
+            p.z = Math.round((0.35 * Math.max(0.0, 1.0 - (d / 70.7) ** 2)) * 1000) / 1000;
+          });
+          const meshData = {
+            shape_type: "rectangle",
+            points: pts,
+            active_point_count: pts.length,
+            updated_at: new Date().toISOString()
+          };
+          localStorage.setItem("conversational_cnc_active_mesh", JSON.stringify(meshData));
+          window.dispatchEvent(new CustomEvent("mesh-updated", { detail: meshData }));
+          updateTransformMeshUI();
+          alert("🧪 Loaded 5x5 Bowed Stock Test Mesh (+0.35mm crown)!");
+        }
+      } catch (err) {
+        alert("Failed to load sample mesh: " + err.message);
+      }
+    });
+  }
+
+  if (btnApplyMeshWarp) {
+    btnApplyMeshWarp.addEventListener("click", async () => {
+      const src = sourceGCodeInput.value.trim();
+      if (!src) return alert("Please enter or load source G-code first.");
+
+      const meshData = JSON.parse(localStorage.getItem("conversational_cnc_active_mesh") || "null");
+      if (!meshData || !meshData.points || meshData.points.length === 0) {
+        return alert("No active workpiece mesh found. Please load or sample a mesh first.");
+      }
+
+      try {
+        const res = await API.warpGCodeMesh({
+          gcode_text: src,
+          points: meshData.points,
+          shape_type: meshData.shape_type || "rectangle",
+          max_segment_length: parseFloat(meshMaxSegmentLen.value) || 3.0,
+        });
+
+        displayTransformedResult(res.data.gcode);
+        if (visualizer) {
+          visualizer.loadSurfaceMesh(meshData);
+        }
+      } catch (err) {
+        alert("Mesh Warping failed: " + err.message);
+      }
+    });
+  }
+
+  // 6. Split Tools
   btnApplySplit.addEventListener("click", async () => {
     const src = sourceGCodeInput.value.trim();
     if (!src) return alert("Please enter or load source G-code first.");
 
     try {
-      const res = await API.transformSplitTools({
+      const res = await API.transformSplitMultiTool({
         gcode: src,
-        safe_retract_z: parseFloat(document.getElementById("splitRetractZ").value) || 5.0,
+        safe_z_retract: parseFloat(document.getElementById("splitRetractZ").value) || 5.0,
       });
 
-      splitFilesList.innerHTML = "";
       if (res.sub_programs && res.sub_programs.length > 0) {
-        displayTransformedResult(res.sub_programs[0].gcode);
-
+        splitFilesList.innerHTML = "";
         const card = document.createElement("div");
         card.style.background = "#1e293b";
         card.style.padding = "0.75rem";

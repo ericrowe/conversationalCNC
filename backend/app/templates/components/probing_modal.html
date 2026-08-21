@@ -13,6 +13,7 @@
     <div class="pattern-tabs" style="margin-bottom: 1rem;">
       <button type="button" class="pattern-tab active" data-ptab="zprobe">Z-Touch Plate</button>
       <button type="button" class="pattern-tab" data-ptab="corner">XYZ Corner Block</button>
+      <button type="button" class="pattern-tab" data-ptab="mesh">🌐 Surface Mesh</button>
       <button type="button" class="pattern-tab" data-ptab="homing">Homing ($H)</button>
     </div>
 
@@ -70,6 +71,141 @@
         </div>
       </div>
       <button type="button" class="btn btn-primary" id="btnGenCornerProbe" style="width: 100%;">⚡ Generate Corner XYZ Macro</button>
+    </div>
+
+    <!-- Surface Mesh Mapping Tab -->
+    <div id="ptabContentMesh" class="ptab-pane" style="display: none;">
+      <div style="background: rgba(56, 189, 248, 0.1); border-left: 4px solid var(--primary); padding: 0.6rem 0.8rem; margin-bottom: 0.75rem; border-radius: 4px; font-size: 0.82rem;">
+        <strong>Arbitrary Workpiece Mesh Leveling:</strong> Sample surface topography across <strong>Rectangles, Circular Discs, or Rings</strong>. Click probe points below to <strong>exclude hold-down clamps or holes</strong>.
+      </div>
+
+      <!-- Mesh Shape Selector -->
+      <div class="form-row" style="margin-bottom: 0.75rem;">
+        <div class="form-group" style="flex: 1.2;">
+          <label for="meshShapeSelect">Workpiece Geometry Shape</label>
+          <select id="meshShapeSelect">
+            <option value="rectangle" selected>🔲 Rectangular Stock</option>
+            <option value="circle">⭕ Circular Disc</option>
+            <option value="donut">🍩 Concentric Ring / Donut</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="meshInsetMargin">Perimeter Inset Margin (mm)</label>
+          <input type="number" id="meshInsetMargin" step="0.5" value="2.0" title="Safe distance inset from edge to prevent probe slipping off stock">
+        </div>
+      </div>
+
+      <!-- Rectangular Dimension Inputs -->
+      <div id="meshRectFields">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="meshXMin">X Min (mm)</label>
+            <input type="number" id="meshXMin" step="1.0" value="0.0">
+          </div>
+          <div class="form-group">
+            <label for="meshXMax">X Max (mm)</label>
+            <input type="number" id="meshXMax" step="1.0" value="100.0">
+          </div>
+          <div class="form-group">
+            <label for="meshGridX">Grid X Points</label>
+            <input type="number" id="meshGridX" min="2" max="15" value="5">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="meshYMin">Y Min (mm)</label>
+            <input type="number" id="meshYMin" step="1.0" value="0.0">
+          </div>
+          <div class="form-group">
+            <label for="meshYMax">Y Max (mm)</label>
+            <input type="number" id="meshYMax" step="1.0" value="100.0">
+          </div>
+          <div class="form-group">
+            <label for="meshGridY">Grid Y Points</label>
+            <input type="number" id="meshGridY" min="2" max="15" value="5">
+          </div>
+        </div>
+      </div>
+
+      <!-- Circular / Donut Dimension Inputs -->
+      <div id="meshCircleFields" style="display: none;">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="meshCenterX">Center X (mm)</label>
+            <input type="number" id="meshCenterX" step="1.0" value="50.0">
+          </div>
+          <div class="form-group">
+            <label for="meshCenterY">Center Y (mm)</label>
+            <input type="number" id="meshCenterY" step="1.0" value="50.0">
+          </div>
+          <div class="form-group">
+            <label for="meshOuterDia">Outer Diameter (mm)</label>
+            <input type="number" id="meshOuterDia" step="1.0" value="100.0">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group" id="meshInnerDiaGroup" style="display: none;">
+            <label for="meshInnerDia">Inner Bore Dia (mm)</label>
+            <input type="number" id="meshInnerDia" step="1.0" value="30.0">
+          </div>
+          <div class="form-group">
+            <label for="meshGridRes">Density / Resolution</label>
+            <select id="meshGridRes">
+              <option value="3">Coarse (~10-15 points)</option>
+              <option value="5" selected>Standard (~20-25 points)</option>
+              <option value="7">Fine (~40-50 points)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Interactive 2D Exclusion Grid Canvas -->
+      <div style="margin: 0.75rem 0; background: #0b0f19; border: 1px solid var(--border-color); border-radius: 6px; padding: 0.6rem; text-align: center;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem; font-size: 0.75rem;">
+          <span style="font-weight: 600; color: #38bdf8;">Interactive Point Mask (Click to Exclude Clamps)</span>
+          <span id="meshPointCounterBadge" style="color: #94a3b8;">25 / 25 Points Active</span>
+        </div>
+        <canvas id="meshCanvas" width="360" height="180" style="background: #020617; border-radius: 4px; border: 1px solid #1e293b; cursor: pointer; max-width: 100%; height: auto;"></canvas>
+        <div style="display: flex; justify-content: center; gap: 1rem; font-size: 0.7rem; color: #64748b; margin-top: 0.3rem;">
+          <span>🟢 Active Probe Point</span>
+          <span>🔴 Excluded / Clamp Obstacle</span>
+        </div>
+      </div>
+
+      <!-- Probing Speeds & Retracts -->
+      <div class="form-row">
+        <div class="form-group">
+          <label for="meshFastFeed">Search Feed (mm/min)</label>
+          <input type="number" id="meshFastFeed" step="10" value="150">
+        </div>
+        <div class="form-group">
+          <label for="meshSlowFeed">Fine Feed (mm/min)</label>
+          <input type="number" id="meshSlowFeed" step="5" value="25">
+        </div>
+        <div class="form-group">
+          <label for="meshSafeTraverseZ">Safe Traverse Z (mm)</label>
+          <input type="number" id="meshSafeTraverseZ" step="1.0" value="5.0">
+        </div>
+      </div>
+
+      <!-- Mesh Actions -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-top: 0.5rem;">
+        <button type="button" class="btn btn-primary" id="btnGenMeshProbe">⚡ Generate Probe Routine (.nc)</button>
+        <button type="button" class="btn btn-secondary" id="btnToggleMeshLog">📋 Import Probe Log</button>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-top: 0.5rem;">
+        <button type="button" class="btn btn-secondary btn-sm" id="btnLoadSampleBowedMesh">🧪 Load Test Bowed Mesh (+0.35mm)</button>
+        <button type="button" class="btn btn-secondary btn-sm" id="btnSaveActiveJobMesh" style="color: var(--primary-color); font-weight: 600;">💾 Set Active Job Mesh</button>
+      </div>
+
+      <!-- Hidden Log Paste Container -->
+      <div id="meshLogContainer" style="display: none; margin-top: 0.75rem;">
+        <label for="meshLogInput" style="font-size: 0.75rem; color: var(--text-muted);">Paste Sender Log ([PRB:X,Y,Z:1] or CSV Coordinates)</label>
+        <textarea id="meshLogInput" rows="4" placeholder="[PRB:0.000,0.000,-0.120:1]&#10;[PRB:25.000,0.000,-0.080:1]..." style="font-family: monospace; font-size: 0.75rem; width: 100%;"></textarea>
+        <button type="button" class="btn btn-secondary btn-sm" id="btnParseMeshLog" style="width: 100%; margin-top: 0.35rem;">🔍 Parse & Apply Heights</button>
+      </div>
+
     </div>
 
     <!-- Homing Tab -->

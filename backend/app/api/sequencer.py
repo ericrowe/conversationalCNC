@@ -41,5 +41,8 @@ def api_generate_job_sequence():
         park_x=payload.park_x,
         park_y=payload.park_y,
         park_z=payload.park_z,
+        apply_mesh_leveling=payload.apply_mesh_leveling,
+        mesh_data=payload.mesh_data,
+        mesh_max_segment_length=payload.mesh_max_segment_length,
     )
     return jsonify({"success": True, "data": result}), 200

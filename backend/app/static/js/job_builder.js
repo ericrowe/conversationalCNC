@@ -16,6 +16,11 @@ document.addEventListener("DOMContentLoaded", () => {
   const jobSafeZ = document.getElementById("jobSafeZ");
   const jobOptimizeTools = document.getElementById("jobOptimizeTools");
 
+  // Mesh Leveling Controls
+  const jobApplyMeshLeveling = document.getElementById("jobApplyMeshLeveling");
+  const jobOpenMeshModalBtn = document.getElementById("jobOpenMeshModalBtn");
+  const jobMeshStatusBadge = document.getElementById("jobMeshStatusBadge");
+
   const btnGenerateFullJob = document.getElementById("btnGenerateFullJob");
   const btnCopyJobGcode = document.getElementById("btnCopyJobGcode");
   const btnDownloadJobGcode = document.getElementById("btnDownloadJobGcode");
@@ -27,6 +32,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const jobStatTools = document.getElementById("jobStatTools");
 
   const STORAGE_KEY = "conversational_cnc_job_queue";
+  const MESH_STORAGE_KEY = "conversational_cnc_active_mesh";
 
   function getQueue() {
     try {
@@ -39,6 +45,48 @@ document.addEventListener("DOMContentLoaded", () => {
   function saveQueue(queue) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(queue));
     renderQueue();
+  }
+
+  function getActiveMesh() {
+    try {
+      return JSON.parse(localStorage.getItem(MESH_STORAGE_KEY)) || null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function updateMeshStatusUI() {
+    const mesh = getActiveMesh();
+    if (!jobMeshStatusBadge) return;
+
+    if (mesh && mesh.points && mesh.points.length > 0) {
+      const activeCount = mesh.points.filter(p => p.active !== false).length;
+      const zs = mesh.points.map(p => p.z || 0.0);
+      const minZ = Math.min(...zs).toFixed(2);
+      const maxZ = Math.max(...zs).toFixed(2);
+      const shape = (mesh.shape_type || "Rectangle").toUpperCase();
+
+      jobMeshStatusBadge.innerHTML = `🟢 <strong>${shape} Mesh Active:</strong> ${activeCount} pts (ΔZ: ${minZ > 0 ? "+" : ""}${minZ}mm to ${maxZ > 0 ? "+" : ""}${maxZ}mm)`;
+      jobMeshStatusBadge.style.color = "#34d399";
+    } else {
+      jobMeshStatusBadge.innerHTML = `○ No Active Mesh. Click "Mesh Mapper" to sample or configure.`;
+      jobMeshStatusBadge.style.color = "#94a3b8";
+    }
+  }
+
+  window.addEventListener("mesh-updated", () => {
+    updateMeshStatusUI();
+  });
+
+  if (jobOpenMeshModalBtn) {
+    jobOpenMeshModalBtn.addEventListener("click", () => {
+      const probeModal = document.getElementById("probingModal");
+      if (probeModal) {
+        probeModal.style.display = "flex";
+        const meshTab = probeModal.querySelector('.pattern-tab[data-ptab="mesh"]');
+        if (meshTab) meshTab.click();
+      }
+    });
   }
 
   function updateBadgeCounts(count) {
@@ -54,6 +102,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function renderQueue() {
     const queue = getQueue();
     updateBadgeCounts(queue.length);
+    updateMeshStatusUI();
 
     if (queue.length === 0) {
       jobQueueEmptyState.style.display = "block";
@@ -174,12 +223,15 @@ document.addEventListener("DOMContentLoaded", () => {
     btnGenerateFullJob.textContent = "Generating Full Program...";
 
     try {
+      const activeMesh = getActiveMesh();
       const payload = {
         job_name: jobProgramName.value.trim() || "Part_Machining_Job",
         operations: queue,
         safe_z_retract: parseFloat(jobSafeZ.value) || 5.0,
         optimize_tool_order: jobOptimizeTools.checked,
         units: "mm",
+        apply_mesh_leveling: jobApplyMeshLeveling ? jobApplyMeshLeveling.checked : false,
+        mesh_data: activeMesh,
       };
 
       const res = await API.generateJobSequence(payload);
@@ -197,6 +249,9 @@ document.addEventListener("DOMContentLoaded", () => {
         // If Visualizer is on page, render combined toolpath
         if (window.visualizer) {
           window.visualizer.loadGCode(data.gcode);
+          if (data.mesh_leveling_applied && activeMesh) {
+            window.visualizer.loadSurfaceMesh(activeMesh);
+          }
         }
       }
     } catch (err) {
@@ -248,16 +303,10 @@ document.addEventListener("DOMContentLoaded", () => {
         drawer.style.display = "flex";
         renderQueue();
       }
-    }
+    },
+    getActiveMesh,
   };
 
-  // Listen for Custom Events
-  window.addEventListener("add-to-job-queue", (e) => {
-    if (e.detail) {
-      window.JobBuilder.addOperation(e.detail);
-    }
-  });
-
-  // Initial render
-  renderQueue();
+  // Initial UI sync
+  updateMeshStatusUI();
 });

@@ -25,3 +25,6 @@ class JobSequenceRequestSchema(BaseModel):
     park_x: Optional[float] = Field(default=0.0, description="End of job parking position X")
     park_y: Optional[float] = Field(default=0.0, description="End of job parking position Y")
     park_z: Optional[float] = Field(default=5.0, description="End of job parking position Z")
+    apply_mesh_leveling: bool = Field(default=False, description="Whether to warp all queued toolpaths against active surface mesh")
+    mesh_data: Optional[Dict[str, Any]] = Field(default=None, description="Active WorkpieceMeshMap serialized dictionary")
+    mesh_max_segment_length: float = Field(default=3.0, gt=0.1, le=20.0, description="Max linear move segmentation length for mesh following (mm)")

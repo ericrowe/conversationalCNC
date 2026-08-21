@@ -43,6 +43,7 @@
         <button type="button" class="tab-btn pattern-tab" data-tab="rotate">Rotate</button>
         <button type="button" class="tab-btn pattern-tab" data-tab="mirror">Mirror</button>
         <button type="button" class="tab-btn pattern-tab" data-tab="override">Feed / Speed %</button>
+        <button type="button" class="tab-btn pattern-tab" data-tab="mesh">🌐 Mesh Warp</button>
         <button type="button" class="tab-btn pattern-tab" data-tab="split">Split Tools</button>
       </div>
 
@@ -115,6 +116,25 @@
           </div>
         </div>
         <button type="button" class="btn btn-primary" id="btnApplyOverride" style="width: 100%;">⚡ Apply Feeds/Speeds Override</button>
+      </div>
+
+      <!-- Mesh Leveling & Surface Warping Tab -->
+      <div id="tabContentMesh" class="tab-pane" style="display: none;">
+        <div style="background: rgba(56, 189, 248, 0.1); border-left: 4px solid var(--primary); padding: 0.6rem 0.8rem; margin-bottom: 0.75rem; border-radius: 4px; font-size: 0.82rem;">
+          <strong>Workpiece Surface Mesh Leveling:</strong> Dynamically segment and warp any raw G-code program against an active or imported workpiece heightmap.
+        </div>
+        <div id="transformMeshStatusCard" style="background: #0b0f19; border: 1px solid var(--border-color); border-radius: 6px; padding: 0.6rem; margin-bottom: 0.75rem; font-size: 0.78rem;">
+          <div id="transformMeshInfoText" style="color: var(--text-muted);">○ No Active Mesh. Open the Probing Assistant (🎯 Probe & Zero) or load a sample mesh.</div>
+          <div style="display: flex; gap: 0.5rem; margin-top: 0.4rem;">
+            <button type="button" class="btn btn-secondary btn-sm" id="btnTransformLoadSampleMesh">🧪 Load Test Bowed Mesh</button>
+            <button type="button" class="btn btn-secondary btn-sm" id="btnTransformOpenProbeModal">🎯 Open Mesh Mapper</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="meshMaxSegmentLen">Max Segment Length (mm)</label>
+          <input type="number" id="meshMaxSegmentLen" step="0.5" min="0.5" max="10.0" value="3.0" title="Linear moves are split into chunks of this size to closely follow curved surfaces">
+        </div>
+        <button type="button" class="btn btn-primary" id="btnApplyMeshWarp" style="width: 100%;">⚡ Apply Workpiece Surface Mesh Warp</button>
       </div>
 
       <!-- Multi-Tool Split Tab -->

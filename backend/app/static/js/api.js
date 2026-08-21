@@ -449,6 +449,51 @@ const API = {
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || data.error || "SVG Toolpath generation failed");
     return data;
+  },
+
+  /* Workpiece Surface Mesh Leveling & Auto-Warping */
+  async generateMeshPoints(payload) {
+    const res = await fetch("/api/mesh/generate-points", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || data.error || "Failed to generate mesh points");
+    return data;
+  },
+
+  async generateMeshProbeMacro(payload) {
+    const res = await fetch("/api/mesh/probe-macro", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || data.error || "Failed to generate mesh probe macro");
+    return data;
+  },
+
+  async parseMeshProbeLog(payload) {
+    const res = await fetch("/api/mesh/parse-log", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || data.error || "Failed to parse probe log");
+    return data;
+  },
+
+  async warpGCodeMesh(payload) {
+    const res = await fetch("/api/mesh/warp-gcode", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || data.error || "G-Code Mesh Warping failed");
+    return data;
   }
 };
 

@@ -7,6 +7,7 @@ Features:
 - Safe inter-operation retract planes (G0 Z<safe_z>) and coordinate continuity
 - Operation section banners, tool comments, and aggregate job telemetry (lines, tool count, bounding box)
 """
+import inspect
 from typing import Dict, Any, List, Optional
 from ..postprocessors import get_postprocessor
 from .drilling import generate_straight_plunge, generate_peck_drilling
@@ -20,6 +21,7 @@ from .surfacing import generate_surfacing
 from .engraving import generate_text_engraving
 from .contouring import generate_contour_profile
 from .base import strip_header_and_footer
+from .mesh_leveling import WorkpieceMeshMap
 
 _strip_header_and_footer = strip_header_and_footer
 
@@ -81,15 +83,30 @@ def generate_job_sequence(
     park_x: Optional[float] = 0.0,
     park_y: Optional[float] = 0.0,
     park_z: Optional[float] = 5.0,
+    apply_mesh_leveling: bool = False,
+    mesh_data: Optional[Dict[str, Any]] = None,
+    mesh_max_segment_length: float = 3.0,
 ) -> Dict[str, Any]:
     """
     Stitches multiple conversational operations into a single unified .nc program.
+    Supports dynamic workpiece surface mesh leveling across all follow-on operations.
     """
     if not operations:
         operations = []
 
     post = get_postprocessor(dialect)
     ops_to_process = list(operations)
+
+    mesh_map_obj: Optional[WorkpieceMeshMap] = None
+    if apply_mesh_leveling and mesh_data and mesh_data.get("points"):
+        try:
+            mesh_map_obj = WorkpieceMeshMap(
+                points=mesh_data["points"],
+                shape_type=mesh_data.get("shape_type", "rectangle"),
+                shape_meta=mesh_data.get("shape_meta", {}),
+            )
+        except Exception:
+            mesh_map_obj = None
 
     if optimize_tool_order and len(ops_to_process) > 1:
         # Group operations by tool_number while maintaining sub-order
@@ -98,12 +115,19 @@ def generate_job_sequence(
     full_lines = []
     
     # 1. Top-Level Job Header
+    job_comment = f"Job: {job_name} | {len(ops_to_process)} Operations"
+    if mesh_map_obj:
+        job_comment += f" | Mesh Leveling: ACTIVE ({mesh_map_obj.shape_type.upper()}, {len(mesh_map_obj.active_points)} pts)"
+
     header = post.format_header(
         units=units,
         absolute_mode=True,
-        comment=f"Job: {job_name} | {len(ops_to_process)} Operations",
+        comment=job_comment,
     )
     full_lines.extend(header)
+    if mesh_map_obj:
+        full_lines.append(f"( Workpiece Surface Mesh Compensation: {mesh_map_obj.shape_type.upper()} )")
+        full_lines.append(f"( Surface Elevation Span: {mesh_map_obj.z_min:+.3f}mm to {mesh_map_obj.z_max:+.3f}mm | Delta: {mesh_map_obj.z_span:.3f}mm )")
     full_lines.append("")
 
     active_tool_number: Optional[int] = None
@@ -171,17 +195,43 @@ def generate_job_sequence(
                 call_params.setdefault("dialect", dialect)
                 call_params.setdefault("safe_z_retract", safe_z_retract)
 
+                sig = inspect.signature(gen_func)
+                accepted_keys = set(sig.parameters.keys())
+                has_var_kw = any(p.kind == inspect.Parameter.VAR_KEYWORD for p in sig.parameters.values())
+
+                if not has_var_kw:
+                    filtered_params = {k: v for k, v in call_params.items() if k in accepted_keys}
+                else:
+                    filtered_params = call_params
+
+                if "retract_z" in accepted_keys and "retract_z" not in filtered_params and "safe_z_retract" in call_params:
+                    filtered_params["retract_z"] = call_params["safe_z_retract"]
+
                 try:
-                    op_result = gen_func(**call_params)
-                    op_lines = _strip_header_and_footer(op_result.get("gcode", ""))
-                    if "holes" in op_result:
-                        all_holes.extend(op_result["holes"])
-                    if "pockets" in op_result:
-                        all_pockets.extend(op_result["pockets"])
+                    op_result = gen_func(**filtered_params)
+                    if hasattr(op_result, "gcode"):
+                        raw_gc = op_result.gcode
+                    elif isinstance(op_result, dict):
+                        raw_gc = op_result.get("gcode", "")
+                    else:
+                        raw_gc = str(op_result)
+
+                    op_lines = _strip_header_and_footer(raw_gc)
+                    if isinstance(op_result, dict):
+                        if "holes" in op_result:
+                            all_holes.extend(op_result["holes"])
+                        if "pockets" in op_result:
+                            all_pockets.extend(op_result["pockets"])
                 except Exception as e:
                     op_lines = [f"(Error generating {op_name}: {str(e)})"]
             else:
                 op_lines = [f"(Unknown operation type: {op_type})"]
+
+        # Apply workpiece surface mesh warping if active
+        if mesh_map_obj and op_lines:
+            op_raw_str = "\n".join(op_lines)
+            warped_str = mesh_map_obj.warp_gcode(op_raw_str, max_segment_length=mesh_max_segment_length)
+            op_lines = warped_str.splitlines()
 
         full_lines.extend(op_lines)
         # Safe intermediate retract at end of operation
@@ -203,4 +253,6 @@ def generate_job_sequence(
         "line_count": len(full_lines),
         "holes": all_holes,
         "pockets": all_pockets,
+        "mesh_leveling_applied": mesh_map_obj is not None,
+        "mesh_summary": mesh_map_obj.to_dict() if mesh_map_obj else None,
     }

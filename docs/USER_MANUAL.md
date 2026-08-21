@@ -23,11 +23,12 @@
 ## Table of Contents
 1. [Safety Disclaimer & Initial Startup Testing](#table-of-contents)
 2. [Interface Overview & Layout Architecture](#1-interface-overview--layout-architecture)
-2. [Machine Coordinates, Probing & Zeroing (WCS G54–G59)](#2-machine-coordinates-probing--zeroing-wcs-g54g59)
+2. [Machine Coordinates, Probing, Zeroing & Mesh Leveling (WCS G54–G59)](#2-machine-coordinates-probing--zeroing-wcs-g54g59)
    - [2.1 The Coordinate Hierarchy (MPOS vs WPOS)](#21-the-coordinate-hierarchy-mpos-vs-wpos)
    - [2.2 Z-Surface Touchplate Probing](#22-z-surface-touchplate-probing)
    - [2.3 Corner XYZ Edge Finding & Lip Offsets](#23-corner-xyz-edge-finding--lip-offsets)
-   - [2.4 Manual Jog Controller & Live DRO](#24-manual-jog-controller--live-dro)
+   - [2.4 Workpiece Surface Mesh Leveling & Arbitrary Geometry Auto-Warping](#24-workpiece-surface-mesh-leveling--arbitrary-geometry-auto-warping)
+   - [2.5 Manual Jog Controller & Live DRO](#25-manual-jog-controller--live-dro)
 3. [Feeds, Speeds & Machine Rigidity Guide](#3-feeds-speeds--machine-rigidity-guide)
    - [3.1 Belt-Driven CNC Physics & Machine Flex](#31-belt-driven-cnc-physics--machine-flex)
    - [3.2 Router Speed Dials (DeWalt DWP611 & Makita RT0701)](#32-router-speed-dials-dewalt-dwp611--makita-rt0701)
@@ -132,7 +133,43 @@ The Corner Probing Wizard finds the exact $X0, Y0, Z0$ front-left corner of a re
 
 ---
 
-### 2.4 Manual Jog Controller & Live DRO
+### 2.4 Workpiece Surface Mesh Leveling & Arbitrary Geometry Auto-Warping
+
+![Workpiece Surface Mesh Leveling & Probing Assistant](images/real_probing_wcs.png)
+
+#### Why Surface Mesh Leveling is Essential
+Real-world sheet goods, raw timber, aluminum plates, and round blanks are almost never perfectly flat or coplanar with the CNC bed:
+- **Sheet Warping & Cupping**: Plywood and plastic sheets bow upward in the center or cup at the corners by $0.2\text{mm}$ to $1.5\text{mm}$.
+- **PCB Isolation Routing**: Trace isolation requires precise $0.05\text{mm}$ cut depth; a $0.1\text{mm}$ surface variance either cuts too deep into fiberglass or leaves copper un-milled.
+- **Fine Text Engraving**: V-bit engraving line width directly depends on cut depth; uneven surfaces cause lettering to appear fat and heavy in high spots and vanish in low spots.
+
+Conversational CNC features a **Workpiece Surface Mesh Leveling & Auto-Warping Engine** that samples surface topography across arbitrary stock geometries and dynamically segments and elevates toolpath lines ($Z \to Z + \Delta Z(X, Y)$).
+
+#### Supported Boundary Geometries
+Unlike other CAM systems restricted to rigid rectangular grids, Conversational CNC allows fine-tuning the mesh shape to your exact physical workpiece:
+1. **🔲 Rectangular Stock**: Grid of $N_x \times N_y$ points spanning $[X_{\min}, Y_{\min}]$ to $[X_{\max}, Y_{\max}]$ with snake traversal.
+2. **⭕ Circular Disc**: Concentric or Cartesian grid filtered strictly within radius $R$ centered at $(C_x, C_y)$.
+3. **🍩 Concentric Ring / Donut**: Annulus boundary sampling between an outer diameter $D_{outer}$ and inner bore $D_{inner}$ (ideal for clock faces, flanges, and round plates with central holes).
+4. **Perimeter Inset Margin (mm)**: Safely insets probe points from stock boundaries (e.g. $2.0\text{mm}$ inward) so the touch probe never slips off chamfered or rounded edges into thin air.
+
+#### Interactive Point Exclusion Mask (Skip Clamps & Obstacles)
+The Probing Assistant features an interactive 2D canvas showing all candidate probe points:
+- **🟢 Green Nodes**: Active probe points included in the routine.
+- **🔴 Red Nodes**: Excluded obstacles (hold-down toe clamps, fixture bolts, pre-drilled holes).
+- **Click to Toggle**: Simply click any point on the canvas to toggle it between active and excluded. The snake path automatically bypasses disabled coordinates.
+
+#### Delaunay Triangulation & Barycentric Warping Algorithm
+1. **Pure-Python Delaunay Triangulation (Bowyer-Watson)**: Point clouds are triangulated into a non-overlapping planar network.
+2. **Barycentric Interpolation**: For any tool coordinate $(X, Y)$, the exact containing triangle is determined, and surface height $\Delta Z$ is calculated via barycentric vertex weights $(\lambda_1, \lambda_2, \lambda_3)$. Points outside the convex hull gracefully fall back to inverse-distance weighting (IDW).
+3. **Toolpath Linear Move Segmentation**: Linear cuts ($G0, G1$) are subdivided into small segments ($\le 3.0\text{mm}$) following surface contours, and circular arcs ($G2, G3$) are linearized to follow 3D topological curves while preserving safe retract clearance.
+
+#### Two Easy Ways to Apply Mesh Leveling:
+- **Method 1: Job Builder Pre-Step (Recommended)**: Open the Probing Assistant (`🎯 Probe & Zero`), generate your mesh or load a sample, and click **`💾 Set Active Job Mesh`**. In the **`📋 Job Builder`**, check **`🌐 Workpiece Mesh Leveling`**. All queued operations (facing, pockets, contours, engraving) will automatically be warped to the workpiece surface topology upon export!
+- **Method 2: Standalone Transformations Page**: Navigate to **Transforms**, paste any raw G-code program, switch to the **`🌐 Mesh Warp`** tab, and click **`⚡ Apply Workpiece Surface Mesh Warp`**.
+
+---
+
+### 2.5 Manual Jog Controller & Live DRO
 
 ![Manual Jog Controller & Live DRO Modal](images/real_jog_dro.png)
 

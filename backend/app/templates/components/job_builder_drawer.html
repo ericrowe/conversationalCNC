@@ -27,6 +27,20 @@
       </div>
     </div>
 
+    <!-- Mesh Leveling Toggle & Status Card -->
+    <div style="margin-bottom: 1rem; background: rgba(15, 23, 42, 0.7); border: 1px solid var(--border-color); border-radius: 6px; padding: 0.75rem;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <input type="checkbox" id="jobApplyMeshLeveling">
+          <label for="jobApplyMeshLeveling" style="font-size: 0.8rem; font-weight: 600; color: var(--text-main); cursor: pointer;">🌐 Workpiece Mesh Leveling</label>
+        </div>
+        <button type="button" id="jobOpenMeshModalBtn" class="btn btn-secondary btn-sm" style="font-size: 0.7rem; padding: 0.2rem 0.5rem;">🎯 Mesh Mapper</button>
+      </div>
+      <div id="jobMeshStatusBadge" style="font-size: 0.72rem; color: var(--text-muted);">
+        ○ No Active Mesh. Click "Mesh Mapper" to sample or configure.
+      </div>
+    </div>
+
     <!-- Operation Queue List -->
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
       <span style="font-size: 0.8rem; font-weight: 700; color: #94a3b8; text-transform: uppercase;">Queued Operations</span>

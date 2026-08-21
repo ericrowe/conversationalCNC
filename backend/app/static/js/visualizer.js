@@ -22,6 +22,7 @@ class ToolpathVisualizer {
     this.surfacing = null;
     this.rectangularPocket = null;
     this.rectangularBoss = null;
+    this.surfaceMesh = null;
 
     // 3D Viewport State
     this.viewMode = "3d"; // "3d" or "2d"
@@ -329,6 +330,15 @@ class ToolpathVisualizer {
     this.draw();
   }
 
+  loadSurfaceMesh(meshData) {
+    this.surfaceMesh = meshData;
+    this.draw();
+  }
+
+  clearSurfaceMesh() {
+    this.surfaceMesh = null;
+    this.draw();
+  }
 
   draw() {
     if (!this.ctx) return;
@@ -344,6 +354,11 @@ class ToolpathVisualizer {
     // Machine Soft Limits Envelope Box
     if (this.machineEnvelope) {
       this.drawEnvelopeBox(ctx);
+    }
+
+    // Topographic Workpiece Surface Mesh (if active)
+    if (this.surfaceMesh) {
+      this.drawSurfaceMesh(ctx);
     }
 
     // Operation-specific Rendering (or parsed G-Code toolpath)
@@ -568,6 +583,84 @@ class ToolpathVisualizer {
     }
 
     return segments;
+  }
+
+  drawSurfaceMesh(ctx) {
+    if (!this.surfaceMesh || !this.surfaceMesh.points || this.surfaceMesh.points.length === 0) return;
+
+    const points = this.surfaceMesh.points;
+    const triangles = this.surfaceMesh.triangles || [];
+    const shape = (this.surfaceMesh.shape_type || "rectangle").toUpperCase();
+
+    // Elevation extents
+    const zs = points.map(p => p.z || 0.0);
+    const minZ = Math.min(...zs);
+    const maxZ = Math.max(...zs);
+    const spanZ = Math.max(0.01, maxZ - minZ);
+
+    function getElevationColor(z) {
+      const norm = Math.max(0.0, Math.min(1.0, (z - minZ) / spanZ));
+      if (norm < 0.5) {
+        const t = norm * 2.0;
+        const r = Math.round(56 * (1 - t) + 16 * t);
+        const g = Math.round(189 * (1 - t) + 185 * t);
+        const b = Math.round(248 * (1 - t) + 129 * t);
+        return `rgba(${r}, ${g}, ${b}, 0.22)`;
+      } else {
+        const t = (norm - 0.5) * 2.0;
+        const r = Math.round(16 * (1 - t) + 239 * t);
+        const g = Math.round(185 * (1 - t) + 68 * t);
+        const b = Math.round(129 * (1 - t) + 68 * t);
+        return `rgba(${r}, ${g}, ${b}, 0.25)`;
+      }
+    }
+
+    // 1. Draw 3D Triangulated Surface Facets
+    if (triangles.length > 0) {
+      triangles.forEach(tri => {
+        const p1 = points[tri[0]];
+        const p2 = points[tri[1]];
+        const p3 = points[tri[2]];
+        if (p1 && p2 && p3) {
+          const s1 = this.toScreen(p1.x, p1.y, p1.z || 0.0);
+          const s2 = this.toScreen(p2.x, p2.y, p2.z || 0.0);
+          const s3 = this.toScreen(p3.x, p3.y, p3.z || 0.0);
+
+          const avgZ = ((p1.z || 0) + (p2.z || 0) + (p3.z || 0)) / 3.0;
+
+          ctx.beginPath();
+          ctx.moveTo(s1.x, s1.y);
+          ctx.lineTo(s2.x, s2.y);
+          ctx.lineTo(s3.x, s3.y);
+          ctx.closePath();
+          ctx.fillStyle = getElevationColor(avgZ);
+          ctx.fill();
+
+          ctx.strokeStyle = "rgba(56, 189, 248, 0.25)";
+          ctx.lineWidth = 1.0;
+          ctx.stroke();
+        }
+      });
+    }
+
+    // 2. Draw Active Probe Point Nodes
+    points.forEach(p => {
+      if (p.active !== false) {
+        const s = this.toScreen(p.x, p.y, p.z || 0.0);
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, 3.5, 0, 2 * Math.PI);
+        ctx.fillStyle = "#10b981";
+        ctx.strokeStyle = "#047857";
+        ctx.lineWidth = 1.0;
+        ctx.fill();
+        ctx.stroke();
+      }
+    });
+
+    // 3. Topographic Legend Banner in 3D Mode
+    ctx.fillStyle = "rgba(56, 189, 248, 0.9)";
+    ctx.font = "11px sans-serif";
+    ctx.fillText(`🌐 Mesh Surface: ${shape} (${points.length} pts | ΔZ: ${minZ > 0 ? "+" : ""}${minZ.toFixed(2)}mm..${maxZ > 0 ? "+" : ""}${maxZ.toFixed(2)}mm)`, 10, 20);
   }
 
   drawGCodeToolpath(ctx) {
