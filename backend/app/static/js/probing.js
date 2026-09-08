@@ -16,11 +16,24 @@ document.addEventListener("DOMContentLoaded", () => {
   const btnGenZProbe = document.getElementById("btnGenZProbe");
 
   // Corner XYZ Elements
+  const cornerOrientationSelect = document.getElementById("cornerOrientationSelect");
   const cornerToolDia = document.getElementById("cornerToolDia");
   const cornerPlateZ = document.getElementById("cornerPlateZ");
   const cornerLipX = document.getElementById("cornerLipX");
   const cornerLipY = document.getElementById("cornerLipY");
+  const cornerFastFeed = document.getElementById("cornerFastFeed");
+  const cornerSlowFeed = document.getElementById("cornerSlowFeed");
   const btnGenCornerProbe = document.getElementById("btnGenCornerProbe");
+
+  // Hole / Boss Center Elements
+  const centerProbeType = document.getElementById("centerProbeType");
+  const centerApproxDia = document.getElementById("centerApproxDia");
+  const centerToolDia = document.getElementById("centerToolDia");
+  const centerSearchDist = document.getElementById("centerSearchDist");
+  const centerRetractZ = document.getElementById("centerRetractZ");
+  const centerFastFeed = document.getElementById("centerFastFeed");
+  const centerSlowFeed = document.getElementById("centerSlowFeed");
+  const btnGenCenterProbe = document.getElementById("btnGenCenterProbe");
 
   // Homing Elements
   const btnGenHoming = document.getElementById("btnGenHoming");
@@ -83,6 +96,7 @@ document.addEventListener("DOMContentLoaded", () => {
       panes.forEach((p) => (p.style.display = "none"));
       if (target === "zprobe") document.getElementById("ptabContentZProbe").style.display = "block";
       else if (target === "corner") document.getElementById("ptabContentCorner").style.display = "block";
+      else if (target === "center") document.getElementById("ptabContentCenter").style.display = "block";
       else if (target === "mesh") {
         document.getElementById("ptabContentMesh").style.display = "block";
         refreshMeshCandidatePoints();
@@ -103,6 +117,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (machine.safe_z_retract !== undefined && machine.safe_z_retract !== null) {
           zProbeRetract.value = machine.safe_z_retract;
           if (meshSafeTraverseZ) meshSafeTraverseZ.value = machine.safe_z_retract;
+          if (centerRetractZ) centerRetractZ.value = machine.safe_z_retract;
         }
       }
     } catch (e) {
@@ -154,19 +169,63 @@ document.addEventListener("DOMContentLoaded", () => {
   // 2. Corner XYZ Probe
   btnGenCornerProbe.addEventListener("click", async () => {
     try {
+      const cornerVal = cornerOrientationSelect ? cornerOrientationSelect.value : "front_left";
       const res = await API.generateCornerXYZMacro({
         tool_diameter: parseFloat(cornerToolDia.value) || 6.35,
         plate_thickness: parseFloat(cornerPlateZ.value) || 14.85,
         block_x_lip: parseFloat(cornerLipX.value) || 10.0,
         block_y_lip: parseFloat(cornerLipY.value) || 10.0,
+        corner: cornerVal,
+        fast_feed: cornerFastFeed ? (parseFloat(cornerFastFeed.value) || 150.0) : 150.0,
+        slow_feed: cornerSlowFeed ? (parseFloat(cornerSlowFeed.value) || 25.0) : 25.0,
       });
-      setMacroResult(res.data.gcode, "corner_xyz_probe.nc");
+      setMacroResult(res.data.gcode, `corner_xyz_probe_${cornerVal}.nc`);
     } catch (err) {
       alert("Corner probe generation failed: " + err.message);
     }
   });
 
-  // 3. Homing
+  // 3. Hole / Boss Center Finder
+  if (btnGenCenterProbe) {
+    btnGenCenterProbe.addEventListener("click", async () => {
+      try {
+        const isBore = !centerProbeType || centerProbeType.value === "bore";
+        const approxDia = parseFloat(centerApproxDia.value) || 50.0;
+        const toolDia = parseFloat(centerToolDia.value) || 6.35;
+        const searchDist = parseFloat(centerSearchDist.value) || 30.0;
+        const retractZ = parseFloat(centerRetractZ.value) || 15.0;
+        const fastFeed = parseFloat(centerFastFeed.value) || 150.0;
+        const slowFeed = parseFloat(centerSlowFeed.value) || 25.0;
+
+        let res;
+        if (isBore) {
+          res = await API.generateBoreCenterMacro({
+            approx_diameter: approxDia,
+            tool_diameter: toolDia,
+            search_dist: searchDist,
+            retract_z: retractZ,
+            fast_feed: fastFeed,
+            slow_feed: slowFeed,
+          });
+          setMacroResult(res.data.gcode, `bore_center_probe_${approxDia.toFixed(1)}mm.nc`);
+        } else {
+          res = await API.generateBossCenterMacro({
+            approx_diameter: approxDia,
+            tool_diameter: toolDia,
+            search_dist: searchDist,
+            retract_z: retractZ,
+            fast_feed: fastFeed,
+            slow_feed: slowFeed,
+          });
+          setMacroResult(res.data.gcode, `boss_center_probe_${approxDia.toFixed(1)}mm.nc`);
+        }
+      } catch (err) {
+        alert("Center finder macro generation failed: " + err.message);
+      }
+    });
+  }
+
+  // 4. Homing
   btnGenHoming.addEventListener("click", async () => {
     try {
       const res = await API.generateHomingMacro();

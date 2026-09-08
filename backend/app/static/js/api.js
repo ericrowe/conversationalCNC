@@ -325,6 +325,28 @@ const API = {
     return data;
   },
 
+  async generateBoreCenterMacro(payload) {
+    const res = await fetch("/api/probing/bore-center", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || data.error || "Bore center probe generation failed");
+    return data;
+  },
+
+  async generateBossCenterMacro(payload) {
+    const res = await fetch("/api/probing/boss-center", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || data.error || "Boss center probe generation failed");
+    return data;
+  },
+
   async generateHomingMacro() {
     const res = await fetch("/api/probing/homing", { method: "GET" });
     const data = await res.json();

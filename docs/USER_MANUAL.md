@@ -26,9 +26,10 @@
 3. [Machine Coordinates, Probing, Zeroing & Mesh Leveling (WCS G54–G59)](#2-machine-coordinates-probing--zeroing-wcs-g54g59)
    - [2.1 The Coordinate Hierarchy (MPOS vs WPOS)](#21-the-coordinate-hierarchy-mpos-vs-wpos)
    - [2.2 Z-Surface Touchplate Probing](#22-z-surface-touchplate-probing)
-   - [2.3 Corner XYZ Edge Finding & Lip Offsets](#23-corner-xyz-edge-finding--lip-offsets)
-   - [2.4 Workpiece Surface Mesh Leveling & Arbitrary Geometry Auto-Warping](#24-workpiece-surface-mesh-leveling--arbitrary-geometry-auto-warping)
-   - [2.5 Manual Jog Controller & Live DRO](#25-manual-jog-controller--live-dro)
+   - [2.3 Corner XYZ Edge Finding & Lip Offsets (4 Quadrants)](#23-corner-xyz-edge-finding--lip-offsets-4-quadrants)
+   - [2.4 4-Point Inside Bore & Outside Boss Center Probing](#24-4-point-inside-bore--outside-boss-center-probing)
+   - [2.5 Workpiece Surface Mesh Leveling & Arbitrary Geometry Auto-Warping](#25-workpiece-surface-mesh-leveling--arbitrary-geometry-auto-warping)
+   - [2.6 Manual Jog Controller & Live DRO](#26-manual-jog-controller--live-dro)
 4. [Feeds, Speeds & Machine Rigidity Guide](#3-feeds-speeds--machine-rigidity-guide)
    - [3.1 Belt-Driven CNC Physics & Machine Flex](#31-belt-driven-cnc-physics--machine-flex)
    - [3.2 Router Speed Dials (DeWalt DWP611 & Makita RT0701)](#32-router-speed-dials-dewalt-dwp611--makita-rt0701)
@@ -118,23 +119,43 @@ Setting `Z=0` at the exact top surface of your workpiece is essential for accura
 
 ---
 
-### 2.3 Corner XYZ Edge Finding & Lip Offsets
+### 2.3 Corner XYZ Edge Finding & Lip Offsets (4 Quadrants)
 
-The Corner Probing Wizard finds the exact $X0, Y0, Z0$ front-left corner of a rectangular block in a single automated routine.
+The Corner Probing Wizard finds the exact $X0, Y0, Z0$ origin on any of the four workpiece corner quadrants in a single automated routine:
+- **↙️ Front-Left (`front_left`)**: Approaches from outer $X-, Y-$, probes $+X, +Y$, and offsets $X = -(Lip_x + R)$, $Y = -(Lip_y + R)$.
+- **↘️ Front-Right (`front_right`)**: Approaches from outer $X+, Y-$, probes $-X, +Y$, and offsets $X = +(Lip_x + R)$, $Y = -(Lip_y + R)$.
+- **↖️ Back-Left (`back_left`)**: Approaches from outer $X-, Y+$, probes $+X, -Y$, and offsets $X = -(Lip_x + R)$, $Y = +(Lip_y + R)$.
+- **↗️ Back-Right (`back_right`)**: Approaches from outer $X+, Y+$, probes $-X, -Y$, and offsets $X = +(Lip_x + R)$, $Y = +(Lip_y + R)$.
 
 #### Parameter Reference & Purpose:
 
 | Setting Name | Default | What It Is & Why It Matters |
 | :--- | :---: | :--- |
+| **Corner Quadrant** | `Front-Left` | Selects which of the four workpiece corners is being referenced. |
 | **Plate Z Thickness** | `14.85 mm` | The thickness of the touchplate body resting on top of the workpiece. |
-| **Corner X / Y Lip Width** | `10.0 mm` | **The overhang thickness of the alignment ledge.**<br>• *Why it matters*: The touchplate hugs the front-left corner of the stock. When the tool touches the plate's outside X wall, the actual workpiece edge is offset inward by this exact lip width plus half the tool diameter ($R_{tool} + \text{Lip}$). |
-| **Tool Diameter** | `3.175 mm (1/8")` | **The cutting diameter of the loaded endmill.**<br>• *Why it matters*: Essential for cutter radius compensation ($R = D/2$) during X and Y edge probing. |
-| **Probe Feed** | `100 mm/min` | Downward and lateral search feed rate. |
-| **Target Coordinate System** | `G54` | The fixture register (**G54** through **G59**) where the calculated zero offsets are stored. |
+| **Corner X / Y Lip Width** | `10.0 mm` | **The overhang thickness of the alignment ledge.**<br>• *Why it matters*: The touchplate hugs the selected corner of the stock. When the tool touches the plate's outside wall, the actual workpiece edge is offset inward by this lip width plus tool radius ($R_{tool} + \text{Lip}$). |
+| **Tool Diameter** | `6.35 mm (1/4")` | **The cutting diameter of the loaded endmill.**<br>• *Why it matters*: Essential for cutter radius compensation ($R = D/2$) during X and Y edge probing. |
+| **Fast Search Feed** | `150 mm/min` | Rapid approach probing speed. |
+| **Fine Touch Feed** | `25 mm/min` | Secondary precision touch speed for sub-0.01mm repeatability. |
+| **Target Coordinate System** | `G54` | The fixture register (**G54** through **G59**) where calculated zero offsets are stored via `G10 L20 P1`. |
 
 ---
 
-### 2.4 Workpiece Surface Mesh Leveling & Arbitrary Geometry Auto-Warping
+### 2.4 4-Point Inside Bore & Outside Boss Center Probing
+
+The Center Probing Wizard automatically finds and zeroes ($X0, Y0$) the true centerline axis of circular features:
+
+#### Operating Modes:
+1. **🕳️ Inside Circular Hole / Bore (`bore`)**:
+   - **Operator Setup**: Jog the tool to the rough visual center inside the bore and lower Z below the top lip.
+   - **Motion Sequence**: Probes $X-$ wall, retracts, probes $X+$ wall, calculates midpoint $X_c = (X_1 + X_2)/2$, rapids to $X_c$, probes $Y-$ wall, probes $Y+$ wall, calculates $Y_c = (Y_1 + Y_2)/2$, rapids to $(X_c, Y_c)$, sets `G10 L20 P1 X0 Y0`, and retracts Z.
+2. **⚪ Outside Cylinder / Boss (`boss`)**:
+   - **Operator Setup**: Jog the tool above the rough visual top center of the cylindrical boss.
+   - **Motion Sequence**: Rapids to safe outer clearance standoff $X- (R_{boss} + R_{tool} + 5\text{mm})$, lowers Z, probes $X+$ wall, lifts Z, rapids to outer $X+$, lowers Z, probes $X-$ wall, calculates $X_c$, repeats for $Y-$ and $Y+$, moves to true boss center $(X_c, Y_c)$, and sets `G10 L20 P1 X0 Y0`.
+
+---
+
+### 2.5 Workpiece Surface Mesh Leveling & Arbitrary Geometry Auto-Warping
 
 ![Workpiece Surface Mesh Leveling & Probing Assistant](images/real_probing_wcs.png)
 
@@ -170,7 +191,7 @@ The Probing Assistant features an interactive 2D canvas showing all candidate pr
 
 ---
 
-### 2.5 Manual Jog Controller & Live DRO
+### 2.6 Manual Jog Controller & Live DRO
 
 ![Manual Jog Controller & Live DRO Modal](images/real_jog_dro.png)
 

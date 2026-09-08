@@ -13,6 +13,7 @@
     <div class="pattern-tabs" style="margin-bottom: 1rem;">
       <button type="button" class="pattern-tab active" data-ptab="zprobe">Z-Touch Plate</button>
       <button type="button" class="pattern-tab" data-ptab="corner">XYZ Corner Block</button>
+      <button type="button" class="pattern-tab" data-ptab="center">⭕ Hole/Boss Center</button>
       <button type="button" class="pattern-tab" data-ptab="mesh">🌐 Surface Mesh</button>
       <button type="button" class="pattern-tab" data-ptab="homing">Homing ($H)</button>
     </div>
@@ -50,6 +51,17 @@
       <div style="background: rgba(56, 189, 248, 0.1); border-left: 4px solid var(--primary); padding: 0.6rem 0.8rem; margin-bottom: 1rem; border-radius: 4px; font-size: 0.85rem;">
         <strong>3-Axis Corner Touch Block:</strong> Probes Z surface, X edge, and Y edge, applying tool radius (<em>D/2</em>) and block lip thickness to zero <strong>X0, Y0, Z0</strong> simultaneously.
       </div>
+      <div class="form-row" style="margin-bottom: 0.75rem;">
+        <div class="form-group" style="flex: 1;">
+          <label for="cornerOrientationSelect">Workpiece Corner Quadrant</label>
+          <select id="cornerOrientationSelect">
+            <option value="front_left" selected>↙️ Front-Left (Approach X-, Y-)</option>
+            <option value="front_right">↘️ Front-Right (Approach X+, Y-)</option>
+            <option value="back_left">↖️ Back-Left (Approach X-, Y+)</option>
+            <option value="back_right">↗️ Back-Right (Approach X+, Y+)</option>
+          </select>
+        </div>
+      </div>
       <div class="form-row">
         <div class="form-group">
           <label for="cornerToolDia">Tool / Endmill Diameter (mm)</label>
@@ -70,7 +82,64 @@
           <input type="number" id="cornerLipY" step="0.5" value="10.0">
         </div>
       </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="cornerFastFeed">Fast Search Feed (mm/min)</label>
+          <input type="number" id="cornerFastFeed" step="10" value="150">
+        </div>
+        <div class="form-group">
+          <label for="cornerSlowFeed">Fine Touch Feed (mm/min)</label>
+          <input type="number" id="cornerSlowFeed" step="5" value="25">
+        </div>
+      </div>
       <button type="button" class="btn btn-primary" id="btnGenCornerProbe" style="width: 100%;">⚡ Generate Corner XYZ Macro</button>
+    </div>
+
+    <!-- Hole / Boss Center Tab -->
+    <div id="ptabContentCenter" class="ptab-pane" style="display: none;">
+      <div style="background: rgba(56, 189, 248, 0.1); border-left: 4px solid var(--primary); padding: 0.6rem 0.8rem; margin-bottom: 1rem; border-radius: 4px; font-size: 0.85rem;">
+        <strong>4-Point Center Finder:</strong> Probes opposing X-, X+ and Y-, Y+ walls using dual-speed touches, calculates exact centerline midpoint, moves to center, and sets <strong>X0 Y0</strong>.
+      </div>
+      <div class="form-row" style="margin-bottom: 0.75rem;">
+        <div class="form-group" style="flex: 1;">
+          <label for="centerProbeType">Probing Target Geometry</label>
+          <select id="centerProbeType">
+            <option value="bore" selected>🕳️ Inside Circular Hole / Bore (Start inside hole)</option>
+            <option value="boss">⚪ Outside Cylinder / Boss (Start above boss center)</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="centerApproxDia">Approximate Diameter (mm)</label>
+          <input type="number" id="centerApproxDia" step="1.0" value="50.0">
+        </div>
+        <div class="form-group">
+          <label for="centerToolDia">Tool / Probe Tip Diameter (mm)</label>
+          <input type="number" id="centerToolDia" step="0.01" value="6.35">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="centerSearchDist">Max Search Distance (mm)</label>
+          <input type="number" id="centerSearchDist" step="1.0" value="30.0">
+        </div>
+        <div class="form-group">
+          <label for="centerRetractZ">Safe Retract Clearance Z (mm)</label>
+          <input type="number" id="centerRetractZ" step="1.0" value="15.0">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="centerFastFeed">Search Feed (mm/min)</label>
+          <input type="number" id="centerFastFeed" step="10" value="150">
+        </div>
+        <div class="form-group">
+          <label for="centerSlowFeed">Fine Feed (mm/min)</label>
+          <input type="number" id="centerSlowFeed" step="5" value="25">
+        </div>
+      </div>
+      <button type="button" class="btn btn-primary" id="btnGenCenterProbe" style="width: 100%;">⚡ Generate Center Finder Macro</button>
     </div>
 
     <!-- Surface Mesh Mapping Tab -->
