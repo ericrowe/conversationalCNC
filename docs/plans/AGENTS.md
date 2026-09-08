@@ -30,7 +30,7 @@ Every plan MUST adhere to the standardized 5-step lifecycle and include all 7 ma
 | Plan ID | Title | Scope | Status |
 | :---: | :--- | :--- | :---: |
 | **01** | Standalone Barn Workshop Raspberry Pi Deployment & Server Status Host ([`docs/plans/complete/2026-09-07-01_barn_standalone_pi_deployment_plan.md`](complete/2026-09-07-01_barn_standalone_pi_deployment_plan.md)) | Provisioning, Port 80, 7" Touchscreen Kiosk, Web Serial, System Telemetry | `ARCHIVED` |
-| **02** | Status Page Missing UI Icons Bug Fix ([`docs/plans/02_status_page_missing_ui_icons_plan.md`](02_status_page_missing_ui_icons_plan.md)) | Frontend SVG/glyph bundle, kiosk HUD templates | `QUEUED` |
+| **02** | Status Page Missing UI Icons Bug Fix ([`docs/plans/complete/2026-09-08-02_status_page_missing_ui_icons_plan.md`](complete/2026-09-08-02_status_page_missing_ui_icons_plan.md)) | Frontend SVG/glyph bundle, kiosk HUD templates | `ARCHIVED` |
 | **03** | Manual Spindle / Router Speed G-Code Commenting Mode ([`docs/plans/03_manual_spindle_speed_gcode_commenting_plan.md`](03_manual_spindle_speed_gcode_commenting_plan.md)) | Postprocessor, machine models, RPM dial comments | `QUEUED` |
 | **04** | Plasma Cutter CNC Machine Support & Conversational Generator ([`docs/plans/04_plasma_cutter_cnc_conversational_support_plan.md`](04_plasma_cutter_cnc_conversational_support_plan.md)) | Torch on/off M3/M5, dwell delay, kerf compensation | `QUEUED` |
 | **05** | XYZ Corner Touch Plate & Auto Edge-Finder Probing Routine ([`docs/plans/05_xyz_touch_plate_and_edge_finder_probing_plan.md`](05_xyz_touch_plate_and_edge_finder_probing_plan.md)) | G38.2 probing macros, corner offsets, kiosk UI | `QUEUED` |
@@ -42,8 +42,7 @@ Every plan MUST adhere to the standardized 5-step lifecycle and include all 7 ma
 
 | Priority | Plan ID | Title | Target Scope | Status |
 | :---: | :---: | :--- | :--- | :---: |
-| **P1** | **02** | Status Page Missing UI Icons Bug Fix ([`docs/plans/02_status_page_missing_ui_icons_plan.md`](02_status_page_missing_ui_icons_plan.md)) | Frontend SVG bundle, kiosk HUD | `QUEUED` |
-| **P2** | **03** | Manual Spindle / Router Speed G-Code Commenting Mode ([`docs/plans/03_manual_spindle_speed_gcode_commenting_plan.md`](03_manual_spindle_speed_gcode_commenting_plan.md)) | Safety speed dial comments & M0 pause | `QUEUED` |
-| **P3** | **05** | XYZ Corner Touch Plate & Auto Edge-Finder Probing Routine ([`docs/plans/05_xyz_touch_plate_and_edge_finder_probing_plan.md`](05_xyz_touch_plate_and_edge_finder_probing_plan.md)) | Fast WCS zeroing & edge probing | `QUEUED` |
-| **P4** | **04** | Plasma Cutter CNC Machine Support & Conversational Generator ([`docs/plans/04_plasma_cutter_cnc_conversational_support_plan.md`](04_plasma_cutter_cnc_conversational_support_plan.md)) | Torch control, dwell & kerf offset | `QUEUED` |
-| **P5** | **06** | Tool Life & Wear Tracking Ledger ([`docs/plans/06_tool_life_and_wear_tracking_ledger_plan.md`](06_tool_life_and_wear_tracking_ledger_plan.md)) | Tool caddy tracking & wear alerts | `QUEUED` |
+| **P1** | **03** | Manual Spindle / Router Speed G-Code Commenting Mode ([`docs/plans/03_manual_spindle_speed_gcode_commenting_plan.md`](03_manual_spindle_speed_gcode_commenting_plan.md)) | Safety speed dial comments & M0 pause | `QUEUED` |
+| **P2** | **05** | XYZ Corner Touch Plate & Auto Edge-Finder Probing Routine ([`docs/plans/05_xyz_touch_plate_and_edge_finder_probing_plan.md`](05_xyz_touch_plate_and_edge_finder_probing_plan.md)) | Fast WCS zeroing & edge probing | `QUEUED` |
+| **P3** | **04** | Plasma Cutter CNC Machine Support & Conversational Generator ([`docs/plans/04_plasma_cutter_cnc_conversational_support_plan.md`](04_plasma_cutter_cnc_conversational_support_plan.md)) | Torch control, dwell & kerf offset | `QUEUED` |
+| **P4** | **06** | Tool Life & Wear Tracking Ledger ([`docs/plans/06_tool_life_and_wear_tracking_ledger_plan.md`](06_tool_life_and_wear_tracking_ledger_plan.md)) | Tool caddy tracking & wear alerts | `QUEUED` |

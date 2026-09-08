@@ -32,7 +32,7 @@
         ⚡ Studio
       </a>
       <button type="button" class="hud-btn hud-btn-outline" id="btn-refresh" title="Reload Page (Hard Refresh)">
-        🔄 Reload
+        <img src="{{ url_for('static', filename='icons/reload.svg') }}" class="hud-icon hud-icon-cyan" width="13" height="13" alt="Reload"> Reload
       </button>
     </div>
   </div>
@@ -42,7 +42,7 @@
     <div class="hud-modal-content">
       <div class="hud-modal-header">
         <div class="modal-title-wrap">
-          <span class="modal-title">⚙️ Voltron System & Host Controls</span>
+          <span class="modal-title">Voltron System & Host Controls</span>
           <span class="modal-subtitle">Raspberry Pi Host & CNC Management</span>
         </div>
         <button type="button" class="hud-modal-close" id="btn-menu-close">✕</button>
@@ -54,13 +54,13 @@
           <span class="menu-section-label">Machining Navigation</span>
           <div class="menu-btn-grid">
             <a href="/" class="menu-item-btn menu-btn-studio">
-              ⚡ Machining Studio
+              Machining Studio
             </a>
             <a href="/machines" class="menu-item-btn">
-              ⚙️ Machines
+              Machines
             </a>
             <a href="/tools" class="menu-item-btn">
-              🔧 Tool Library
+              Tool Library
             </a>
           </div>
         </div>
@@ -70,13 +70,13 @@
           <span class="menu-section-label">Display & Snapshot</span>
           <div class="menu-btn-grid">
             <button type="button" class="menu-item-btn" id="menu-btn-reload">
-              🔄 Reload UI
+              <img src="{{ url_for('static', filename='icons/reload.svg') }}" class="hud-icon" width="14" height="14" alt="Reload"> Reload UI
             </button>
             <button type="button" class="menu-item-btn" id="menu-btn-fullscreen">
-              ⛶ Toggle Fullscreen
+              Toggle Fullscreen
             </button>
             <button type="button" class="menu-item-btn menu-btn-backup" id="menu-btn-backup">
-              💾 Snapshot Backup
+              Snapshot Backup
             </button>
           </div>
         </div>
@@ -86,13 +86,13 @@
           <span class="menu-section-label">Host Power & Service Operations</span>
           <div class="menu-btn-grid">
             <button type="button" class="menu-item-btn menu-btn-restart" id="menu-btn-restart">
-              🔄 Restart Service
+              <img src="{{ url_for('static', filename='icons/reload.svg') }}" class="hud-icon" width="14" height="14" alt="Restart"> Restart Service
             </button>
             <button type="button" class="menu-item-btn menu-btn-reboot" id="menu-btn-reboot">
-              🔌 Reboot Pi
+              Reboot Pi
             </button>
             <button type="button" class="menu-item-btn menu-btn-shutdown" id="menu-btn-shutdown">
-              🛑 Shutdown Pi
+              Shutdown Pi
             </button>
           </div>
         </div>
@@ -105,7 +105,9 @@
     <!-- Red Lion: Core Temp -->
     <div class="gauge-card gauge-card-red-lion">
       <div class="gauge-header">
-        <span class="gauge-label">🔴 Red Lion • Core Temp</span>
+        <span class="gauge-label">
+          <img src="{{ url_for('static', filename='icons/temp.svg') }}" class="hud-icon hud-icon-red" width="12" height="12" alt="Temp"> Red Lion • Core Temp
+        </span>
         <span class="gauge-badge badge-red-lion" id="temp-badge">Normal</span>
       </div>
       <div class="gauge-main">
@@ -119,7 +121,9 @@
     <!-- Blue Lion: CPU Load -->
     <div class="gauge-card gauge-card-blue-lion">
       <div class="gauge-header">
-        <span class="gauge-label">🔵 Blue Lion • CPU Load</span>
+        <span class="gauge-label">
+          <img src="{{ url_for('static', filename='icons/cpu-chip.svg') }}" class="hud-icon hud-icon-blue" width="12" height="12" alt="CPU"> Blue Lion • CPU Load
+        </span>
         <span class="gauge-sub" id="cpu-cores">4 Cores</span>
       </div>
       <div class="gauge-main">
@@ -133,7 +137,9 @@
     <!-- Yellow Lion: Memory / RAM -->
     <div class="gauge-card gauge-card-yellow-lion">
       <div class="gauge-header">
-        <span class="gauge-label">🟡 Yellow Lion • Memory</span>
+        <span class="gauge-label">
+          <img src="{{ url_for('static', filename='icons/ram.svg') }}" class="hud-icon hud-icon-yellow" width="12" height="12" alt="RAM"> Yellow Lion • Memory
+        </span>
         <span class="gauge-sub" id="ram-used-text">--- / --- MB</span>
       </div>
       <div class="gauge-main">
@@ -147,7 +153,9 @@
     <!-- Green Lion: MicroSD Storage -->
     <div class="gauge-card gauge-card-green-lion">
       <div class="gauge-header">
-        <span class="gauge-label">🟢 Green Lion • MicroSD</span>
+        <span class="gauge-label">
+          <img src="{{ url_for('static', filename='icons/storage.svg') }}" class="hud-icon hud-icon-green" width="12" height="12" alt="Disk"> Green Lion • MicroSD
+        </span>
         <span class="gauge-sub" id="disk-free-text">-- GB Free</span>
       </div>
       <div class="gauge-main">
@@ -164,7 +172,9 @@
     <!-- Left Panel: Machines & Catalog -->
     <div class="hud-panel">
       <div class="hud-panel-header panel-header-machines">
-        <span class="panel-title panel-title-machines">🛠️ Multi-CNC Machine Hub</span>
+        <span class="panel-title panel-title-machines">
+          <img src="{{ url_for('static', filename='icons/machine-status.svg') }}" class="hud-icon hud-icon-gold" width="14" height="14" alt="Machines"> Multi-CNC Machine Hub
+        </span>
         <span class="hud-pill pill-gold" id="machines-count-badge">0 Machines</span>
       </div>
       <div class="hud-panel-body">
@@ -196,16 +206,16 @@
         <!-- Action Buttons -->
         <div class="panel-actions">
           <button type="button" class="action-btn action-backup" id="btn-trigger-backup">
-            💾 Snapshot Backup
+            Snapshot Backup
           </button>
           <a href="/machines" class="action-btn action-link">
-            ⚙️ Machines
+            Machines
           </a>
           <a href="/tools" class="action-btn action-link">
-            🔧 Tools
+            Tools
           </a>
           <button type="button" class="action-btn action-restart" id="btn-restart-app">
-            🔄 Restart
+            <img src="{{ url_for('static', filename='icons/reload.svg') }}" class="hud-icon" width="12" height="12" alt="Restart"> Restart
           </button>
         </div>
       </div>
@@ -214,12 +224,12 @@
     <!-- Right Panel: Live Activity Stream -->
     <div class="hud-panel">
       <div class="hud-panel-header panel-header-stream">
-        <span class="panel-title panel-title-stream">📡 Live Client Stream</span>
+        <span class="panel-title panel-title-stream">Live Client Stream</span>
         <span class="hud-pill hud-pill-stream" id="activity-count-badge">0 Events</span>
       </div>
       <div class="hud-panel-body stream-scroll" id="activity-stream-container">
         <div class="stream-empty">
-          <span>⏳ Awaiting client G-code generation requests...</span>
+          <span>Awaiting client G-code generation requests...</span>
         </div>
       </div>
     </div>
@@ -425,6 +435,37 @@
     box-shadow: 0 0 6px rgba(56, 189, 248, 0.25);
     font-size: 0.68rem;
     padding: 2px 6px;
+  }
+  .hud-icon {
+    display: inline-block;
+    vertical-align: -2px;
+    filter: brightness(0) invert(1);
+    opacity: 0.9;
+  }
+  .hud-icon-cyan {
+    filter: invert(68%) sepia(50%) saturate(1500%) hue-rotate(160deg) brightness(100%) contrast(100%);
+  }
+  .hud-icon-blue {
+    filter: invert(75%) sepia(55%) saturate(1600%) hue-rotate(170deg) brightness(100%) contrast(100%);
+  }
+  .hud-icon-gold, .hud-icon-yellow {
+    filter: invert(80%) sepia(60%) saturate(1500%) hue-rotate(5deg) brightness(105%) contrast(100%);
+  }
+  .hud-icon-red {
+    filter: invert(42%) sepia(85%) saturate(2500%) hue-rotate(335deg) brightness(100%) contrast(100%);
+  }
+  .hud-icon-green {
+    filter: invert(65%) sepia(60%) saturate(1800%) hue-rotate(115deg) brightness(100%) contrast(100%);
+  }
+  .mach-active-dot {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    background-color: #10b981;
+    border-radius: 50%;
+    box-shadow: 0 0 5px #10b981;
+    margin-right: 4px;
+    vertical-align: 1px;
   }
 
   /* 2. Hardware Gauges Grid (Lion Force Theme) */

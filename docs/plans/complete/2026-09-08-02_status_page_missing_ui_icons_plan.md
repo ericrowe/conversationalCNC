@@ -20,6 +20,9 @@ flowchart TD
     subgraph StaticAssets["Local Offline Static Bundle"]
         SVGReload["backend/app/static/icons/reload.svg"]
         SVGLoad["backend/app/static/icons/cpu-chip.svg"]
+        SVGTemp["backend/app/static/icons/temp.svg"]
+        SVGRAM["backend/app/static/icons/ram.svg"]
+        SVGStorage["backend/app/static/icons/storage.svg"]
         SVGStatus["backend/app/static/icons/machine-status.svg"]
     end
 
@@ -30,6 +33,9 @@ flowchart TD
     Kiosk --> StatusTpl
     StatusTpl --> SVGReload
     StatusTpl --> SVGLoad
+    StatusTpl --> SVGTemp
+    StatusTpl --> SVGRAM
+    StatusTpl --> SVGStorage
     StatusTpl --> SVGStatus
 ```
 
@@ -40,8 +46,12 @@ flowchart TD
 ### Frontend & Static Assets
 - `[NEW]` `backend/app/static/icons/reload.svg`: Offline SVG vector icon for page and telemetry reload.
 - `[NEW]` `backend/app/static/icons/cpu-chip.svg`: Offline SVG vector icon for system CPU load.
+- `[NEW]` `backend/app/static/icons/temp.svg`: Offline SVG vector icon for Red Lion Core Temp.
+- `[NEW]` `backend/app/static/icons/ram.svg`: Offline SVG vector icon for Yellow Lion Memory.
+- `[NEW]` `backend/app/static/icons/storage.svg`: Offline SVG vector icon for Green Lion MicroSD Storage.
 - `[NEW]` `backend/app/static/icons/machine-status.svg`: Offline SVG vector icon for GRBL/Smoothie connection status.
-- `[MODIFY]` [`backend/app/templates/status.html`](../../backend/app/templates/status.html): Replace external icon font classes with local inline or static SVG references.
+- `[MODIFY]` [`backend/app/templates/status.html`](../../backend/app/templates/status.html): Replace external icon font classes and raw emoji glyphs with local inline/static SVG references and color filters.
+- `[MODIFY]` [`backend/app/static/js/status.js`](../../backend/app/static/js/status.js): Replace raw green emoji with `.mach-active-dot` CSS indicator.
 
 ### Tests
 - `[NEW]` `backend/tests/test_status_icons.py`: Hermetic unit test verifying all icon references in `status.html` exist on disk and serve valid XML/SVG payloads.
@@ -73,5 +83,5 @@ flowchart TD
 
 ### Manual Verification:
 1. Start CNC server: `.venv/bin/python run.py` (or `./run.sh`).
-2. Open `http://localhost:5001/status` in browser.
-3. Confirm reload button, CPU load indicator, and machine connection badge render crisp vector icons.
+2. Open `http://voltron.local/status` (or `http://localhost:5001/status`) in browser.
+3. Confirm reload button, all 4 Lion gauges, machine active indicators, and machine connection badge render crisp vector icons without tofu glyph squares.

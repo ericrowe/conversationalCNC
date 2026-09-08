@@ -208,7 +208,7 @@ document.addEventListener("DOMContentLoaded", () => {
     container.innerHTML = machines.map(m => `
       <div class="machine-chip ${m.is_active ? 'machine-chip-active' : ''}">
         <div class="mach-top">
-          <span class="mach-name" title="${escapeHtml(m.name)}">${m.is_active ? '🟢 ' : ''}${escapeHtml(m.name)}</span>
+          <span class="mach-name" title="${escapeHtml(m.name)}">${m.is_active ? '<span class="mach-active-dot" title="Active Machine"></span>' : ''}${escapeHtml(m.name)}</span>
           <span class="mach-dialect">${escapeHtml(m.controller_type || m.controller_dialect || 'GRBL')}</span>
         </div>
         <div class="mach-env">
@@ -229,7 +229,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (activities.length === 0) {
       container.innerHTML = `
         <div class="stream-empty">
-          <span>⏳ Awaiting client G-code generation requests...</span>
+          <span>Awaiting client G-code generation requests...</span>
         </div>`;
       return;
     }
@@ -237,16 +237,16 @@ document.addEventListener("DOMContentLoaded", () => {
     container.innerHTML = activities.map(a => `
       <div class="stream-item">
         <div class="stream-top">
-          <span class="stream-op">⚙️ ${escapeHtml(a.operation)}</span>
+          <span class="stream-op">${escapeHtml(a.operation)}</span>
           <span class="stream-time">${escapeHtml(a.timestamp.split(" ")[1] || a.timestamp)}</span>
         </div>
         <div class="stream-mid">
-          <span class="stream-mach">🛠️ ${escapeHtml(a.machine_name || 'Standard CNC')}</span>
+          <span class="stream-mach">${escapeHtml(a.machine_name || 'Standard CNC')}</span>
         </div>
         <div class="stream-bot">
-          <span class="stream-ip">💻 ${escapeHtml(a.client_ip)}</span>
-          <span class="stream-lines">📄 ${a.lines} lines</span>
-          <span class="stream-dur">⏱️ ~${a.estimated_time_sec}s</span>
+          <span class="stream-ip">IP: ${escapeHtml(a.client_ip)}</span>
+          <span class="stream-lines">${a.lines} lines</span>
+          <span class="stream-dur">~${a.estimated_time_sec}s</span>
         </div>
       </div>
     `).join('');
