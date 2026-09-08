@@ -38,7 +38,7 @@ sequenceDiagram
 
 ### Probing Engine & API
 - `[NEW]` `backend/app/generators/probing.py`: Parameterized G-code probe macro generator for Z-surface, Corner XYZ, Inside Bore Center, and Boss Center routines.
-- `[MODIFY]` [`backend/app/api/endpoints.py`](../../backend/app/api/endpoints.py): Add `/api/probe/xyz` and `/api/probe/z` endpoints to dispatch probe streaming routines to the controller.
+- `[MODIFY]` [`backend/app/api/probing.py`](../../backend/app/api/probing.py): Add `/api/probe/xyz` and `/api/probe/z` endpoints to dispatch probe streaming routines to the controller.
 - `[NEW]` `backend/app/templates/probe.html`: Responsive touch-friendly probing control screen for kiosk with visual orientation diagrams (Front-Left, Front-Right, Back-Left, Back-Right corner selection).
 
 ### Tests
@@ -57,7 +57,7 @@ sequenceDiagram
 ---
 
 ## 5. Documentation Updates
-- `[MODIFY]` [`Conversational-CNC-Controller/docs/USER_GUIDE.md`](../USER_GUIDE.md): Document touch plate setup, wiring to controller probe pin, and operating instructions.
+- `[MODIFY]` [`Conversational-CNC-Controller/docs/USER_MANUAL.md`](../USER_MANUAL.md): Document touch plate setup, wiring to controller probe pin, and operating instructions.
 - `[MODIFY]` [`Conversational-CNC-Controller/docs/plans/AGENTS.md`](AGENTS.md): Update Plan 05 status.
 
 ---

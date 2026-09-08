@@ -62,7 +62,7 @@ flowchart TD
 ---
 
 ## 5. Documentation Updates
-- `[MODIFY]` [`Conversational-CNC-Controller/docs/USER_GUIDE.md`](../USER_GUIDE.md): Document plasma cutting mode, cut charts, and lead-in parameter tuning.
+- `[MODIFY]` [`Conversational-CNC-Controller/docs/USER_MANUAL.md`](../USER_MANUAL.md): Document plasma cutting mode, cut charts, and lead-in parameter tuning.
 - `[MODIFY]` [`Conversational-CNC-Controller/docs/plans/AGENTS.md`](AGENTS.md): Update Plan 04 status.
 
 ---

@@ -44,7 +44,7 @@ flowchart TD
 
 ### Backend Models & Ledger
 - `[NEW]` `backend/app/models/tool_wear.py`: SQLAlchemy/SQLite models for `ToolDefinition` (nominal diameter, flute count, max life limit) and `PhysicalToolInstance` (caddy slot ID, accumulated cut minutes, total cut distance mm, wear status `ACTIVE`/`DULL`/`RETIRED`).
-- `[MODIFY]` [`backend/app/api/endpoints.py`](../../backend/app/api/endpoints.py): Add `/api/tools/caddy` and `/api/tools/instance/<id>/retire` endpoints.
+- `[MODIFY]` [`backend/app/api/tools.py`](../../backend/app/api/tools.py): Add `/api/tools/caddy` and `/api/tools/instance/<id>/retire` endpoints.
 - `[NEW]` `backend/app/templates/tools_caddy.html`: Visual tool caddy grid layout showing physical slot positions with color-coded wear bars (Green $\rightarrow$ Yellow $\rightarrow$ Red).
 
 ### Tests
@@ -65,7 +65,7 @@ flowchart TD
 ---
 
 ## 5. Documentation Updates
-- `[MODIFY]` [`Conversational-CNC-Controller/docs/USER_GUIDE.md`](../USER_GUIDE.md): Document tool caddy numbering, wear tracking, and retirement workflows.
+- `[MODIFY]` [`Conversational-CNC-Controller/docs/USER_MANUAL.md`](../USER_MANUAL.md): Document tool caddy numbering, wear tracking, and retirement workflows.
 - `[MODIFY]` [`Conversational-CNC-Controller/docs/plans/AGENTS.md`](AGENTS.md): Update Plan 06 status.
 
 ---
