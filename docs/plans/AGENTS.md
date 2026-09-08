@@ -14,9 +14,14 @@ Every plan MUST adhere to the standardized 5-step lifecycle and include all 7 ma
 2. `## 1. Goal Description`
 3. `## 2. Architecture & Workflow Diagram (Mermaid)`
 4. `## 3. Code Modifications ([NEW], [MODIFY], [DELETE])`
-5. `## 4. Test Updates & Specifications`
+5. `## 4. Test Updates & Specifications` (Unit/integration test methods, baseline regression matrices, and Red-Green bug reproduction tests)
 6. `## 5. Documentation Updates`
 7. `## 6. Verification Plan (Automated + Manual)`
+
+### Test-First & Red-Green Regression Gating Standard:
+- **Phase 3.1: Pre-Code Test Harness (RED / Baseline)**: Establish automated baseline tests verifying that existing behaviors work before making changes. For bug fixes, write a failing reproduction test demonstrating the reported issue (RED). Run `./run_tests.sh` to confirm baseline passes and bug test fails.
+- **Phase 3.2: Minimal Blast Radius Implementation (GREEN)**: Implement root-cause code modifications and documentation updates. Run `./run_tests.sh` to confirm the reproduction test passes cleanly (GREEN).
+- **Phase 3.3: Full Regression Retest & Coverage Verification**: Run the entire hermetic test suite (`./run_tests.sh`). All tests must pass (100% pass rate) with zero regressions.
 
 ---
 
