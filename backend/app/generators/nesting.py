@@ -116,19 +116,23 @@ def generate_soft_jaw_fixture(
     feed_rate_xy: float = 1000.0,
     plunge_feed: float = 250.0,
     spindle_speed: int = 16000,
+    spindle_type: str = "router",
+    router_model: Optional[str] = "dewalt_611",
+    router_dial: Optional[float] = None,
+    require_pause: bool = False,
     safe_z_retract: float = 5.0,
     units: str = "mm",
     dialect: str = "grbl",
     **kwargs,
 ) -> Dict[str, Any]:
     """
-    Generates G-code to machine custom vise soft jaw clamping pockets.
-    Machines negative cavity into Fixed & Movable jaws centered around (X0, Y0).
+    Generates G-code for milling custom soft jaws (rectangular pocket or round bore)
+    with optional dogbone corner relief for square workpieces.
     """
     post = get_postprocessor(dialect)
-    depth_z = -abs(step_depth_z)
-
     lines = []
+
+    # 1. Header
     header = post.format_header(
         units=units,
         absolute_mode=True,
@@ -138,12 +142,23 @@ def generate_soft_jaw_fixture(
     lines.append("")
 
     lines.extend(post.format_tool_comment(tool_number, tool_name))
-    lines.extend(post.format_spindle_start(rpm=spindle_speed, dwell_seconds=1.5))
+    lines.extend(
+        post.format_spindle_start(
+            rpm=spindle_speed,
+            clockwise=True,
+            dwell_seconds=1.5,
+            spindle_type=spindle_type,
+            router_model=router_model,
+            router_dial=router_dial,
+            require_pause=require_pause,
+        )
+    )
     lines.append("")
     lines.append(f"( Origin (X0, Y0) is centered on the Vise Jaw Gap centerline )")
     lines.append(f"G0 Z{safe_z_retract:.3f}")
     lines.append("")
 
+    depth_z = -abs(step_depth_z)
     r_tool = tool_diameter / 2.0
 
     if jaw_type == "round_bore":

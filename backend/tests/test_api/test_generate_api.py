@@ -41,9 +41,10 @@ def test_generate_with_tool_and_material_presets(client):
     res_data = response.get_json()
     assert res_data["success"] is True
     # DeWalt router clamps 12000 RPM preset to min speed 16000 RPM (Dial 1) with warning
-    assert "M3 S16000" in res_data["data"]["gcode"]
+    assert "( *** MANUAL ROUTER: SET SPEED DIAL TO 1.0 (~16,000 RPM) *** )" in res_data["data"]["gcode"]
     assert "DeWalt DWP611" in res_data["data"]["gcode"]
-    assert "Set Speed Dial to #1" in res_data["data"]["gcode"]
+    assert "Set Speed Dial to 1.0" in res_data["data"]["gcode"]
+    assert "M3" not in res_data["data"]["gcode"]
     assert "F400.0" in res_data["data"]["gcode"]
     assert "Tool T1: 1/8in Drill Bit" in res_data["data"]["gcode"]
     assert any("below Dewalt 611 minimum speed" in w for w in res_data["data"]["warnings"])

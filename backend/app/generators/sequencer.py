@@ -80,6 +80,9 @@ def generate_job_sequence(
     safe_z_retract: float = 5.0,
     units: str = "mm",
     dialect: str = "grbl",
+    spindle_type: str = "router",
+    router_model: Optional[str] = "dewalt_611",
+    require_pause: bool = False,
     optimize_tool_order: bool = False,
     park_x: Optional[float] = 0.0,
     park_y: Optional[float] = 0.0,
@@ -173,7 +176,18 @@ def generate_job_sequence(
 
         # Spindle Speed Check
         if active_spindle_rpm != rpm:
-            spindle_lines = post.format_spindle_start(rpm=rpm, clockwise=True, dwell_seconds=1.5)
+            op_spindle_type = op.get("spindle_type") or spindle_type
+            op_router_model = op.get("router_model") or router_model
+            op_router_dial = op.get("router_dial")
+            spindle_lines = post.format_spindle_start(
+                rpm=rpm,
+                clockwise=True,
+                dwell_seconds=1.5,
+                spindle_type=op_spindle_type,
+                router_model=op_router_model,
+                router_dial=op_router_dial,
+                require_pause=require_pause,
+            )
             full_lines.extend(spindle_lines)
             active_spindle_rpm = rpm
 

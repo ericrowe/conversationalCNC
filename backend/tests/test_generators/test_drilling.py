@@ -15,6 +15,7 @@ def test_generate_straight_plunge_single_hole():
         spindle_speed=18000,
         dwell_seconds=0.5,
         spindle_dwell_seconds=2.0,
+        spindle_type="vfd_spindle",
     )
 
     gcode = program.gcode
@@ -122,8 +123,9 @@ def test_dewalt_router_dial_mapping_and_comment():
         spindle_type="router",
         router_model="dewalt_611",
     )
-    assert "DeWalt DWP611 - Set Speed Dial to #3 [~20400 RPM]" in program.gcode
-    assert "M3 S20400" in program.gcode
+    assert "( *** MANUAL ROUTER: SET SPEED DIAL TO 3.0 (~20,400 RPM) *** )" in program.gcode
+    assert "DeWalt DWP611 - Set Speed Dial to 3.0 [~20,400 RPM]" in program.gcode
+    assert "M3" not in program.gcode
     assert len(program.warnings) == 0
 
 def test_router_min_rpm_clamping():
@@ -135,8 +137,9 @@ def test_router_min_rpm_clamping():
         router_model="dewalt_611",
         min_spindle_rpm=16000,
     )
-    assert "M3 S16000" in program.gcode
-    assert "Set Speed Dial to #1" in program.gcode
+    assert "( *** MANUAL ROUTER: SET SPEED DIAL TO 1.0 (~16,000 RPM) *** )" in program.gcode
+    assert "M3" not in program.gcode
+    assert "Set Speed Dial to 1.0" in program.gcode
     assert any("below Dewalt 611 minimum speed" in w for w in program.warnings)
 
 def test_vfd_spindle_comment():
@@ -146,5 +149,5 @@ def test_vfd_spindle_comment():
         spindle_speed=12000,
         spindle_type="vfd_spindle",
     )
-    assert "Spindle: VFD / PWM Control at 12000 RPM" in program.gcode
+    assert "Spindle: VFD / PWM Control at 12,000 RPM" in program.gcode
     assert "M3 S12000" in program.gcode

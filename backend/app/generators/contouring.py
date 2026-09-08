@@ -120,6 +120,10 @@ def generate_contour_profile(
     tool_number: int = 1,
     tool_name: str = "Endmill",
     spindle_speed: int = 16000,
+    spindle_type: str = "router",
+    router_model: Optional[str] = "dewalt_611",
+    router_dial: Optional[float] = None,
+    require_pause: bool = False,
     feed_rate_xy: float = 800.0,
     plunge_feed: float = 250.0,
     units: str = "mm",
@@ -156,7 +160,17 @@ def generate_contour_profile(
 
     # 2. Spindle Start
     lines.extend(post.format_tool_comment(tool_number, tool_name))
-    lines.extend(post.format_spindle_start(rpm=spindle_speed, dwell_seconds=1.5))
+    lines.extend(
+        post.format_spindle_start(
+            rpm=spindle_speed,
+            clockwise=True,
+            dwell_seconds=1.5,
+            spindle_type=spindle_type,
+            router_model=router_model,
+            router_dial=router_dial,
+            require_pause=require_pause,
+        )
+    )
     lines.append("")
 
     # Tool offset calculation

@@ -2,25 +2,16 @@ import math
 from typing import List, Tuple, Optional
 from ..postprocessors.base import BasePostProcessor
 from ..postprocessors.grbl import GrblPostProcessor
+from ..postprocessors.router_speed_tables import (
+    ROUTER_SPECS,
+    interpolate_router_dial,
+    get_router_spec,
+    is_manual_spindle,
+)
 from .base import BoundingBox, GCodeProgram, WorkEnvelope
 
 ROUTER_DIAL_MAPS = {
-    "dewalt_611": {
-        1: 16000,
-        2: 18200,
-        3: 20400,
-        4: 22600,
-        5: 24800,
-        6: 27000,
-    },
-    "makita_rt0701": {
-        1: 10000,
-        2: 12000,
-        3: 17000,
-        4: 22000,
-        5: 27000,
-        6: 30000,
-    },
+    k: v.dial_points for k, v in ROUTER_SPECS.items()
 }
 
 

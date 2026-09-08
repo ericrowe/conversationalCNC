@@ -28,6 +28,7 @@ def test_thread_milling_internal_climb_bottom_to_top():
         feed_rate_xy=300.0,
         plunge_feed=200.0,
         spindle_speed=16000,
+        spindle_type="vfd_spindle",
     )
     assert prog.gcode is not None
     assert "G21 G90" in prog.gcode

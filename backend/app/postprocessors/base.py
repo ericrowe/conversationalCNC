@@ -42,7 +42,8 @@ class BasePostProcessor(ABC):
         dwell_seconds: float = 0.0,
         spindle_type: str = "router",
         router_model: Optional[str] = "dewalt_611",
-        router_dial: Optional[int] = None,
+        router_dial: Optional[float] = None,
+        require_pause: bool = False,
     ) -> List[str]:
         """Formats spindle/router ON command, operator dial comments, and optional spin-up dwell."""
         pass

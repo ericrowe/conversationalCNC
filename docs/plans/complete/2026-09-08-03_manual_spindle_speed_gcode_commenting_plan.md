@@ -41,12 +41,12 @@ flowchart TD
 ## 3. Code Modifications
 
 ### Postprocessor & Machine Models
-- `[MODIFY]` [`backend/app/models/machine.py`](../../backend/app/models/machine.py): Add `spindle_type` enum (`VFD_AUTO`, `MANUAL_ROUTER`) and optional `router_model` mapping (e.g. `MAKITA_RT0701C`, `DEWALT_DWP611`).
-- `[MODIFY]` [`backend/app/postprocessors/grbl.py`](../../backend/app/postprocessors/grbl.py): Update postprocessor to check `machine.spindle_type`; when manual, format RPM dial conversion comments and optional pause `M0`.
-- `[NEW]` `backend/app/postprocessors/router_speed_tables.py`: Dial-to-RPM conversion mappings for standard manual routers (Makita 1–6 dial scale: 10k–30k RPM; DeWalt 1–6 dial scale: 16k–27k RPM).
+- `[MODIFY]` [`backend/app/models/machine.py`](../../../backend/app/models/machine.py): Add `spindle_type` enum (`VFD_AUTO`, `MANUAL_ROUTER`) and optional `router_model` mapping (e.g. `MAKITA_RT0701C`, `DEWALT_DWP611`).
+- `[MODIFY]` [`backend/app/postprocessors/grbl.py`](../../../backend/app/postprocessors/grbl.py): Update postprocessor to check `machine.spindle_type`; when manual, format RPM dial conversion comments and optional pause `M0`.
+- `[NEW]` [`backend/app/postprocessors/router_speed_tables.py`](../../../backend/app/postprocessors/router_speed_tables.py): Dial-to-RPM conversion mappings for standard manual routers (Makita 1–6 dial scale: 10k–30k RPM; DeWalt 1–6 dial scale: 16k–27k RPM; Bosch Colt: 16k–35k RPM).
 
 ### Tests
-- `[NEW]` `backend/tests/test_manual_spindle_postprocessor.py`: Automated tests verifying G-code output contains dial comments and omits raw `S... M3` when manual router profile is selected.
+- `[NEW]` [`backend/tests/test_manual_spindle_postprocessor.py`](../../../backend/tests/test_manual_spindle_postprocessor.py): Automated tests verifying G-code output contains dial comments and omits raw `S... M3` when manual router profile is selected.
 
 ---
 
@@ -63,8 +63,8 @@ flowchart TD
 ---
 
 ## 5. Documentation Updates
-- `[MODIFY]` [`Conversational-CNC-Controller/docs/USER_MANUAL.md`](../USER_MANUAL.md): Document manual spindle speed dial conversion and operator safety prompts.
-- `[MODIFY]` [`Conversational-CNC-Controller/docs/plans/AGENTS.md`](AGENTS.md): Update Plan 03 status.
+- `[MODIFY]` [`Conversational-CNC-Controller/docs/USER_MANUAL.md`](../../USER_MANUAL.md): Document manual spindle speed dial conversion and operator safety prompts.
+- `[MODIFY]` [`Conversational-CNC-Controller/docs/plans/AGENTS.md`](../AGENTS.md): Update Plan 03 status.
 
 ---
 

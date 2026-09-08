@@ -204,18 +204,32 @@ Desktop CNC routers (like the **Inventables X-Carve 1000x1000** and **Shapeoko**
 
 ---
 
-### 3.2 Router Speed Dials (DeWalt DWP611 & Makita RT0701)
+### 3.2 Router Speed Dials & Manual Spindle Speed Commenting Mode
 
-Trim routers do not have closed-loop electronic RPM controllers. Use this calibrated lookup table to set the physical dial on top of your router motor:
+Trim routers (such as the **DeWalt DWP611**, **Makita RT0701C**, and **Bosch Colt PR20EVS**) do not have electronic CNC-controlled variable frequency drives (VFD). Issuing automatic `M3 S...` spindle start commands is ineffective and hazardous if the operator forgets to turn on the physical router switch or dial the correct RPM setting.
 
-| Dial Position | DeWalt DWP611 RPM | Makita RT0701 RPM | Recommended Tooling & Material Use Cases |
-| :---: | :---: | :---: | :--- |
-| **Dial 1** | **~16,000 RPM** | **~10,000 RPM** | **Surfacing bits (1"+), Acrylic & Plastics, 6061 Aluminum, 360 Brass.** *(Keeps heat low to prevent melting plastics or dulling carbide in metals).* |
-| **Dial 2** | **~18,200 RPM** | **~14,000 RPM** | **Hardwoods (Oak, Hard Maple, Walnut, Cherry), 1/4" Endmills.** |
-| **Dial 3** | **~20,400 RPM** | **~18,000 RPM** | **Softwoods (Pine, Cedar, Fir), MDF, Baltic Birch Plywood.** |
-| **Dial 4** | **~22,600 RPM** | **~22,000 RPM** | **General purpose 1/8" 2-flute endmills in wood.** |
-| **Dial 5** | **~24,800 RPM** | **~26,000 RPM** | **Micro endmills (1/16", 1/32") and high-speed PCB isolation routing.** |
-| **Dial 6** | **~27,000 RPM** | **~30,000 RPM** | **V-Bit engraving and diamond drag engraving.** |
+#### Manual Spindle Commenting Mode & Safety Interlocks
+When a machine profile is configured with a manual router (`spindle_type: "manual_router"` or `"router"`):
+1. **Raw `S... M3` Suppression**: The G-code postprocessor suppresses automatic spindle start commands.
+2. **High-Visibility Operator Setup Comments**: Emits prominent setup instructions in the G-code header and tool change blocks:
+   ```gcode
+   ( *** MANUAL ROUTER: SET SPEED DIAL TO 2.8 (~16,000 RPM) *** )
+   ( Spindle: Makita RT0701C - Set Speed Dial to 2.8 [~16,000 RPM] )
+   ( Operator Safety: Turn physical router switch ON before cycle start )
+   ```
+3. **Optional Confirmation Pause (`M0`)**: When configured, inserts an `M0` hold before motion begins, requiring the operator to verify that the router is powered and spinning before pressing Cycle Resume.
+4. **Continuous Piecewise-Linear Dial Interpolation**: Automatically calculates precise decimal dial positions (e.g. Dial 2.8 for 16,000 RPM on a Makita RT0701C) between standard discrete dial stops.
+
+#### Calibrated Router Speed Dial Table
+
+| Dial Position | DeWalt DWP611 RPM | Makita RT0701C RPM | Bosch Colt PR20EVS RPM | Recommended Tooling & Material Use Cases |
+| :---: | :---: | :---: | :---: | :--- |
+| **Dial 1** | **~16,000 RPM** | **~10,000 RPM** | **~16,000 RPM** | **Surfacing bits (1"+), Acrylic & Plastics, 6061 Aluminum, 360 Brass.** *(Keeps heat low to prevent melting plastics or dulling carbide in metals).* |
+| **Dial 2** | **~18,200 RPM** | **~12,000 RPM** | **~18,000 RPM** | **Hardwoods (Oak, Hard Maple, Walnut, Cherry), 1/4" Endmills.** |
+| **Dial 3** | **~20,400 RPM** | **~17,000 RPM** | **~22,000 RPM** | **Softwoods (Pine, Cedar, Fir), MDF, Baltic Birch Plywood.** |
+| **Dial 4** | **~22,600 RPM** | **~22,000 RPM** | **~26,000 RPM** | **General purpose 1/8" 2-flute endmills in wood.** |
+| **Dial 5** | **~24,800 RPM** | **~27,000 RPM** | **~30,000 RPM** | **Micro endmills (1/16", 1/32") and high-speed PCB isolation routing.** |
+| **Dial 6** | **~27,000 RPM** | **~30,000 RPM** | **~35,000 RPM** | **V-Bit engraving and diamond drag engraving.** |
 
 ---
 

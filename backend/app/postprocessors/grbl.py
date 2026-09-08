@@ -1,6 +1,7 @@
 import math
 from typing import Optional, List
 from .base import BasePostProcessor
+from .router_speed_tables import format_manual_spindle_comment, is_manual_spindle
 
 class GrblPostProcessor(BasePostProcessor):
     """
@@ -43,20 +44,29 @@ class GrblPostProcessor(BasePostProcessor):
         dwell_seconds: float = 0.0,
         spindle_type: str = "router",
         router_model: Optional[str] = "dewalt_611",
-        router_dial: Optional[int] = None,
+        router_dial: Optional[float] = None,
+        require_pause: bool = False,
     ) -> List[str]:
         lines = []
-        if spindle_type == "router":
-            model_name = "DeWalt DWP611" if router_model == "dewalt_611" else "Trim Router"
-            dial_str = f"Set Speed Dial to #{router_dial} [~{int(rpm)} RPM]" if router_dial else f"Set Speed to ~{int(rpm)} RPM"
-            lines.append(f"(Spindle: {model_name} - {dial_str})")
+        if is_manual_spindle(spindle_type):
+            # Manual trim router: suppress raw M3 S... and emit setup comments / optional pause
+            lines.extend(
+                format_manual_spindle_comment(
+                    router_model=router_model,
+                    target_rpm=int(rpm),
+                    router_dial=router_dial,
+                    require_pause=require_pause,
+                )
+            )
+            if dwell_seconds > 0:
+                lines.append(self.format_dwell(dwell_seconds))
         else:
-            lines.append(f"(Spindle: VFD / PWM Control at {int(rpm)} RPM)")
-
-        cmd = f"M3 S{int(rpm)}" if clockwise else f"M4 S{int(rpm)}"
-        lines.append(cmd)
-        if dwell_seconds > 0:
-            lines.append(self.format_dwell(dwell_seconds))
+            # VFD / PWM Automatic Spindle
+            lines.append(f"(Spindle: VFD / PWM Control at {int(rpm):,} RPM)")
+            cmd = f"M3 S{int(rpm)}" if clockwise else f"M4 S{int(rpm)}"
+            lines.append(cmd)
+            if dwell_seconds > 0:
+                lines.append(self.format_dwell(dwell_seconds))
         return lines
 
     def format_spindle_stop(self) -> List[str]:

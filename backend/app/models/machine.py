@@ -1,7 +1,41 @@
+import enum
 from datetime import datetime, timezone
+from typing import Optional
 from flask_sqlalchemy import SQLAlchemy
+from ..postprocessors.router_speed_tables import (
+    ROUTER_SPECS,
+    get_router_spec,
+    interpolate_router_dial,
+    normalize_router_model,
+)
 
 db = SQLAlchemy()
+
+
+class SpindleType(str, enum.Enum):
+    MANUAL_ROUTER = "manual_router"
+    ROUTER = "router"
+    VFD_AUTO = "vfd_auto"
+    VFD_SPINDLE = "vfd_spindle"
+
+    @classmethod
+    def is_manual(cls, value: Optional[str]) -> bool:
+        if not value:
+            return True
+        val = str(value).lower().strip().replace("-", "_")
+        return val in ("manual_router", "router", "manual", "trim_router", "dewalt", "makita", "bosch")
+
+    @classmethod
+    def is_vfd(cls, value: Optional[str]) -> bool:
+        return not cls.is_manual(value)
+
+
+class RouterModel(str, enum.Enum):
+    DEWALT_DWP611 = "dewalt_611"
+    MAKITA_RT0701C = "makita_rt0701"
+    BOSCH_COLT = "bosch_colt"
+    GENERIC = "generic"
+
 
 class MachineProfile(db.Model):
     __tablename__ = "machine_profiles"
@@ -32,42 +66,23 @@ class MachineProfile(db.Model):
     )
 
     ROUTER_DIAL_MAPS = {
-        "dewalt_611": {
-            1: 16000,
-            2: 18200,
-            3: 20400,
-            4: 22600,
-            5: 24800,
-            6: 27000,
-        },
-        "makita_rt0701": {
-            1: 10000,
-            2: 12000,
-            3: 17000,
-            4: 22000,
-            5: 27000,
-            6: 30000,
-        },
+        k: v.dial_points for k, v in ROUTER_SPECS.items()
     }
 
     def get_dial_for_rpm(self, target_rpm: int):
-        """Returns (dial_number, mapped_rpm) for router models."""
-        if self.spindle_type != "router" or not self.router_model:
+        """Returns (dial_setting, mapped_rpm) for router models."""
+        if not SpindleType.is_manual(self.spindle_type) or not self.router_model:
             return None, target_rpm
-        dial_map = self.ROUTER_DIAL_MAPS.get(self.router_model)
-        if not dial_map:
-            return None, target_rpm
-        
-        # Find closest dial setting
-        closest_dial = min(dial_map.keys(), key=lambda d: abs(dial_map[d] - target_rpm))
-        return closest_dial, dial_map[closest_dial]
+        info = interpolate_router_dial(self.router_model, target_rpm)
+        return info.dial_setting, info.actual_rpm
 
     def to_dict(self):
         dial_options = None
-        if self.spindle_type == "router" and self.router_model in self.ROUTER_DIAL_MAPS:
+        if SpindleType.is_manual(self.spindle_type):
+            spec = get_router_spec(self.router_model)
             dial_options = [
                 {"dial": d, "rpm": rpm}
-                for d, rpm in self.ROUTER_DIAL_MAPS[self.router_model].items()
+                for d, rpm in sorted(spec.dial_points.items())
             ]
 
         return {

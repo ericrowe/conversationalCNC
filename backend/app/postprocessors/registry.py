@@ -1,6 +1,7 @@
-from typing import Dict, Type
+from typing import Dict, Type, Optional, List
 from .base import BasePostProcessor
 from .grbl import GrblPostProcessor
+from .router_speed_tables import format_manual_spindle_comment, is_manual_spindle
 
 class StandardPostProcessor(BasePostProcessor):
     """
@@ -39,13 +40,28 @@ class StandardPostProcessor(BasePostProcessor):
         clockwise: bool = True,
         dwell_seconds: float = 0.0,
         spindle_type: str = "router",
-        router_model: str = "dewalt_611",
-        router_dial: int = None,
-    ):
-        cmd = f"M3 S{int(rpm)}" if clockwise else f"M4 S{int(rpm)}"
-        lines = [cmd]
-        if dwell_seconds > 0:
-            lines.append(self.format_dwell(dwell_seconds))
+        router_model: Optional[str] = "dewalt_611",
+        router_dial: Optional[float] = None,
+        require_pause: bool = False,
+    ) -> List[str]:
+        lines = []
+        if is_manual_spindle(spindle_type):
+            lines.extend(
+                format_manual_spindle_comment(
+                    router_model=router_model,
+                    target_rpm=int(rpm),
+                    router_dial=router_dial,
+                    require_pause=require_pause,
+                )
+            )
+            if dwell_seconds > 0:
+                lines.append(self.format_dwell(dwell_seconds))
+        else:
+            lines.append(f"(Spindle: VFD / PWM Control at {int(rpm):,} RPM)")
+            cmd = f"M3 S{int(rpm)}" if clockwise else f"M4 S{int(rpm)}"
+            lines.append(cmd)
+            if dwell_seconds > 0:
+                lines.append(self.format_dwell(dwell_seconds))
         return lines
 
     def format_spindle_stop(self):

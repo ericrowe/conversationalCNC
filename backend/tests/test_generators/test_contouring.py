@@ -29,6 +29,7 @@ def test_contouring_basic_closed_profile():
         lead_in_type="tangential_arc",
         lead_in_radius=5.0,
         spring_pass=True,
+        spindle_type="vfd_spindle",
     )
 
     gcode = result["gcode"]
