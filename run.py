@@ -11,6 +11,8 @@ from app.config import DevelopmentConfig
 app = create_app(DevelopmentConfig)
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5001))
-    print(f"Starting Conversational CNC Controller Backend on port {port}...")
+    # In production on standalone host, default port is 80 (or 5000 in unprivileged local dev)
+    default_port = 80 if hasattr(os, "geteuid") and os.geteuid() == 0 else 5000
+    port = int(os.environ.get("PORT", default_port))
+    print(f"Starting Conversational CNC Controller Server on port {port} (http://0.0.0.0:{port})...")
     app.run(host="0.0.0.0", port=port, debug=True)

@@ -1,0 +1,905 @@
+{% extends "base.html" %}
+
+{% block title %}System Status • Conversational CNC Controller{% endblock %}
+
+{% block content %}
+<div class="hud-wrapper">
+  <!-- 5-Lion Color Spectrum Accent Stripe (Red, Yellow, Silver/Black, Green, Blue) -->
+  <div class="voltron-spectrum-bar"></div>
+
+  <!-- Top HUD Bar (Ultra-Compact 36px) -->
+  <div class="hud-header">
+    <div class="hud-header-left">
+      <button type="button" class="hud-btn hud-btn-menu" id="btn-menu-toggle" title="Open System & Pi Controls Menu">
+        ☰ Menu
+      </button>
+      <div class="live-pulse" title="System Online"></div>
+      <div class="voltron-brand-wrap">
+        <span class="hud-voltron-logo">VOLTRON</span>
+        <span class="hud-sub-emblem">LION FORCE</span>
+      </div>
+      <span class="hud-pill hud-pill-online" id="service-status">ONLINE :80</span>
+      <span class="hud-ip" id="primary-ip">IP: ---.---.---.---</span>
+    </div>
+
+    <div class="hud-header-center">
+      <span class="hud-clock" id="live-clock">--:--:--</span>
+      <span class="hud-uptime" id="server-uptime">Uptime: --</span>
+    </div>
+
+    <div class="hud-header-right">
+      <a href="/" class="hud-btn hud-btn-blazing-sword" title="Open Machining Studio Web UI">
+        ⚡ Studio
+      </a>
+      <button type="button" class="hud-btn hud-btn-outline" id="btn-refresh" title="Reload Page (Hard Refresh)">
+        🔄 Reload
+      </button>
+    </div>
+  </div>
+
+  <!-- System Controls Menu Modal Overlay -->
+  <div class="hud-modal-backdrop" id="hud-menu-modal" style="display: none;">
+    <div class="hud-modal-content">
+      <div class="hud-modal-header">
+        <div class="modal-title-wrap">
+          <span class="modal-title">⚙️ Voltron System & Host Controls</span>
+          <span class="modal-subtitle">Raspberry Pi Host & CNC Management</span>
+        </div>
+        <button type="button" class="hud-modal-close" id="btn-menu-close">✕</button>
+      </div>
+      
+      <div class="hud-modal-body">
+        <!-- Section 1: Navigation -->
+        <div class="menu-section">
+          <span class="menu-section-label">Machining Navigation</span>
+          <div class="menu-btn-grid">
+            <a href="/" class="menu-item-btn menu-btn-studio">
+              ⚡ Machining Studio
+            </a>
+            <a href="/machines" class="menu-item-btn">
+              ⚙️ Machines
+            </a>
+            <a href="/tools" class="menu-item-btn">
+              🔧 Tool Library
+            </a>
+          </div>
+        </div>
+
+        <!-- Section 2: Display & Tools -->
+        <div class="menu-section">
+          <span class="menu-section-label">Display & Snapshot</span>
+          <div class="menu-btn-grid">
+            <button type="button" class="menu-item-btn" id="menu-btn-reload">
+              🔄 Reload UI
+            </button>
+            <button type="button" class="menu-item-btn" id="menu-btn-fullscreen">
+              ⛶ Toggle Fullscreen
+            </button>
+            <button type="button" class="menu-item-btn menu-btn-backup" id="menu-btn-backup">
+              💾 Snapshot Backup
+            </button>
+          </div>
+        </div>
+
+        <!-- Section 3: Host & Service Power Controls -->
+        <div class="menu-section">
+          <span class="menu-section-label">Host Power & Service Operations</span>
+          <div class="menu-btn-grid">
+            <button type="button" class="menu-item-btn menu-btn-restart" id="menu-btn-restart">
+              🔄 Restart Service
+            </button>
+            <button type="button" class="menu-item-btn menu-btn-reboot" id="menu-btn-reboot">
+              🔌 Reboot Pi
+            </button>
+            <button type="button" class="menu-item-btn menu-btn-shutdown" id="menu-btn-shutdown">
+              🛑 Shutdown Pi
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hardware Gauges Grid (4 Columns, Lion Force Theme) -->
+  <div class="hud-gauges-grid">
+    <!-- Red Lion: Core Temp -->
+    <div class="gauge-card gauge-card-red-lion">
+      <div class="gauge-header">
+        <span class="gauge-label">🔴 Red Lion • Core Temp</span>
+        <span class="gauge-badge badge-red-lion" id="temp-badge">Normal</span>
+      </div>
+      <div class="gauge-main">
+        <span class="gauge-value val-red-lion" id="temp-val">--.- °C</span>
+      </div>
+      <div class="gauge-bar-track">
+        <div class="gauge-bar-fill bar-temp" id="temp-bar" style="width: 40%;"></div>
+      </div>
+    </div>
+
+    <!-- Blue Lion: CPU Load -->
+    <div class="gauge-card gauge-card-blue-lion">
+      <div class="gauge-header">
+        <span class="gauge-label">🔵 Blue Lion • CPU Load</span>
+        <span class="gauge-sub" id="cpu-cores">4 Cores</span>
+      </div>
+      <div class="gauge-main">
+        <span class="gauge-value val-blue-lion" id="cpu-val">--.- %</span>
+      </div>
+      <div class="gauge-bar-track">
+        <div class="gauge-bar-fill bar-cpu" id="cpu-bar" style="width: 15%;"></div>
+      </div>
+    </div>
+
+    <!-- Yellow Lion: Memory / RAM -->
+    <div class="gauge-card gauge-card-yellow-lion">
+      <div class="gauge-header">
+        <span class="gauge-label">🟡 Yellow Lion • Memory</span>
+        <span class="gauge-sub" id="ram-used-text">--- / --- MB</span>
+      </div>
+      <div class="gauge-main">
+        <span class="gauge-value val-yellow-lion" id="ram-percent">--.- %</span>
+      </div>
+      <div class="gauge-bar-track">
+        <div class="gauge-bar-fill bar-ram" id="ram-bar" style="width: 15%;"></div>
+      </div>
+    </div>
+
+    <!-- Green Lion: MicroSD Storage -->
+    <div class="gauge-card gauge-card-green-lion">
+      <div class="gauge-header">
+        <span class="gauge-label">🟢 Green Lion • MicroSD</span>
+        <span class="gauge-sub" id="disk-free-text">-- GB Free</span>
+      </div>
+      <div class="gauge-main">
+        <span class="gauge-value val-green-lion" id="disk-percent">--.- %</span>
+      </div>
+      <div class="gauge-bar-track">
+        <div class="gauge-bar-fill bar-disk" id="disk-bar" style="width: 10%;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main 2-Column Split: Machines Hub vs Live Stream (Height ~280px) -->
+  <div class="hud-main-grid">
+    <!-- Left Panel: Machines & Catalog -->
+    <div class="hud-panel">
+      <div class="hud-panel-header panel-header-machines">
+        <span class="panel-title panel-title-machines">🛠️ Multi-CNC Machine Hub</span>
+        <span class="hud-pill pill-gold" id="machines-count-badge">0 Machines</span>
+      </div>
+      <div class="hud-panel-body">
+        <!-- Machine Profiles Chips -->
+        <div class="machines-grid" id="machines-list-container">
+          <div class="text-muted-compact">Loading machine profiles...</div>
+        </div>
+
+        <!-- System Stats Grid -->
+        <div class="stats-mini-grid">
+          <div class="stat-item">
+            <span class="stat-k">SQLite Database</span>
+            <span class="stat-v" id="db-size-val">-- KB</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-k">Tool Library</span>
+            <span class="stat-v"><span id="tools-count-val">--</span> tools</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-k">Material Presets</span>
+            <span class="stat-v"><span id="materials-count-val">--</span> presets</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-k">Node 04 Backup</span>
+            <span class="stat-v" id="rack-sync-badge">Standalone Local</span>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="panel-actions">
+          <button type="button" class="action-btn action-backup" id="btn-trigger-backup">
+            💾 Snapshot Backup
+          </button>
+          <a href="/machines" class="action-btn action-link">
+            ⚙️ Machines
+          </a>
+          <a href="/tools" class="action-btn action-link">
+            🔧 Tools
+          </a>
+          <button type="button" class="action-btn action-restart" id="btn-restart-app">
+            🔄 Restart
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Panel: Live Activity Stream -->
+    <div class="hud-panel">
+      <div class="hud-panel-header panel-header-stream">
+        <span class="panel-title panel-title-stream">📡 Live Client Stream</span>
+        <span class="hud-pill hud-pill-stream" id="activity-count-badge">0 Events</span>
+      </div>
+      <div class="hud-panel-body stream-scroll" id="activity-stream-container">
+        <div class="stream-empty">
+          <span>⏳ Awaiting client G-code generation requests...</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  /* High-Density 800x480 CSS Reset & Layout - 1980s Voltron Lion Force Aesthetic */
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+    background-color: #060913;
+    color: #e2e8f0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, sans-serif;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  main {
+    padding: 0 !important;
+    margin: 0 !important;
+    height: 100vh;
+    width: 100vw;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .hud-wrapper {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    width: 100vw;
+    box-sizing: border-box;
+    padding: 4px 8px 6px 8px;
+    gap: 5px;
+    background: #060913;
+  }
+
+  /* 5-Lion Color Spectrum Stripe */
+  .voltron-spectrum-bar {
+    height: 3px;
+    width: 100%;
+    border-radius: 2px;
+    background: linear-gradient(90deg, #ef4444 0%, #f59e0b 25%, #f8fafc 50%, #10b981 75%, #0284c7 100%);
+    box-shadow: 0 0 10px rgba(56, 189, 248, 0.45);
+    flex-shrink: 0;
+  }
+
+  /* 1. Header Bar */
+  .hud-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: linear-gradient(180deg, #121a2d 0%, #0d1424 100%);
+    border: 1px solid #1c2844;
+    border-radius: 6px;
+    padding: 3px 8px;
+    height: 34px;
+    flex-shrink: 0;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  }
+  .hud-header-left, .hud-header-right, .hud-header-center {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .live-pulse {
+    width: 8px;
+    height: 8px;
+    background-color: #10b981;
+    border-radius: 50%;
+    box-shadow: 0 0 6px #10b981;
+    animation: pulse 2s infinite;
+    flex-shrink: 0;
+  }
+  @keyframes pulse {
+    0% { transform: scale(0.95); opacity: 0.8; }
+    50% { transform: scale(1.2); opacity: 1; }
+    100% { transform: scale(0.95); opacity: 0.8; }
+  }
+
+  /* Voltron Logo Treatment */
+  .voltron-brand-wrap {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+  .hud-voltron-logo {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Impact", "Arial Black", sans-serif;
+    font-size: 0.92rem;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    background: linear-gradient(180deg, #ffffff 0%, #e2e8f0 25%, #facc15 52%, #ca8a04 80%, #78350f 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.9)) drop-shadow(0 0 6px rgba(250, 204, 21, 0.35));
+  }
+  .hud-sub-emblem {
+    font-size: 0.5rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    color: #38bdf8;
+    background: rgba(14, 165, 233, 0.15);
+    border: 1px solid rgba(56, 189, 248, 0.35);
+    border-radius: 2px;
+    padding: 1px 3px;
+    text-transform: uppercase;
+  }
+
+  .hud-pill {
+    background: #182238;
+    color: #94a3b8;
+    font-size: 0.62rem;
+    font-weight: 600;
+    padding: 1px 5px;
+    border-radius: 3px;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .hud-pill-online {
+    background: rgba(16, 185, 129, 0.18);
+    color: #34d399;
+    border: 1px solid rgba(16, 185, 129, 0.4);
+    font-size: 0.6rem;
+    padding: 1px 4px;
+  }
+  .hud-pill-stream {
+    background: rgba(56, 189, 248, 0.18);
+    color: #38bdf8;
+    border: 1px solid rgba(56, 189, 248, 0.35);
+  }
+  .pill-gold {
+    background: rgba(245, 158, 11, 0.18);
+    color: #fbbf24;
+    border: 1px solid rgba(245, 158, 11, 0.35);
+  }
+  .hud-ip {
+    font-size: 0.65rem;
+    color: #64748b;
+    font-family: ui-monospace, SFMono-Regular, monospace;
+    white-space: nowrap;
+  }
+  .hud-clock {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #f8fafc;
+    font-family: ui-monospace, SFMono-Regular, monospace;
+    white-space: nowrap;
+  }
+  .hud-uptime {
+    font-size: 0.65rem;
+    color: #64748b;
+    white-space: nowrap;
+  }
+  .hud-btn {
+    background: #182238;
+    color: #f8fafc;
+    border: 1px solid #27375a;
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 0.68rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    height: 24px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .hud-btn:active {
+    transform: scale(0.97);
+  }
+  .hud-btn-outline {
+    background: transparent;
+    border-color: #38bdf8;
+    color: #38bdf8;
+    font-size: 0.68rem;
+    padding: 2px 6px;
+  }
+  .hud-btn-blazing-sword {
+    background: linear-gradient(135deg, #b45309 0%, #f59e0b 45%, #fef08a 100%);
+    border: 1px solid #facc15;
+    color: #0b0f19;
+    font-weight: 800;
+    font-size: 0.68rem;
+    padding: 2px 6px;
+    box-shadow: 0 0 8px rgba(245, 158, 11, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  }
+  .hud-btn-menu {
+    background: linear-gradient(180deg, #182238 0%, #0d1424 100%);
+    border: 1px solid #38bdf8;
+    color: #38bdf8;
+    font-weight: 700;
+    box-shadow: 0 0 6px rgba(56, 189, 248, 0.25);
+    font-size: 0.68rem;
+    padding: 2px 6px;
+  }
+
+  /* 2. Hardware Gauges Grid (Lion Force Theme) */
+  .hud-gauges-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+    flex-shrink: 0;
+    height: 62px;
+  }
+  .gauge-card {
+    background: #0d1424;
+    border: 1px solid #1c2844;
+    border-radius: 6px;
+    padding: 4px 8px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  .gauge-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.68rem;
+    color: #94a3b8;
+    font-weight: 600;
+  }
+  .gauge-sub {
+    font-size: 0.62rem;
+    color: #64748b;
+  }
+  .gauge-main {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+  }
+  .gauge-value {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #f8fafc;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+  }
+  .gauge-bar-track {
+    width: 100%;
+    height: 4px;
+    background: #162036;
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .gauge-bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.4s ease;
+  }
+
+  /* Red Lion (Temp) */
+  .gauge-card-red-lion {
+    border-color: rgba(239, 68, 68, 0.45);
+    background: linear-gradient(180deg, rgba(239, 68, 68, 0.08) 0%, #0d1424 100%);
+    box-shadow: inset 0 1px 0 rgba(239, 68, 68, 0.25);
+  }
+  .val-red-lion { color: #fecaca; }
+  .badge-red-lion {
+    background: rgba(239, 68, 68, 0.2);
+    color: #fca5a5;
+    border: 1px solid rgba(239, 68, 68, 0.4);
+    font-size: 0.62rem;
+    padding: 1px 4px;
+    border-radius: 3px;
+  }
+  .bar-temp {
+    background: linear-gradient(90deg, #991b1b, #ef4444);
+    box-shadow: 0 0 6px rgba(239, 68, 68, 0.5);
+  }
+
+  /* Blue Lion (CPU) */
+  .gauge-card-blue-lion {
+    border-color: rgba(56, 189, 248, 0.45);
+    background: linear-gradient(180deg, rgba(56, 189, 248, 0.08) 0%, #0d1424 100%);
+    box-shadow: inset 0 1px 0 rgba(56, 189, 248, 0.25);
+  }
+  .val-blue-lion { color: #bae6fd; }
+  .bar-cpu {
+    background: linear-gradient(90deg, #0284c7, #38bdf8);
+    box-shadow: 0 0 6px rgba(56, 189, 248, 0.5);
+  }
+
+  /* Yellow Lion (RAM) */
+  .gauge-card-yellow-lion {
+    border-color: rgba(245, 158, 11, 0.45);
+    background: linear-gradient(180deg, rgba(245, 158, 11, 0.08) 0%, #0d1424 100%);
+    box-shadow: inset 0 1px 0 rgba(245, 158, 11, 0.25);
+  }
+  .val-yellow-lion { color: #fef08a; }
+  .bar-ram {
+    background: linear-gradient(90deg, #b45309, #fbbf24);
+    box-shadow: 0 0 6px rgba(245, 158, 11, 0.5);
+  }
+
+  /* Green Lion (MicroSD Storage) */
+  .gauge-card-green-lion {
+    border-color: rgba(16, 185, 129, 0.45);
+    background: linear-gradient(180deg, rgba(16, 185, 129, 0.08) 0%, #0d1424 100%);
+    box-shadow: inset 0 1px 0 rgba(16, 185, 129, 0.25);
+  }
+  .val-green-lion { color: #a7f3d0; }
+  .bar-disk {
+    background: linear-gradient(90deg, #047857, #34d399);
+    box-shadow: 0 0 6px rgba(16, 185, 129, 0.5);
+  }
+
+  /* 3. Main 2-Column Panels */
+  .hud-main-grid {
+    display: grid;
+    grid-template-columns: 1fr 1.15fr;
+    gap: 6px;
+    flex: 1;
+    min-height: 0;
+  }
+  .hud-panel {
+    background: #0d1424;
+    border: 1px solid #1c2844;
+    border-radius: 6px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .hud-panel-header {
+    padding: 4px 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    height: 28px;
+    flex-shrink: 0;
+  }
+  .panel-header-machines {
+    background: linear-gradient(90deg, rgba(245, 158, 11, 0.14) 0%, #0d1424 100%);
+    border-bottom: 1px solid rgba(245, 158, 11, 0.35);
+  }
+  .panel-title-machines {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #fbbf24;
+  }
+  .panel-header-stream {
+    background: linear-gradient(90deg, rgba(56, 189, 248, 0.14) 0%, #0d1424 100%);
+    border-bottom: 1px solid rgba(56, 189, 248, 0.35);
+  }
+  .panel-title-stream {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #38bdf8;
+  }
+
+  .hud-panel-body {
+    padding: 6px 8px;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    gap: 6px;
+    justify-content: flex-start;
+  }
+
+  /* Machines Grid */
+  .machines-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+  }
+  .machine-chip {
+    background: #070b14;
+    border: 1px solid #1c2844;
+    border-radius: 4px;
+    padding: 4px 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+  .machine-chip-active {
+    border-color: rgba(245, 158, 11, 0.5);
+    background: rgba(245, 158, 11, 0.08);
+  }
+  .mach-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .mach-name {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #f8fafc;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 110px;
+  }
+  .mach-dialect {
+    font-size: 0.58rem;
+    color: #fbbf24;
+    background: #182238;
+    padding: 1px 3px;
+    border-radius: 2px;
+  }
+  .mach-env {
+    font-size: 0.62rem;
+    color: #94a3b8;
+  }
+
+  /* Stats Grid */
+  .stats-mini-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px 8px;
+    background: #070b14;
+    border: 1px solid #1c2844;
+    border-radius: 4px;
+    padding: 4px 8px;
+  }
+  .stat-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.68rem;
+  }
+  .stat-k { color: #64748b; }
+  .stat-v { color: #e2e8f0; font-weight: 600; }
+
+  /* Action Buttons */
+  .panel-actions {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 4px;
+    margin-top: auto;
+  }
+  .action-btn {
+    background: #182238;
+    color: #f8fafc;
+    border: 1px solid #27375a;
+    border-radius: 4px;
+    padding: 5px 2px;
+    font-size: 0.68rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: center;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 32px;
+  }
+  .action-btn:active { transform: scale(0.97); }
+  .action-backup { background: linear-gradient(135deg, #065f46 0%, #047857 100%); border-color: #10b981; }
+  .action-restart { background: linear-gradient(135deg, #78350f 0%, #b45309 100%); border-color: #f59e0b; }
+  .action-link { background: #182238; color: #38bdf8; border-color: #27375a; }
+
+  /* Stream Feed (Scrollable & Top-Justified) */
+  .stream-scroll {
+    overflow-y: auto;
+    padding: 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    justify-content: flex-start !important;
+    align-content: flex-start;
+  }
+  .stream-scroll::-webkit-scrollbar {
+    width: 4px;
+  }
+  .stream-scroll::-webkit-scrollbar-thumb {
+    background: #27375a;
+    border-radius: 2px;
+  }
+  .stream-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    min-height: 100px;
+    color: #64748b;
+    font-size: 0.75rem;
+    text-align: center;
+  }
+  .stream-item {
+    background: #070b14;
+    border: 1px solid #1c2844;
+    border-radius: 4px;
+    padding: 4px 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex-shrink: 0;
+  }
+  .stream-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .stream-op {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #38bdf8;
+  }
+  .stream-time {
+    font-size: 0.62rem;
+    color: #64748b;
+    font-family: ui-monospace, SFMono-Regular, monospace;
+  }
+  .stream-mid {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin: 1px 0;
+  }
+  .stream-mach {
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: #fbbf24;
+    background: rgba(245, 158, 11, 0.12);
+    padding: 1px 5px;
+    border-radius: 3px;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
+  .stream-bot {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.62rem;
+    color: #94a3b8;
+  }
+  .stream-ip { color: #64748b; font-family: ui-monospace, monospace; }
+  .stream-lines { color: #34d399; font-weight: 600; }
+  .stream-dur { color: #fbbf24; }
+  .text-muted-compact { font-size: 0.68rem; color: #64748b; text-align: center; padding: 6px; }
+
+  /* Controls Menu Modal */
+  .hud-modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.82);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+  }
+  .hud-modal-content {
+    background: #0d1424;
+    border: 1px solid #27375a;
+    border-radius: 8px;
+    width: 92%;
+    max-width: 500px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.85);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .hud-modal-header {
+    background: linear-gradient(90deg, #121a2d 0%, #0d1424 100%);
+    border-bottom: 1px solid #1c2844;
+    padding: 6px 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .modal-title-wrap {
+    display: flex;
+    flex-direction: column;
+  }
+  .modal-title {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #fbbf24;
+  }
+  .modal-subtitle {
+    font-size: 0.62rem;
+    color: #64748b;
+  }
+  .hud-modal-close {
+    background: #182238;
+    border: 1px solid #27375a;
+    color: #94a3b8;
+    font-size: 0.85rem;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 2px 8px;
+    border-radius: 4px;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .hud-modal-close:hover {
+    color: white;
+    background: #27375a;
+  }
+  .hud-modal-body {
+    padding: 8px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .menu-section {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .menu-section-label {
+    font-size: 0.62rem;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .menu-btn-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 5px;
+  }
+  .menu-item-btn {
+    background: #182238;
+    color: #f8fafc;
+    border: 1px solid #27375a;
+    border-radius: 5px;
+    padding: 6px 4px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 34px;
+  }
+  .menu-item-btn:active {
+    transform: scale(0.97);
+  }
+  .menu-btn-studio {
+    background: linear-gradient(135deg, #b45309 0%, #f59e0b 50%, #fef08a 100%);
+    border-color: #facc15;
+    color: #0b0f19;
+    font-weight: 800;
+  }
+  .menu-btn-backup {
+    background: linear-gradient(135deg, #065f46 0%, #047857 100%);
+    border-color: #10b981;
+    color: white;
+  }
+  .menu-btn-restart {
+    background: linear-gradient(135deg, #78350f 0%, #b45309 100%);
+    border-color: #f59e0b;
+    color: white;
+  }
+  .menu-btn-reboot {
+    background: linear-gradient(135deg, #9a3412 0%, #c2410c 100%);
+    border-color: #ea580c;
+    color: white;
+  }
+  .menu-btn-shutdown {
+    background: linear-gradient(135deg, #991b1b 0%, #dc2626 100%);
+    border-color: #ef4444;
+    color: white;
+  }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/status.js"></script>
+{% endblock %}
+

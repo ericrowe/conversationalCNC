@@ -46,6 +46,7 @@ from ..generators import (
     THREAD_STANDARDS,
     WorkEnvelope,
 )
+from .system import record_activity
 
 
 
@@ -57,6 +58,33 @@ from ..generators import (
 
 
 generate_bp = Blueprint("generate", __name__, url_prefix="/api/generate")
+
+
+@generate_bp.after_request
+def _log_generation_activity(response):
+    if response.status_code == 200 and request.method == "POST":
+        try:
+            raw = response.get_json() or {}
+            payload_data = raw.get("data", raw) if isinstance(raw, dict) else {}
+            if isinstance(payload_data, dict) and "gcode" in payload_data:
+                gcode_text = payload_data.get("gcode", "")
+                line_count = payload_data.get("line_count") or (len(gcode_text.splitlines()) if gcode_text else 0)
+                op_name = request.path.replace("/api/generate/", "").replace("/", " ").replace("-", " ").title()
+                mach_info = raw.get("machine_profile") or {}
+                mach_name = mach_info.get("name") if isinstance(mach_info, dict) else None
+                if not mach_name:
+                    active_mach = MachineProfile.query.filter_by(is_active=True).first() or MachineProfile.query.first()
+                    mach_name = active_mach.name if active_mach else "Standard CNC"
+                record_activity(
+                    operation=op_name,
+                    machine_name=mach_name,
+                    lines=line_count,
+                    client_ip=request.remote_addr or "127.0.0.1",
+                    estimated_time_sec=payload_data.get("estimated_time_seconds", 0.0) or 0.0
+                )
+        except Exception:
+            pass
+    return response
 
 
 def _resolve_context(payload):

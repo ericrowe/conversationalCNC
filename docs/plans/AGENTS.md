@@ -24,7 +24,7 @@ Every plan MUST adhere to the standardized 5-step lifecycle and include all 7 ma
 
 | Plan ID | Title | Scope | Status |
 | :---: | :--- | :--- | :---: |
-| **01** | Standalone Barn Workshop Raspberry Pi Deployment & Offline Motion Host ([`docs/plans/01_barn_standalone_pi_deployment_plan.md`](01_barn_standalone_pi_deployment_plan.md)) | Provisioning, udev rules, Kiosk, Offline SQLite | `READY_FOR_PLANNING` |
+| **01** | Standalone Barn Workshop Raspberry Pi Deployment & Server Status Host ([`docs/plans/complete/2026-09-07-01_barn_standalone_pi_deployment_plan.md`](complete/2026-09-07-01_barn_standalone_pi_deployment_plan.md)) | Provisioning, Port 80, 7" Touchscreen Kiosk, Web Serial, System Telemetry | `ARCHIVED` |
 
 ---
 
@@ -32,4 +32,4 @@ Every plan MUST adhere to the standardized 5-step lifecycle and include all 7 ma
 
 | Priority | Plan ID | Title | Target Scope | Status |
 | :---: | :---: | :--- | :--- | :---: |
-| **P0** | **01** | Standalone Barn Workshop Raspberry Pi Deployment & Offline Motion Host ([`docs/plans/01_barn_standalone_pi_deployment_plan.md`](01_barn_standalone_pi_deployment_plan.md)) | Barn Host, udev, Offline Engine | `READY_FOR_PLANNING` |
+| -- | -- | *Queue Empty - Ready for new plan intake from IDEAS.md* | -- | -- |

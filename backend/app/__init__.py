@@ -14,6 +14,7 @@ from .api import (
     jog_bp,
     sequencer_bp,
     mesh_bp,
+    system_bp,
 )
 from .web import web_bp
 
@@ -45,6 +46,7 @@ def create_app(config_class=DevelopmentConfig):
     app.register_blueprint(jog_bp)
     app.register_blueprint(sequencer_bp)
     app.register_blueprint(mesh_bp)
+    app.register_blueprint(system_bp)
     app.register_blueprint(web_bp)
 
 

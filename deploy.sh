@@ -6,8 +6,9 @@
 set -euo pipefail
 
 PI_USER="${PI_USER:-detour}"
-PI_HOST="${PI_HOST:-pi-lab.local}"
-TARGET_DIR="/opt/conversational-cnc"
+PI_HOST="${PI_HOST:-voltron.local}"
+TARGET_DIR="${TARGET_DIR:-/home/$PI_USER/conversational-cnc}"
+TARGET_PORT="${PORT:-80}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -49,7 +50,7 @@ if [[ -z "$DRY_RUN" ]]; then
     echo "❌ Error: Target host ($PI_HOST) is unreachable via SSH. Aborting deployment." >&2
     exit 1
   fi
-  ssh -o ConnectTimeout=5 -o BatchMode=yes "$PI_USER@$PI_HOST" "sudo mkdir -p $TARGET_DIR /srv/database/cnc && sudo chown -R $PI_USER:www-data $TARGET_DIR /srv/database/cnc && sudo chmod 775 /srv/database/cnc"
+  ssh -o ConnectTimeout=5 -o BatchMode=yes "$PI_USER@$PI_HOST" "mkdir -p '$TARGET_DIR' '$TARGET_DIR/instance' ~/.config/systemd/user"
 fi
 
 # Synchronize Application Files
@@ -72,53 +73,60 @@ rsync -avz -e "ssh -o BatchMode=yes -o ConnectTimeout=5" $DRY_RUN \
 
 if [[ -z "$DRY_RUN" ]]; then
   echo "📦 Provisioning Python virtual environment & dependencies on $PI_HOST..."
-  ssh "$PI_USER@$PI_HOST" bash << 'REMOTE_EXEC'
+  ssh "$PI_USER@$PI_HOST" bash << REMOTE_EXEC
 set -euo pipefail
-APP_DIR="/opt/conversational-cnc"
+APP_DIR="$TARGET_DIR"
 
-if [ ! -d "$APP_DIR/.venv" ]; then
-    python3 -m venv "$APP_DIR/.venv"
+if [ ! -d "\$APP_DIR/.venv" ]; then
+    python3 -m venv "\$APP_DIR/.venv"
 fi
 
-"$APP_DIR/.venv/bin/python" -m pip install --upgrade -q pip
-if [ -f "$APP_DIR/backend/requirements.txt" ]; then
-    "$APP_DIR/.venv/bin/python" -m pip install -q -r "$APP_DIR/backend/requirements.txt"
+"\$APP_DIR/.venv/bin/python" -m pip install --upgrade -q pip
+if [ -f "\$APP_DIR/requirements.txt" ]; then
+    "\$APP_DIR/.venv/bin/python" -m pip install -q -r "\$APP_DIR/requirements.txt"
+elif [ -f "\$APP_DIR/backend/requirements.txt" ]; then
+    "\$APP_DIR/.venv/bin/python" -m pip install -q -r "\$APP_DIR/backend/requirements.txt"
 fi
 
-sudo tee /etc/systemd/system/conversational-cnc.service >/dev/null << SYSTEMD_UNIT
+# Configure User Systemd Service
+mkdir -p ~/.config/systemd/user
+cat > ~/.config/systemd/user/conversational-cnc.service << SYSTEMD_UNIT
 [Unit]
-Description=Conversational CNC Controller Microservice
+Description=Conversational CNC Controller Server
 After=network.target
 
 [Service]
 Type=simple
-User=detour
-Group=www-data
-WorkingDirectory=$APP_DIR
-ExecStart=$APP_DIR/.venv/bin/python run.py
+WorkingDirectory=\$APP_DIR
+ExecStart=\$APP_DIR/.venv/bin/python run.py
 Restart=always
-RestartSec=5s
-Environment=PYTHONPATH=$APP_DIR:$APP_DIR/backend
-Environment=PORT=5001
+RestartSec=3s
+Environment=PYTHONPATH=\$APP_DIR:\$APP_DIR/backend
+Environment=PORT=$TARGET_PORT
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=default.target
 SYSTEMD_UNIT
 
-sudo systemctl daemon-reload
-sudo systemctl enable conversational-cnc.service
-sudo systemctl restart conversational-cnc.service
+if systemctl is-active --quiet conversational-cnc.service 2>/dev/null; then
+    sudo systemctl restart conversational-cnc.service 2>/dev/null || systemctl restart conversational-cnc.service 2>/dev/null || true
+else
+    systemctl --user daemon-reload
+    systemctl --user enable conversational-cnc.service
+    systemctl --user restart conversational-cnc.service
+fi
 
-echo "Waiting for service to bind on :5001..."
+echo "Waiting for service to bind on port $TARGET_PORT..."
 sleep 2
 
-HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:5001/ || echo "failed")
-echo "HTTP response status on :5001: $HTTP_STATUS"
+HTTP_STATUS=\$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:$TARGET_PORT/api/health || echo "failed")
+echo "HTTP response status on port $TARGET_PORT: \$HTTP_STATUS"
 REMOTE_EXEC
 
   echo "======================================================================"
   echo "✅ Conversational-CNC-Controller successfully deployed to $PI_HOST!"
-  echo "   Endpoint URL: http://$PI_HOST:5001"
+  echo "   Endpoint URL: http://$PI_HOST:$TARGET_PORT/"
+  echo "   Status HUD:   http://$PI_HOST:$TARGET_PORT/status"
   echo "======================================================================"
 else
   echo "✅ Dry-run complete. Run './deploy.sh' without flags to deploy."

@@ -78,4 +78,13 @@ def machines_page():
 def tools_page():
     return render_template("tools.html")
 
+@web_bp.route("/status")
+def status_page():
+    return render_template("status.html")
+
+@web_bp.route("/kiosk")
+def kiosk_page():
+    return render_template("status.html")
+
+
 

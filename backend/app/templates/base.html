@@ -10,6 +10,7 @@
 <body>
 
   <!-- Top Navigation Bar -->
+  {% if not hide_navbar and request.path not in ['/status', '/kiosk'] %}
   <header>
     <div class="header-top">
       <a href="/drilling" class="logo-area">
@@ -56,8 +57,10 @@
       <a href="/transformations" class="nav-link {% if request.path == '/transformations' %}active{% endif %}" title="G-Code Coordinate Transforms & Multi-Tool Splitter">🔄 Transforms</a>
       <a href="/tools" class="nav-link {% if request.path == '/tools' %}active{% endif %}" title="Cutting Tool & Material Feeds/Speeds Presets Library">🔧 Tools</a>
       <a href="/machines" class="nav-link {% if request.path == '/machines' %}active{% endif %}" title="Machine Profiles & Post-Processor Configuration">⚙️ Machines</a>
+      <a href="/status" class="nav-link {% if request.path == '/status' or request.path == '/kiosk' %}active{% endif %}" title="Real-Time Server Status & Telemetry">📊 Status</a>
     </nav>
   </header>
+  {% endif %}
 
   <!-- Main Content Body -->
   <main>
@@ -78,6 +81,7 @@
   <script src="{{ url_for('static', filename='js/probing.js') }}"></script>
   <script src="{{ url_for('static', filename='js/jog.js') }}"></script>
   <script src="{{ url_for('static', filename='js/job_builder.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/web_serial.js') }}"></script>
   {% block scripts %}{% endblock %}
 
 

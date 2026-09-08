@@ -8,6 +8,7 @@ from .probing import probing_bp
 from .jog import jog_bp
 from .sequencer import sequencer_bp
 from .mesh_leveling import mesh_bp
+from .system import system_bp, record_activity
 
 __all__ = [
     "machines_bp",
@@ -20,6 +21,8 @@ __all__ = [
     "jog_bp",
     "sequencer_bp",
     "mesh_bp",
+    "system_bp",
+    "record_activity",
 ]
 
 
