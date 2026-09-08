@@ -35,6 +35,9 @@ Every plan MUST adhere to the standardized 5-step lifecycle and include all 7 ma
 
 ## 4. Prioritized Active Execution Queue
 
-| Priority | Plan ID | Title | Target Scope | Status |
+| Priority | Target Plan ID | Title | Target Scope | Status |
 | :---: | :---: | :--- | :--- | :---: |
-| -- | -- | *Queue Empty - Ready for new plan intake from IDEAS.md* | -- | -- |
+| **P1** | **02** | Status Page Missing UI Icons Bug Fix | Frontend SVG/glyph bundle, kiosk HUD templates | `READY_FOR_PLANNING` (from `IDEAS.md`) |
+| **P2** | **03** | Manual Spindle / Router Speed G-Code Commenting Mode | Postprocessor, machine models, RPM dial comments | `READY_FOR_PLANNING` (from `IDEAS.md`) |
+| **P3** | **04** | Plasma Cutter CNC Machine Support & Conversational Generator | Torch on/off M3/M5, dwell delay, kerf compensation | `READY_FOR_PLANNING` (from `IDEAS.md`) |
+| **P4** | **05** | Touch Probe & Auto Z-Zeroing Routine | Conversational touch plate routine & offsets | `BACKLOG` (from `IDEAS.md`) |
