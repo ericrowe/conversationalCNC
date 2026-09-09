@@ -55,6 +55,7 @@ This document serves as the asynchronous repository for raw thoughts, feature re
   - Provide a 1-click "Discard / Retire Bit & Load Fresh From Box" action that resets wear metrics for that slot while preserving historical usage logs.
 - **Target Component**: `backend/app/models/tools.py`, `backend/app/api/tools_materials_api.py`, `frontend/`.
 - **Priority**: Medium (Tool Management)
+- **Status**: ON HOLD (Deferred per user triage review; [Plan 06](06_tool_life_and_wear_tracking_ledger_plan.md) placed in On-Hold Queue)
 
 - [ ] **Adaptive Trochoidal Clearing**: Add trochoidal milling generator for deep slotting and pocketing in tough materials with high feeds and low radial engagement.
 - [ ] **3D Surface Rastering (STL to Toolpath)**: Lightweight parallel finishing toolpath generation for 3D contoured reliefs.
