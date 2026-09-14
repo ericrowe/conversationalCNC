@@ -91,22 +91,63 @@ def test_system_backup_endpoint(client):
     assert res.status_code in [200, 500] # In :memory: testing mode it handles graceful skip/response
 
 def test_system_restart_endpoint(client):
-    """Verify /api/system/restart accepts restart request."""
-    res = client.post("/api/system/restart")
+    """Verify /api/system/restart accepts restart request from localhost."""
+    res = client.post("/api/system/restart", environ_base={"REMOTE_ADDR": "127.0.0.1"})
     assert res.status_code == 200
     assert res.get_json()["status"] == "success"
 
 def test_system_reboot_endpoint(client):
-    """Verify /api/system/reboot accepts reboot request."""
-    res = client.post("/api/system/reboot")
+    """Verify /api/system/reboot accepts reboot request from localhost."""
+    res = client.post("/api/system/reboot", environ_base={"REMOTE_ADDR": "127.0.0.1"})
     assert res.status_code == 200
     assert res.get_json()["status"] == "success"
 
 def test_system_shutdown_endpoint(client):
-    """Verify /api/system/shutdown accepts poweroff request."""
-    res = client.post("/api/system/shutdown")
+    """Verify /api/system/shutdown accepts poweroff request from localhost."""
+    res = client.post("/api/system/shutdown", environ_base={"REMOTE_ADDR": "127.0.0.1"})
     assert res.status_code == 200
     assert res.get_json()["status"] == "success"
+
+def test_system_shutdown_remote_forbidden(client):
+    """Verify /api/system/shutdown rejects unauthenticated remote network requests."""
+    res = client.post("/api/system/shutdown", environ_base={"REMOTE_ADDR": "192.168.0.105"})
+    assert res.status_code == 403
+    assert res.get_json()["status"] == "forbidden"
+    assert "restricted to the local touchscreen console" in res.get_json()["message"]
+
+def test_system_reboot_remote_forbidden(client):
+    """Verify /api/system/reboot rejects unauthenticated remote network requests."""
+    res = client.post("/api/system/reboot", environ_base={"REMOTE_ADDR": "192.168.0.105"})
+    assert res.status_code == 403
+    assert res.get_json()["status"] == "forbidden"
+
+def test_system_restart_remote_forbidden(client):
+    """Verify /api/system/restart rejects unauthenticated remote network requests."""
+    res = client.post("/api/system/restart", environ_base={"REMOTE_ADDR": "192.168.0.105"})
+    assert res.status_code == 403
+    assert res.get_json()["status"] == "forbidden"
+
+def test_system_power_remote_with_valid_pin(client):
+    """Verify remote power operation succeeds when configured ADMIN_PIN matches X-Admin-Pin header."""
+    with patch.dict(client.application.config, {"ADMIN_PIN": "5678"}):
+        res = client.post(
+            "/api/system/restart",
+            headers={"X-Admin-Pin": "5678"},
+            environ_base={"REMOTE_ADDR": "192.168.0.105"}
+        )
+        assert res.status_code == 200
+        assert res.get_json()["status"] == "success"
+
+def test_system_power_remote_with_invalid_pin(client):
+    """Verify remote power operation is rejected when X-Admin-Pin header is invalid."""
+    with patch.dict(client.application.config, {"ADMIN_PIN": "5678"}):
+        res = client.post(
+            "/api/system/restart",
+            headers={"X-Admin-Pin": "wrong"},
+            environ_base={"REMOTE_ADDR": "192.168.0.105"}
+        )
+        assert res.status_code == 403
+        assert res.get_json()["status"] == "forbidden"
 
 @patch("app.api.system.socket.socket")
 def test_helper_functions(mock_socket_cls):

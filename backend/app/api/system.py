@@ -300,9 +300,30 @@ def trigger_backup():
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
+def verify_power_access(req) -> tuple[bool, str]:
+    """Verify that a power management request originated from localhost (7" touchscreen kiosk)
+    or provides an authorized administrative PIN.
+    """
+    client_ip = req.remote_addr or "127.0.0.1"
+    # Local physical console / loopback
+    if client_ip in ("127.0.0.1", "::1", "localhost"):
+        return True, "Local console authorized"
+
+    # Check administrative PIN if provided
+    configured_pin = current_app.config.get("ADMIN_PIN")
+    provided_pin = req.headers.get("X-Admin-Pin") or req.args.get("admin_pin")
+    if configured_pin and provided_pin and str(provided_pin) == str(configured_pin):
+        return True, "Admin PIN authorized"
+
+    return False, "Host power operations are restricted to the local touchscreen console."
+
 @system_bp.route("/restart", methods=["POST"])
 def restart_service():
     """Trigger system service restart."""
+    authorized, reason = verify_power_access(request)
+    if not authorized:
+        return jsonify({"status": "forbidden", "message": reason}), 403
+
     record_activity(
         operation="Server Restart Requested",
         machine_name="System Host",
@@ -312,20 +333,31 @@ def restart_service():
     if current_app.config.get("TESTING"):
         return jsonify({"status": "success", "message": "Test mode: restart command acknowledged"}), 200
 
-    def _do_restart():
+    def _do_restart(app_logger):
         time.sleep(1)
         try:
-            subprocess.run(["sudo", "systemctl", "restart", "conversational-cnc.service"], timeout=5)
-        except Exception:
-            pass
+            res = subprocess.run(
+                ["sudo", "-n", "systemctl", "restart", "conversational-cnc.service"],
+                capture_output=True,
+                text=True,
+                timeout=5
+            )
+            if res.returncode != 0:
+                app_logger.error("Restart command failed (code %d): %s", res.returncode, res.stderr)
+        except Exception as exc:
+            app_logger.error("Exception during service restart: %s", exc)
 
     import threading
-    threading.Thread(target=_do_restart, daemon=True).start()
+    threading.Thread(target=_do_restart, args=(current_app.logger,), daemon=True).start()
     return jsonify({"status": "success", "message": "Restart command issued to systemd"}), 200
 
 @system_bp.route("/reboot", methods=["POST"])
 def reboot_host():
     """Trigger Raspberry Pi hardware reboot."""
+    authorized, reason = verify_power_access(request)
+    if not authorized:
+        return jsonify({"status": "forbidden", "message": reason}), 403
+
     record_activity(
         operation="Host Reboot Requested",
         machine_name="Raspberry Pi",
@@ -335,25 +367,45 @@ def reboot_host():
     if current_app.config.get("TESTING"):
         return jsonify({"status": "success", "message": "Test mode: reboot command acknowledged"}), 200
 
-    def _do_reboot():
+    def _do_reboot(app_logger):
         time.sleep(1)
+        # 1. Try sudo -n reboot
         try:
-            res = subprocess.run(["sudo", "reboot"], capture_output=True, timeout=5)
+            res = subprocess.run(["sudo", "-n", "reboot"], capture_output=True, text=True, timeout=5)
+            if res.returncode == 0:
+                return
+            app_logger.warning("sudo -n reboot failed: %s", res.stderr)
+        except Exception as exc:
+            app_logger.warning("sudo -n reboot exception: %s", exc)
+
+        # 2. Try sudo -n systemctl reboot
+        try:
+            res = subprocess.run(["sudo", "-n", "systemctl", "reboot"], capture_output=True, text=True, timeout=5)
+            if res.returncode == 0:
+                return
+            app_logger.warning("sudo -n systemctl reboot failed: %s", res.stderr)
+        except Exception as exc:
+            app_logger.warning("sudo -n systemctl reboot exception: %s", exc)
+
+        # 3. Fallback to unprivileged systemctl reboot (works if polkit rule is present)
+        try:
+            res = subprocess.run(["systemctl", "reboot"], capture_output=True, text=True, timeout=5)
             if res.returncode != 0:
-                subprocess.run(["systemctl", "reboot"], timeout=5)
-        except Exception:
-            try:
-                subprocess.run(["reboot"], timeout=5)
-            except Exception:
-                pass
+                app_logger.error("systemctl reboot failed: %s", res.stderr)
+        except Exception as exc:
+            app_logger.error("All reboot attempts failed: %s", exc)
 
     import threading
-    threading.Thread(target=_do_reboot, daemon=True).start()
+    threading.Thread(target=_do_reboot, args=(current_app.logger,), daemon=True).start()
     return jsonify({"status": "success", "message": "Reboot command dispatched to host"}), 200
 
 @system_bp.route("/shutdown", methods=["POST"])
 def shutdown_host():
     """Trigger Raspberry Pi hardware poweroff/shutdown."""
+    authorized, reason = verify_power_access(request)
+    if not authorized:
+        return jsonify({"status": "forbidden", "message": reason}), 403
+
     record_activity(
         operation="Host Poweroff Requested",
         machine_name="Raspberry Pi",
@@ -363,18 +415,34 @@ def shutdown_host():
     if current_app.config.get("TESTING"):
         return jsonify({"status": "success", "message": "Test mode: shutdown command acknowledged"}), 200
 
-    def _do_shutdown():
+    def _do_shutdown(app_logger):
         time.sleep(1)
+        # 1. Try sudo -n poweroff
         try:
-            res = subprocess.run(["sudo", "poweroff"], capture_output=True, timeout=5)
+            res = subprocess.run(["sudo", "-n", "poweroff"], capture_output=True, text=True, timeout=5)
+            if res.returncode == 0:
+                return
+            app_logger.warning("sudo -n poweroff failed: %s", res.stderr)
+        except Exception as exc:
+            app_logger.warning("sudo -n poweroff exception: %s", exc)
+
+        # 2. Try sudo -n systemctl poweroff
+        try:
+            res = subprocess.run(["sudo", "-n", "systemctl", "poweroff"], capture_output=True, text=True, timeout=5)
+            if res.returncode == 0:
+                return
+            app_logger.warning("sudo -n systemctl poweroff failed: %s", res.stderr)
+        except Exception as exc:
+            app_logger.warning("sudo -n systemctl poweroff exception: %s", exc)
+
+        # 3. Fallback to unprivileged systemctl poweroff (works if polkit rule is present)
+        try:
+            res = subprocess.run(["systemctl", "poweroff"], capture_output=True, text=True, timeout=5)
             if res.returncode != 0:
-                subprocess.run(["systemctl", "poweroff"], timeout=5)
-        except Exception:
-            try:
-                subprocess.run(["poweroff"], timeout=5)
-            except Exception:
-                pass
+                app_logger.error("systemctl poweroff failed: %s", res.stderr)
+        except Exception as exc:
+            app_logger.error("All poweroff attempts failed: %s", exc)
 
     import threading
-    threading.Thread(target=_do_shutdown, daemon=True).start()
+    threading.Thread(target=_do_shutdown, args=(current_app.logger,), daemon=True).start()
     return jsonify({"status": "success", "message": "Shutdown command dispatched to host"}), 200

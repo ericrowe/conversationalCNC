@@ -166,6 +166,14 @@ EOF
     else
         echo "⚠️ Service did not start cleanly. Check logs: journalctl -u conversational-cnc.service -n 20"
     fi
+
+    # Configure scoped least-privilege sudoers rule for host power and service management
+    echo "🔒 Step 3b: Configuring scoped sudoers permissions for power & service management..."
+    cat > /etc/sudoers.d/020_conversational_cnc << EOF
+# Least-privilege scoped permissions for Conversational CNC Controller
+${APP_USER} ALL=(ALL) NOPASSWD: /sbin/poweroff, /usr/sbin/poweroff, /sbin/reboot, /usr/sbin/reboot, /bin/systemctl poweroff, /usr/bin/systemctl poweroff, /bin/systemctl reboot, /usr/bin/systemctl reboot, /bin/systemctl restart conversational-cnc.service, /usr/bin/systemctl restart conversational-cnc.service
+EOF
+    chmod 0440 /etc/sudoers.d/020_conversational_cnc
 fi
 
 if [[ "${ENABLE_KIOSK}" == "true" ]]; then
@@ -175,7 +183,7 @@ if [[ "${ENABLE_KIOSK}" == "true" ]]; then
 [Desktop Entry]
 Type=Application
 Name=Conversational CNC Status Kiosk
-Exec=chromium-browser --kiosk --noerrdialogs --disable-infobars --check-for-update-interval=31536000 http://127.0.0.1:${TARGET_PORT}/status
+Exec=chromium-browser --ozone-platform=wayland --kiosk --noerrdialogs --disable-infobars --password-store=basic --check-for-update-interval=31536000 http://127.0.0.1:${TARGET_PORT}/status
 X-GNOME-Autostart-enabled=true
 EOF
     echo "✅ Kiosk autostart configured for display session."

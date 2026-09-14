@@ -81,3 +81,13 @@ To control physical CNC machines in the barn:
 4. Select the active machine profile from the header.
 5. Generate conversational operations (Pockets, Surfacing, Drilling, Engraving, DXF).
 6. Click **Connect Machine** to stream directly via Web Serial, or download the `.nc` file for external sender software.
+
+---
+
+## 6. Power Management & Touchscreen Access Control
+
+Host power operations ("Shutdown Pi", "Reboot Pi", "Restart Service") are protected under a defense-in-depth model:
+- **Local Physical Console Restriction**: The `/api/system/shutdown`, `/api/system/reboot`, and `/api/system/restart` endpoints are restricted to `127.0.0.1` / `::1` by default. This ensures only physical taps on the mounted 7" touchscreen kiosk can power down or restart the server.
+- **Remote LAN Protection**: Unauthenticated clients on the workshop Wi-Fi attempting to invoke power endpoints receive `HTTP 403 Forbidden`, preventing accidental or malicious network Denial of Service.
+- **Remote Administration via PIN (Optional)**: If remote power management is required from a laptop or tablet, set `ADMIN_PIN` in the application environment/config and pass the `X-Admin-Pin` header with API requests.
+- **Scoped Least-Privilege Sudoers**: The service runs as user `detour` with a dedicated drop-in `/etc/sudoers.d/020_conversational_cnc` whitelisting only `/sbin/poweroff`, `/sbin/reboot`, and `systemctl restart conversational-cnc.service`, preventing unrestricted root elevation.

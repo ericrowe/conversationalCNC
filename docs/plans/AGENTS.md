@@ -35,6 +35,7 @@ Every plan MUST adhere to the standardized 5-step lifecycle and include all 7 ma
 | **04** | Plasma Cutter CNC Machine Support & Conversational Generator ([`docs/plans/04_plasma_cutter_cnc_conversational_support_plan.md`](04_plasma_cutter_cnc_conversational_support_plan.md)) | Torch on/off M3/M5, dwell delay, kerf compensation | `QUEUED` |
 | **05** | XYZ Corner Touch Plate & Auto Edge-Finder Probing Routine ([`docs/plans/complete/2026-09-08-05_xyz_touch_plate_and_edge_finder_probing_plan.md`](complete/2026-09-08-05_xyz_touch_plate_and_edge_finder_probing_plan.md)) | G38.2 probing macros, corner offsets, kiosk UI | `ARCHIVED` |
 | **06** | Tool Life & Wear Tracking Ledger ([`docs/plans/06_tool_life_and_wear_tracking_ledger_plan.md`](06_tool_life_and_wear_tracking_ledger_plan.md)) | Tool definitions, caddy slot tracking, wear alerts | `ON HOLD` |
+| **07** | Hardened Host Power Operations & Localhost Touchscreen Access Control ([`docs/plans/complete/2026-09-14-07_hardened_host_power_operations_and_access_control_plan.md`](complete/2026-09-14-07_hardened_host_power_operations_and_access_control_plan.md)) | Localhost IP gating, scoped sudoers whitelist, error observability | `ARCHIVED` |
 
 ---
 
