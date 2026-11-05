@@ -2,7 +2,7 @@
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![Flask 3.0+](https://img.shields.io/badge/flask-3.0+-green.svg)](https://flask.palletsprojects.com/)
-[![Tests](https://img.shields.io/badge/tests-174%20passed-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-228%20passed-brightgreen.svg)]()
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 A web-based, locally executing **Conversational CNC Controller** designed for rapid, on-the-fly machining without launching heavyweight CAD/CAM software. Built with a zero-build-step architecture optimized for offline Raspberry Pi 4/5 setups and desktop workstations driving Grbl-based CNCs (such as the Inventables X-Carve, Shapeoko, PrintNC) and standard CNC controllers.
@@ -13,7 +13,7 @@ A web-based, locally executing **Conversational CNC Controller** designed for ra
 > ### ⚠️ EXPERIMENTAL & UNTESTED SOFTWARE DISCLAIMER
 > **Conversational CNC is an active open-source project and is AS OF YET UNTESTED ON PHYSICAL CNC MACHINERY.**
 >
-> CNC milling machines and routers are powerful, high-energy tools capable of severe physical injury, tool breakage, workpiece damage, electrical fire, or machine destruction if commanded incorrectly. While this software contains an extensive automated mathematical and API test suite (174 passing unit tests), **no guarantee is made that generated G-code is bug-free, safe for your particular machine setup, or free of unexpected motion commands.**
+> CNC milling machines and routers are powerful, high-energy tools capable of severe physical injury, tool breakage, workpiece damage, electrical fire, or machine destruction if commanded incorrectly. While this software contains an extensive automated mathematical and API test suite (228 passing unit tests), **no guarantee is made that generated G-code is bug-free, safe for your particular machine setup, or free of unexpected motion commands.**
 >
 > **MANDATORY SAFE STARTUP & INITIAL COMMISSIONING PROTOCOL:**
 > If you choose to use this software on a physical CNC machine, you MUST follow the progressive-risk startup procedures detailed in [docs/MACHINE_INTEGRATION_TEST_PLAN.md](docs/MACHINE_INTEGRATION_TEST_PLAN.md):
@@ -143,7 +143,7 @@ conversationalCNC/
 │   │   ├── static/          # CSS stylesheets and client JavaScript modules
 │   │   ├── templates/       # Jinja2 HTML templates
 │   │   └── web/             # Web frontend routing blueprint
-│   └── tests/               # 150 automated pytest unit and integration tests
+│   └── tests/               # 228 automated pytest unit and integration tests
 └── docs/
     └── API_DOCUMENTATION.md # Comprehensive REST API reference
 ```
@@ -190,7 +190,7 @@ PYTHONPATH=backend python backend/seed.py
 ```
 
 ### Step 5: Run Automated Tests
-Verify that all 150 tests pass on your machine:
+Verify that all automated tests pass on your machine:
 ```bash
 PYTHONPATH=backend pytest backend/tests -v
 ```

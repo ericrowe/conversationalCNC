@@ -1,7 +1,7 @@
 """
 Pydantic Validation Schemas for 2.5D Arbitrary Profile & Contour Milling.
 """
-from typing import Optional, List, Dict, Any
+from typing import Optional, List
 from pydantic import BaseModel, Field, model_validator
 
 
@@ -16,7 +16,7 @@ class ContourSegmentItemSchema(BaseModel):
 
 
 class ContourProfilePayloadSchema(BaseModel):
-    segments: List[ContourSegmentItemSchema] = Field(default_factory=list, description="Ordered list of geometry segments")
+    segments: List[ContourSegmentItemSchema] = Field(..., min_length=1, description="Ordered list of geometry segments")
     start_point: List[float] = Field(default_factory=lambda: [0.0, 0.0], description="[X, Y] starting coordinate")
     is_closed: bool = Field(default=True, description="True if profile closes back to start")
     side: str = Field(default="left", description="'left' (climb), 'right' (conventional), or 'center'")
@@ -49,11 +49,5 @@ class ContourProfilePayloadSchema(BaseModel):
     @model_validator(mode="after")
     def validate_contour(self):
         if not self.segments:
-            # Provide default rectangular profile if empty
-            self.segments = [
-                ContourSegmentItemSchema(type="line", x=40.0, y=0.0),
-                ContourSegmentItemSchema(type="line", x=40.0, y=30.0),
-                ContourSegmentItemSchema(type="line", x=0.0, y=30.0),
-                ContourSegmentItemSchema(type="line", x=0.0, y=0.0),
-            ]
+            raise ValueError("segments must contain at least one contour geometry segment.")
         return self

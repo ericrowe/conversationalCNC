@@ -17,7 +17,7 @@ from .pocket_schema import (
 from .surfacing_schema import SurfacingPayloadSchema
 from .engraving_schema import TextEngravingPayloadSchema
 from .slotting_schema import LinearSlotPayloadSchema
-from .chamfering_schema import RectangularChamferPayloadSchema
+from .chamfering_schema import RectangularChamferPayloadSchema, CircularChamferPayloadSchema
 from .contouring_schema import ContourProfilePayloadSchema, ContourSegmentItemSchema
 from .nesting_schema import StepAndRepeatPayloadSchema, SoftJawFixturePayloadSchema
 from .dxf_schema import DXFParsePayloadSchema, DXFToGCodePayloadSchema
@@ -41,6 +41,7 @@ __all__ = [
     "TextEngravingPayloadSchema",
     "LinearSlotPayloadSchema",
     "RectangularChamferPayloadSchema",
+    "CircularChamferPayloadSchema",
     "ContourProfilePayloadSchema",
     "ContourSegmentItemSchema",
     "StepAndRepeatPayloadSchema",

@@ -13,6 +13,7 @@ from ..schemas import (
     TextEngravingPayloadSchema,
     LinearSlotPayloadSchema,
     RectangularChamferPayloadSchema,
+    CircularChamferPayloadSchema,
     ContourProfilePayloadSchema,
     StepAndRepeatPayloadSchema,
     SoftJawFixturePayloadSchema,
@@ -34,6 +35,7 @@ from ..generators import (
     generate_text_engraving,
     generate_linear_slot,
     generate_rectangular_chamfer,
+    generate_circular_chamfer,
     generate_contour_profile,
     generate_step_and_repeat_grid,
     generate_soft_jaw_fixture,
@@ -832,6 +834,56 @@ def generate_rectangular_chamfer_gcode():
             vbit_angle_deg=payload.vbit_angle_deg,
             tip_diameter=payload.tip_diameter,
             tip_offset=payload.tip_offset,
+            start_z=payload.start_z,
+            retract_z=payload.retract_z if payload.retract_z is not None else ctx["safe_z_default"],
+            feed_rate_xy=payload.feed_rate_xy or ctx["feed_rate_xy"],
+            plunge_feed=payload.plunge_feed or ctx["plunge_feed"],
+            spindle_speed=ctx["spindle_speed"],
+            units=payload.units,
+            tool_number=ctx["tool_number"],
+            tool_name=ctx["tool_name"],
+            spindle_type=ctx["spindle_type"],
+            router_model=ctx["router_model"],
+            router_dial=payload.router_dial,
+            postprocessor=ctx["postprocessor"],
+            work_envelope=ctx["work_envelope"],
+        )
+    except ValueError as val_err:
+        return jsonify({"error": "Generation error", "message": str(val_err)}), 400
+
+    return jsonify({
+        "success": True,
+        "data": program.to_dict(),
+        "machine_profile": ctx["machine"].to_dict() if ctx["machine"] else None,
+        "dialect_used": ctx["postprocessor"].dialect_name,
+    }), 200
+
+
+@generate_bp.route("/chamfering/circular", methods=["POST"])
+def generate_circular_chamfer_gcode():
+    data = request.get_json() or {}
+    try:
+        payload = CircularChamferPayloadSchema(**data)
+    except ValidationError as e:
+        error_details = [{"loc": err.get("loc"), "msg": err.get("msg"), "type": err.get("type")} for err in e.errors()]
+        return jsonify({"error": "Validation error", "details": error_details}), 400
+
+    ctx = _resolve_context(payload)
+
+    try:
+        program = generate_circular_chamfer(
+            center_x=payload.center_x,
+            center_y=payload.center_y,
+            diameter=payload.diameter,
+            chamfer_width=payload.chamfer_width,
+            feature_type=payload.feature_type,
+            cut_direction=payload.cut_direction,
+            vbit_angle_deg=payload.vbit_angle_deg,
+            tip_diameter=payload.tip_diameter,
+            tip_offset=payload.tip_offset,
+            tool_diameter=payload.tool_diameter,
+            stepdown_z=payload.stepdown_z,
+            lead_in_radius=payload.lead_in_radius,
             start_z=payload.start_z,
             retract_z=payload.retract_z if payload.retract_z is not None else ctx["safe_z_default"],
             feed_rate_xy=payload.feed_rate_xy or ctx["feed_rate_xy"],

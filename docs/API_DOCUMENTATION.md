@@ -362,6 +362,25 @@ Generates G-code for 2D perimeter edge deburring and chamfering with conical V-b
 
 ---
 
+### `POST /api/generate/chamfering/circular`
+Generates G-code for circular outer boss or inner bore edge deburring and chamfering with conical V-bits (`CNC-008`).
+
+#### Request Payload
+| Field | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `diameter` | `number` | **Yes** | — | Nominal circular feature diameter (mm, $> 0$). |
+| `chamfer_width` | `number` | No | `0.5` | Desired chamfer cut width (mm, $> 0$). |
+| `vbit_angle_deg` | `number` | No | `90.0` | V-bit included angle (degrees, $0 < \theta < 180$). |
+| `feature_type` | `string` | No | `"outside"` | `"outside"` (boss OD) or `"inside"` (hole/bore ID). |
+| `center_x` | `number` | No | `0.0` | Circle center X coordinate (mm). |
+| `center_y` | `number` | No | `0.0` | Circle center Y coordinate (mm). |
+| `tip_offset` | `number` | No | `0.5` | Additional V-bit tip radial/axial offset beyond edge so cutting occurs on the angled flute rather than the dead tip (mm, $\ge 0$). |
+| `top_z` | `number` | No | `0.0` | Top surface Z coordinate of the feature edge (mm). |
+| `stepdown_z` | `number` | No | `1.0` | Maximum axial depth per pass (mm, $> 0$). |
+| `tool_diameter` | `number` | No | `6.35` | Outer diameter of the V-bit cutter body (mm). |
+
+---
+
 ### `POST /api/generate/milling/contour`
 Generates 2.5D arbitrary profile and contour milling G-code from chained line and arc segments with cutter compensation (climb/conventional) and smooth lead-ins/outs.
 

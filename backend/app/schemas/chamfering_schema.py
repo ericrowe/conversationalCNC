@@ -1,6 +1,7 @@
 from typing import Optional
 from pydantic import BaseModel, Field
 
+
 class RectangularChamferPayloadSchema(BaseModel):
     origin_x: float = Field(default=0.0, description="Origin X coordinate")
     origin_y: float = Field(default=0.0, description="Origin Y coordinate")
@@ -13,6 +14,33 @@ class RectangularChamferPayloadSchema(BaseModel):
     vbit_angle_deg: float = Field(default=90.0, gt=0, lt=180.0, description="V-bit included angle (e.g. 60, 90)")
     tip_diameter: float = Field(default=0.2, ge=0, description="V-bit flat tip diameter (mm)")
     tip_offset: float = Field(default=0.5, ge=0, description="Clearance below chamfer bottom (mm)")
+    start_z: float = Field(default=0.0, description="Top surface of workpiece")
+    retract_z: Optional[float] = Field(default=None, description="Clearance retract height")
+    feed_rate_xy: Optional[float] = Field(default=None, gt=0, description="Cutting feed rate (mm/min)")
+    plunge_feed: Optional[float] = Field(default=None, gt=0, description="Plunge feed rate (mm/min)")
+    spindle_speed: Optional[int] = Field(default=None, gt=0, description="Spindle RPM")
+    units: str = Field(default="mm", description="'mm' or 'inch'")
+    tool_id: Optional[int] = Field(default=None, description="Database Tool ID")
+    material_preset_id: Optional[int] = Field(default=None, description="Material preset ID")
+    machine_profile_id: Optional[int] = Field(default=None, description="Machine profile ID")
+    spindle_type: Optional[str] = Field(default=None, description="'router' or 'vfd_spindle'")
+    router_model: Optional[str] = Field(default=None, description="'dewalt_611', etc.")
+    router_dial: Optional[int] = Field(default=None, ge=1, le=6, description="Router speed dial 1-6")
+
+
+class CircularChamferPayloadSchema(BaseModel):
+    center_x: float = Field(default=0.0, description="Circle center X coordinate")
+    center_y: float = Field(default=0.0, description="Circle center Y coordinate")
+    diameter: float = Field(..., gt=0, description="Nominal feature diameter (mm)")
+    chamfer_width: float = Field(default=0.5, gt=0, description="Desired chamfer cut width (mm)")
+    feature_type: str = Field(default="outside", description="'outside' (boss/button) or 'inside' (bore/hole)")
+    cut_direction: str = Field(default="cw", description="'cw', 'ccw', 'climb', or 'conventional'")
+    vbit_angle_deg: float = Field(default=90.0, gt=0, lt=180.0, description="V-bit included angle (e.g. 60, 90)")
+    tip_diameter: float = Field(default=0.2, ge=0, description="V-bit flat tip diameter (mm)")
+    tip_offset: float = Field(default=0.5, ge=0, description="Clearance below chamfer bottom (mm)")
+    tool_diameter: Optional[float] = Field(default=None, gt=0, description="Optional overall cutter diameter (mm)")
+    stepdown_z: Optional[float] = Field(default=None, gt=0, description="Optional multi-pass Z stepdown (mm)")
+    lead_in_radius: float = Field(default=0.0, ge=0, description="Optional tangential arc lead-in/out radius (mm)")
     start_z: float = Field(default=0.0, description="Top surface of workpiece")
     retract_z: Optional[float] = Field(default=None, description="Clearance retract height")
     feed_rate_xy: Optional[float] = Field(default=None, gt=0, description="Cutting feed rate (mm/min)")

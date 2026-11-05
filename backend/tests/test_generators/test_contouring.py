@@ -86,7 +86,10 @@ def test_contouring_arc_segments():
     )
 
     gcode = result["gcode"]
-    assert "G3 X30.000 Y20.000" in gcode
+    # With side="left" and tool_diameter=3.175 (r_tool=1.5875), 180-deg CCW arc of R=10 centered at (30, 10)
+    # is compensated inward to R_offset = 10 - 1.5875 = 8.4125 -> endpoint Y = 10 + 8.4125 = 18.413
+    assert "G3 X30.000 Y18.41" in gcode
+    assert "I0.000 J8.41" in gcode
     assert result["segment_count"] == 3
 
 

@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify
 from pydantic import ValidationError
 from ..schemas.sequencer_schema import JobSequenceRequestSchema
-from ..generators.sequencer import generate_job_sequence
+from ..generators.sequencer import generate_job_sequence, SequenceGenerationError
 from ..models import db, MachineProfile
 from .system import record_activity
 
@@ -49,22 +49,36 @@ def api_generate_job_sequence():
     try:
         payload = JobSequenceRequestSchema(**data)
     except ValidationError as e:
-        return jsonify({"error": "Validation error", "details": e.errors()}), 400
+        error_details = [{"loc": err.get("loc"), "msg": err.get("msg"), "type": err.get("type")} for err in e.errors()]
+        return jsonify({"error": "Validation error", "details": error_details}), 400
 
     ops_dict_list = [op.model_dump() for op in payload.operations]
 
-    result = generate_job_sequence(
-        job_name=payload.job_name,
-        operations=ops_dict_list,
-        safe_z_retract=payload.safe_z_retract,
-        units=payload.units,
-        dialect=payload.dialect,
-        optimize_tool_order=payload.optimize_tool_order,
-        park_x=payload.park_x,
-        park_y=payload.park_y,
-        park_z=payload.park_z,
-        apply_mesh_leveling=payload.apply_mesh_leveling,
-        mesh_data=payload.mesh_data,
-        mesh_max_segment_length=payload.mesh_max_segment_length,
-    )
+    try:
+        result = generate_job_sequence(
+            job_name=payload.job_name,
+            operations=ops_dict_list,
+            safe_z_retract=payload.safe_z_retract,
+            units=payload.units,
+            dialect=payload.dialect,
+            optimize_tool_order=payload.optimize_tool_order,
+            park_x=payload.park_x,
+            park_y=payload.park_y,
+            park_z=payload.park_z,
+            apply_mesh_leveling=payload.apply_mesh_leveling,
+            mesh_data=payload.mesh_data,
+            mesh_max_segment_length=payload.mesh_max_segment_length,
+        )
+    except SequenceGenerationError as seq_err:
+        return jsonify({
+            "error": "Job sequence generation failed",
+            "message": str(seq_err),
+            "details": seq_err.to_dict(),
+        }), 400
+    except ValueError as val_err:
+        return jsonify({
+            "error": "Job sequence validation failed",
+            "message": str(val_err),
+        }), 400
+
     return jsonify({"success": True, "data": result}), 200
