@@ -37,6 +37,7 @@ Every plan MUST adhere to the standardized 5-step lifecycle and include all 7 ma
 | **06** | Tool Life & Wear Tracking Ledger ([`docs/plans/06_tool_life_and_wear_tracking_ledger_plan.md`](06_tool_life_and_wear_tracking_ledger_plan.md)) | Tool definitions, caddy slot tracking, wear alerts | `ON HOLD` |
 | **07** | Hardened Host Power Operations & Localhost Touchscreen Access Control ([`docs/plans/complete/2026-09-14-07_hardened_host_power_operations_and_access_control_plan.md`](complete/2026-09-14-07_hardened_host_power_operations_and_access_control_plan.md)) | Localhost IP gating, scoped sudoers whitelist, error observability | `ARCHIVED` |
 | **08** | Defect Remediation, Circular Chamfering & Independent G-Code Validation Suite (`CNC-001`–`CNC-014`) ([`docs/plans/complete/2026-11-05-08_defect_remediation_and_gcode_validation_plan.md`](complete/2026-11-05-08_defect_remediation_and_gcode_validation_plan.md)) | Contour/lead-in math, sequencer safety, circular chamfer, G-code validator | `ARCHIVED` |
+| **09** | Remediation Handoff v2.0 — Dependency-Safe Sequencing, MachiningContext Propagation, Envelope Contract & Swept Geometry Verification (`R2-001`–`V2-006`) ([`docs/plans/complete/2026-11-05-09_remediation_handoff_v2_and_swept_geometry_verification_plan.md`](complete/2026-11-05-09_remediation_handoff_v2_and_swept_geometry_verification_plan.md)) | DAG sequencing, MachiningContext, tri-state WorkEnvelope, swept-tool contour & chamfer verification | `ARCHIVED` |
 
 ---
 

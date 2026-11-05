@@ -12,7 +12,8 @@ import math
 from typing import List, Tuple, Optional
 from ..postprocessors.base import BasePostProcessor
 from ..postprocessors.grbl import GrblPostProcessor
-from .base import BoundingBox, GCodeProgram, WorkEnvelope
+from ..postprocessors import get_postprocessor
+from .base import BoundingBox, GCodeProgram, WorkEnvelope, normalize_units
 from .rectangular_pocket import _get_corner_path
 
 ROUTER_DIAL_MAPS = {
@@ -225,6 +226,8 @@ def generate_circular_chamfer(
     spindle_type: str = "router",
     router_model: Optional[str] = "dewalt_611",
     router_dial: Optional[int] = None,
+    require_pause: bool = False,
+    dialect: str = "grbl",
     postprocessor: Optional[BasePostProcessor] = None,
     work_envelope: Optional[WorkEnvelope] = None,
     park_x: Optional[float] = 0.0,
@@ -235,6 +238,7 @@ def generate_circular_chamfer(
     Generates G-code for circular perimeter chamfering (outer boss such as a 20 mm brass button,
     or inner bore/hole) using two 180-degree semicircle G2/G3 arcs for universal controller compatibility.
     """
+    units = normalize_units(units)
     if diameter <= 0:
         raise ValueError("Circle diameter must be greater than zero.")
     if chamfer_width <= 0:
@@ -270,15 +274,15 @@ def generate_circular_chamfer(
     if feat == "outside":
         path_r = nom_r + radial_offset
     else:
-        if chamfer_width >= nom_r or radial_offset >= nom_r:
+        if (chamfer_width + radial_offset) >= nom_r or radial_offset >= nom_r:
             raise ValueError(
-                f"Inside bore radius ({nom_r:.3f}mm) is too small for radial offset ({radial_offset:.3f}mm) "
-                f"and chamfer width ({chamfer_width:.3f}mm)."
+                f"Inside bore radius ({nom_r:.3f}{units}) is too small for radial offset ({radial_offset:.3f}{units}) "
+                f"and chamfer width ({chamfer_width:.3f}{units})."
             )
         path_r = nom_r - radial_offset
         if lead_in_radius > 0 and lead_in_radius >= path_r:
             raise ValueError(
-                f"lead_in_radius ({lead_in_radius:.3f}mm) must be smaller than inside path radius ({path_r:.3f}mm)."
+                f"lead_in_radius ({lead_in_radius:.3f}{units}) must be smaller than inside path radius ({path_r:.3f}{units})."
             )
 
     dir_norm = (cut_direction or "cw").lower().strip()
@@ -303,7 +307,7 @@ def generate_circular_chamfer(
         z_levels = [final_depth_z]
 
     if postprocessor is None:
-        postprocessor = GrblPostProcessor()
+        postprocessor = get_postprocessor(dialect)
 
     max_extent = path_r + (lead_in_radius if feat == "outside" else 0.0)
     bounds = BoundingBox(
@@ -355,10 +359,13 @@ def generate_circular_chamfer(
             spindle_type=spindle_type,
             router_model=router_model,
             router_dial=resolved_dial,
+            require_pause=require_pause,
         )
     )
     lines.append("")
     lines.append(postprocessor.format_rapid(z=retract_z, comment="Safe Z clearance"))
+
+    approach_clearance = min(retract_z - start_z, 1.0 if units == "mm" else 0.04)
 
     # East-most point (0 deg) and West-most point (180 deg) on circular path
     east_x, east_y = center_x + path_r, center_y
@@ -380,7 +387,7 @@ def generate_circular_chamfer(
             app_x = c_in_x
             app_y = c_in_y - ty * lead_in_radius
             lines.append(postprocessor.format_rapid(x=app_x, y=app_y))
-            lines.append(postprocessor.format_rapid(z=start_z + 1.0))
+            lines.append(postprocessor.format_rapid(z=start_z + approach_clearance))
             lines.append(postprocessor.format_linear(z=z_lvl, feed_rate=plunge_feed))
             lines.append(
                 postprocessor.format_arc(
@@ -395,7 +402,7 @@ def generate_circular_chamfer(
             )
         else:
             lines.append(postprocessor.format_rapid(x=east_x, y=east_y))
-            lines.append(postprocessor.format_rapid(z=start_z + 1.0))
+            lines.append(postprocessor.format_rapid(z=start_z + approach_clearance))
             lines.append(postprocessor.format_linear(z=z_lvl, feed_rate=plunge_feed))
 
         # Two 180-degree semicircle arcs

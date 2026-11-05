@@ -97,9 +97,10 @@ class StandardPostProcessor(BasePostProcessor):
         return f"G4 P{seconds:.2f}"
 
     def format_footer(self, park_z=None, park_x=None, park_y=None):
-        lines = ["M5"]
+        lines = []
         if park_z is not None:
             lines.append(f"G0 {self.format_coord('Z', park_z)}")
+        lines.append("M5")
         if park_x is not None or park_y is not None:
             parts = ["G0"]
             if park_x is not None:
@@ -200,8 +201,16 @@ DIALECT_REGISTRY: Dict[str, Type[BasePostProcessor]] = {
 def get_postprocessor(dialect_name: str = "grbl") -> BasePostProcessor:
     """
     Factory function returning an instance of the requested PostProcessor dialect.
-    Defaults to GrblPostProcessor.
+    Fails closed with ValueError if an unsupported dialect is requested (R2-002).
     """
-    normalized_name = (dialect_name or "grbl").lower().strip()
-    cls = DIALECT_REGISTRY.get(normalized_name, GrblPostProcessor)
+    if dialect_name is None or (isinstance(dialect_name, str) and not dialect_name.strip()):
+        normalized_name = "grbl"
+    else:
+        normalized_name = str(dialect_name).lower().strip()
+    if normalized_name not in DIALECT_REGISTRY:
+        raise ValueError(
+            f"Unsupported G-code dialect '{dialect_name}'. "
+            f"Supported dialects: {', '.join(sorted(DIALECT_REGISTRY.keys()))}"
+        )
+    cls = DIALECT_REGISTRY[normalized_name]
     return cls()

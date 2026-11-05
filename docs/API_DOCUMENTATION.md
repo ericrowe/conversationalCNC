@@ -858,7 +858,12 @@ Generates manual spindle toggle commands (`M3 S<rpm>` / `M5`).
 ## 12. Multi-Operation Job Program Sequencer
 
 ### `POST /api/generate/job-sequence`
-Assembles multiple conversational machining operations into a single cohesive, production-ready `.nc` job file with unified safety headers, intelligent tool change optimization, safe retracts, and program footers.
+Assembles multiple conversational machining operations into a single cohesive, production-ready `.nc` job file with unified safety headers, dependency-aware tool grouping (`R2-001`), end-to-end `MachiningContext` propagation (`R2-002`), safe retracts, and program footers.
+
+#### Dependency-Aware Tool Order Optimization (`R2-001`)
+- **Default Sequential Barrier Semantics**: By default, each operation in `operations` acts as a sequential barrier (`independent: false`). Even when `optimize_tool_order: true` is passed, operations are **never** reordered across uncertified operations unless explicitly marked `"independent": true`.
+- **Explicit DAG Dependencies (`depends_on`)**: Operations may declare `"id"` and `"depends_on": [<op_id>, ...]`. The sequencer validates the dependency graph (rejecting unknown IDs, self-dependencies, and cycles with `ValueError`) and only coalesces same-tool operations when all transitive predecessors have already been scheduled.
+- **Optimization Audit Trace (`optimization_trace`)**: The response `summary.optimization_trace` returns `original_order`, `scheduled_order`, `reordered`, and a per-operation reason log explaining why each operation was coalesced or held in place.
 
 #### Request Payload
 ```json
@@ -866,12 +871,14 @@ Assembles multiple conversational machining operations into a single cohesive, p
   "job_name": "Bracket_Machining_Job",
   "operations": [
     {
+      "id": 1,
       "op_name": "Surface Top Face",
       "op_type": "surfacing",
       "tool_number": 1,
       "tool_name": "Flycutter 25mm",
       "tool_diameter": 25.0,
       "spindle_speed": 14000,
+      "independent": false,
       "params": {
         "length_x": 100.0,
         "width_y": 80.0,
@@ -881,12 +888,15 @@ Assembles multiple conversational machining operations into a single cohesive, p
       }
     },
     {
+      "id": 2,
       "op_name": "Center Bearing Bore",
       "op_type": "circular_pocket",
       "tool_number": 2,
       "tool_name": "1/4 Endmill",
       "tool_diameter": 6.35,
       "spindle_speed": 16000,
+      "independent": true,
+      "depends_on": [1],
       "params": {
         "pockets": [[50.0, 40.0]],
         "pocket_diameter": 30.0,
@@ -898,6 +908,7 @@ Assembles multiple conversational machining operations into a single cohesive, p
   "safe_z_retract": 5.0,
   "units": "mm",
   "dialect": "grbl",
+  "spindle_control_type": "manual_switch",
   "optimize_tool_order": false,
   "park_x": 0.0,
   "park_y": 0.0,
@@ -907,7 +918,7 @@ Assembles multiple conversational machining operations into a single cohesive, p
 
 ---
 
-## 13. Machine Profiles
+## 13. Machine Profiles & Work Envelope Verification (`R2-003`)
 
 - `GET /api/machines`: List all machine profiles.
 - `GET /api/machines/active`: Get active machine profile.
@@ -916,6 +927,14 @@ Assembles multiple conversational machining operations into a single cohesive, p
 - `GET /api/machines/:id`: Retrieve profile by ID.
 - `PUT /api/machines/:id`: Update profile fields.
 - `DELETE /api/machines/:id`: Delete profile.
+
+### Work Envelope Tri-State Verification Contract (`WorkEnvelope.check_bounds_detailed`)
+Because generated G-code coordinates are expressed in Work Coordinate System (`WCS`, e.g. `G54`) space whereas physical machine soft limits live in Machine Coordinate System (`MCS`, `G53`) space:
+$$\mathbf{P}_{\text{machine}} = \mathbf{P}_{\text{work}} + \mathbf{O}_{\text{WCS}} + \mathbf{T}_{\text{tool}}$$
+`WorkEnvelope.check_bounds_detailed()` returns a deterministic tri-state status:
+1. **`VERIFIED`**: `wcs_origin_x`, `wcs_origin_y`, and `wcs_origin_z` are explicitly provided and every rapid, plunge, retract, and cutting move (including `tool_length_offset`) lies within $[X_{\min}, X_{\max}] \times [Y_{\min}, Y_{\max}] \times [Z_{\min}, Z_{\max}]$.
+2. **`PARTIAL_UNKNOWN`**: WCS origin offsets are not calibrated/supplied (`None`), so only relative travel span ($\Delta X \le L_X, \Delta Y \le L_Y, \Delta Z \le L_Z$) can be checked. Never claims `VERIFIED` without known WCS offsets (`strict_mode=True` rejects `PARTIAL_UNKNOWN`).
+3. **`FAILED`**: Either the toolpath span exceeds machine travel or transformed machine coordinates violate an axis limit.
 
 ---
 

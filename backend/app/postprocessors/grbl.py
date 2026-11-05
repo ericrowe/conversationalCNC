@@ -120,9 +120,10 @@ class GrblPostProcessor(BasePostProcessor):
         park_x: Optional[float] = None,
         park_y: Optional[float] = None,
     ) -> List[str]:
-        lines = ["M5 (Spindle Stop)"]
+        lines: List[str] = []
         if park_z is not None:
             lines.append(f"G0 {self.format_coord('Z', park_z)} (Retract to Clearance)")
+        lines.append("M5 (Spindle Stop)")
         if park_x is not None or park_y is not None:
             park_parts = ["G0"]
             if park_x is not None:

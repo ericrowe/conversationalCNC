@@ -2,7 +2,7 @@
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![Flask 3.0+](https://img.shields.io/badge/flask-3.0+-green.svg)](https://flask.palletsprojects.com/)
-[![Tests](https://img.shields.io/badge/tests-228%20passed-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-289%20passed-brightgreen.svg)]()
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 A web-based, locally executing **Conversational CNC Controller** designed for rapid, on-the-fly machining without launching heavyweight CAD/CAM software. Built with a zero-build-step architecture optimized for offline Raspberry Pi 4/5 setups and desktop workstations driving Grbl-based CNCs (such as the Inventables X-Carve, Shapeoko, PrintNC) and standard CNC controllers.
@@ -13,7 +13,7 @@ A web-based, locally executing **Conversational CNC Controller** designed for ra
 > ### ⚠️ EXPERIMENTAL & UNTESTED SOFTWARE DISCLAIMER
 > **Conversational CNC is an active open-source project and is AS OF YET UNTESTED ON PHYSICAL CNC MACHINERY.**
 >
-> CNC milling machines and routers are powerful, high-energy tools capable of severe physical injury, tool breakage, workpiece damage, electrical fire, or machine destruction if commanded incorrectly. While this software contains an extensive automated mathematical and API test suite (228 passing unit tests), **no guarantee is made that generated G-code is bug-free, safe for your particular machine setup, or free of unexpected motion commands.**
+> CNC milling machines and routers are powerful, high-energy tools capable of severe physical injury, tool breakage, workpiece damage, electrical fire, or machine destruction if commanded incorrectly. While this software contains an extensive automated mathematical and API test suite (289 passing unit tests), **no guarantee is made that generated G-code is bug-free, safe for your particular machine setup, or free of unexpected motion commands.**
 >
 > **MANDATORY SAFE STARTUP & INITIAL COMMISSIONING PROTOCOL:**
 > If you choose to use this software on a physical CNC machine, you MUST follow the progressive-risk startup procedures detailed in [docs/MACHINE_INTEGRATION_TEST_PLAN.md](docs/MACHINE_INTEGRATION_TEST_PLAN.md):
@@ -35,10 +35,10 @@ A web-based, locally executing **Conversational CNC Controller** designed for ra
 - **⭕ Circular Pocketing & Cylindrical Boss / Shaft Turning**: Precision bearing bores, counterbores, and circular pockets with helical ramp entry, plus outside-in concentric climb clearing for cylindrical bosses, studs, spigots, and custom bolt shafts from round bar or rectangular stock.
 - **🔲 Rectangular Pocket & Raised Boss / Island Machining**: Rectangular cavities with corner fillets, helical ramp entry, wall finishing passes, and outside clearing around raised rectangular island features.
 - **📐 Linear Slotting & Keyways**: Centerline and wide slot cutting with multiple depth passes, safe stepdowns, and side profile passes.
-- **✨ 2D Chamfering & Edge Breaking**: Outer and inner perimeter chamfering and deburring with conical V-bits and chamfer mills, calculating exact tip-offset and Z-depth.
+- **✨ 2D Rectangular & Circular Chamfering / Edge Breaking**: Outer boss and inner bore/cavity perimeter chamfering and deburring with conical V-bits and chamfer mills, calculating exact 3D cone-geometry tip-offset and Z-depth across metric and inch units.
 - **🪚 Workpiece & Spoilboard Surfacing / Facing**: Flatten rough stock or resurface spoilboards with bidirectional Zig-Zag or unidirectional Climb One-Way raster passes, customizable cutter overtravel past edges, and corner/center datum origins.
 - **✍️ Single-Line Vector Text Engraving**: High-speed CNC text engraving supporting multi-line rotated linear layouts and curved circular arc layouts (clockwise/counter-clockwise). Features 5 single-line stroke font styles (*Simplex Sans, Duplex Bold Sans, Roman Serif, Cursive Script, Industrial Block*), configurable cubic Catmull-Rom spline curve interpolation smoothing ($1\times$ to $12\times$ sampling) with sharp-corner preservation, and live tool tip flat cut width calculation.
-- **📐 2.5D Arbitrary Profile & Contour Milling**: Mill open profiles and closed perimeter cutouts along chained lines and circular arcs. Features automatic tool radius compensation (Climb/Left, Conventional/Right, or Centerline), 90° tangential circular arc or 45° linear lead-ins and lead-outs, multi-depth stepdowns with wall finishing stock allowance, and spring passes.
+- **📐 2.5D Arbitrary Profile & Contour Milling**: Mill open profiles and closed perimeter cutouts along chained lines and circular arcs. Features automatic tool radius compensation (Climb/Left, Conventional/Right, or Centerline) with exact tangent corner-roll arcs on convex vertices and inside corner trimming on concave vertices, 90° tangential circular arc or 45° linear lead-ins and lead-outs, multi-depth stepdowns with wall finishing stock allowance, and spring passes.
 - **📦 Step-and-Repeat Array Nesting & Soft Jaw Fixturing Wizard**: Array multi-part production jobs across $N_x \times N_y$ rectangular grids or staggered honeycomb patterns with serpentine zig-zag rapids. Generate precision negative clamping pockets for vise soft jaws to hold irregular parts for secondary Op 2 operations with 45° corner dogbone reliefs.
 - **📐 DXF 2D Vector CAD Importer & Direct-to-GCode Wizard**: Drag-and-drop standard 2D AutoCAD `.dxf` CAD drawings. Automatically parses entity geometry (`LINE`, `ARC`, `CIRCLE`, `LWPOLYLINE`), chains perimeter loops, detects bolt circle drill points, and converts directly into profile contouring and drilling toolpaths.
 - **🖼️ SVG 2D Vector CAD Importer with Grayscale Depth Mapping**: Import standard 2D SVG vector artwork with automatic or manual dimension overrides (width/height with aspect ratio lock). Evaluates fill/stroke grayscale percentage (% luminance) to cut depth ($Z_{\text{cut}} = Z_{\text{max}} \times \text{shading}\%$), with multi-depth stepdowns and automatic drill hole detection.
@@ -79,7 +79,8 @@ A web-based, locally executing **Conversational CNC Controller** designed for ra
 
 ### 8. Multi-Operation Job Program Sequencer & Builder
 - **Complete Part Machining Assembler**: Queue multiple conversational operations (facing $\to$ pocketing $\to$ drilling $\to$ contouring $\to$ chamfering $\to$ engraving $\to$ soft jaws) into a single cohesive `.nc` job file.
-- **Intelligent Tool Change Optimization**: Tracks active tools and eliminates redundant tool changes when consecutive operations share the same tool.
+- **Dependency-Safe Tool Change Optimization (`R2-001`)**: Preserves authored operation order by default unless operations are explicitly declared `"independent": true`, validates `depends_on` DAG prerequisites, and emits an `optimization_trace` audit log.
+- **End-to-End `MachiningContext` & Tri-State Envelope Verification (`R2-002` / `R2-003`)**: Propagates dialect, units, spindle control policy, and machine travel envelopes (`VERIFIED`, `PARTIAL_UNKNOWN`, `FAILED`) across all sequenced sub-operations.
 - **Safe Inter-Op Retracts & Coordinate Continuity**: Enforces safe Z-retracts and G54 coordinate continuity throughout the entire job run.
 - **Slide-Over Job Builder Drawer**: Reorder operations with up/down controls, group by tool, preview combined toolpaths, and export full `.nc` programs with 1-click.
 
@@ -143,7 +144,7 @@ conversationalCNC/
 │   │   ├── static/          # CSS stylesheets and client JavaScript modules
 │   │   ├── templates/       # Jinja2 HTML templates
 │   │   └── web/             # Web frontend routing blueprint
-│   └── tests/               # 228 automated pytest unit and integration tests
+│   └── tests/               # 289 automated pytest unit and integration tests
 └── docs/
     └── API_DOCUMENTATION.md # Comprehensive REST API reference
 ```

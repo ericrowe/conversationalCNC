@@ -1,37 +1,45 @@
 """
-Multi-Operation Job Program Sequencer / Builder Engine.
-Bundles multiple conversational machining operations into a single cohesive, production-ready .nc job file.
-Features:
-- Single top-level safety header (G21 G90 G94 G17 G54) and program footer (M5, G0 Z, G0 XY, M2/M30)
-- Intelligent Dependency-Safe Tool Change Optimization
-- Safe inter-operation retract planes (G0 Z<safe_z> before M5) and manual router M0 pause safety
-- Atomic failure on any invalid or unknown sub-operation (never emits partial executable G-code)
+Multi-Operation Job Sequencer & Tool Change Manager.
+Orchestrates multiple conversational operations (Surfacing -> Pocketing -> Drilling -> Chamfering -> Contouring)
+into a single unified G-code program with smart tool grouping, dependency-safe ordering, manual tool change
+prompts, and unified Workpiece Surface Mesh Compensation.
 """
+from typing import List, Dict, Any, Optional, Tuple, Set
 import inspect
-from typing import Dict, Any, List, Optional
+
 from ..postprocessors import get_postprocessor
 from ..postprocessors.router_speed_tables import is_manual_spindle
-from .drilling import generate_straight_plunge, generate_peck_drilling, compute_grid_holes, compute_bolt_circle_holes
-from .thread_milling import generate_helical_thread_milling
+from .base import (
+    strip_header_and_footer as _strip_header_and_footer,
+    MachiningContext,
+    WorkEnvelope,
+    compute_gcode_bounds,
+    normalize_units,
+)
+from .drilling import (
+    generate_straight_plunge,
+    generate_peck_drilling,
+    compute_grid_holes,
+    compute_bolt_circle_holes,
+)
 from .circular_pocket import generate_circular_pocket, generate_circular_boss
 from .rectangular_pocket import generate_rectangular_pocket, generate_rectangular_boss
 from .slotting import generate_linear_slot
 from .chamfering import generate_rectangular_chamfer, generate_circular_chamfer
 from .surfacing import generate_surfacing
+from .thread_milling import generate_helical_thread_milling
 from .engraving import generate_text_engraving
 from .contouring import generate_contour_profile
-from .base import strip_header_and_footer
 from .mesh_leveling import WorkpieceMeshMap
 
-_strip_header_and_footer = strip_header_and_footer
 
 BARRIER_OP_TYPES = {"surfacing", "soft_jaw", "soft_jaw_fixture"}
+
 
 GENERATOR_MAP = {
     "drilling": generate_straight_plunge,
     "straight_plunge": generate_straight_plunge,
     "peck_drilling": generate_peck_drilling,
-    "thread_milling": generate_helical_thread_milling,
     "circular_pocket": generate_circular_pocket,
     "circular_boss": generate_circular_boss,
     "rectangular_pocket": generate_rectangular_pocket,
@@ -39,9 +47,10 @@ GENERATOR_MAP = {
     "linear_slot": generate_linear_slot,
     "slotting": generate_linear_slot,
     "rectangular_chamfer": generate_rectangular_chamfer,
-    "circular_chamfer": generate_circular_chamfer,
     "chamfering": generate_rectangular_chamfer,
+    "circular_chamfer": generate_circular_chamfer,
     "surfacing": generate_surfacing,
+    "thread_milling": generate_helical_thread_milling,
     "engraving": generate_text_engraving,
     "contouring": generate_contour_profile,
     "profile": generate_contour_profile,
@@ -69,54 +78,181 @@ class SequenceGenerationError(ValueError):
         }
 
 
-def _order_operations_safely(operations: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def _get_op_id(op: Dict[str, Any], idx_zero: int) -> Any:
+    if "id" in op and op["id"] is not None:
+        return op["id"]
+    if "op_id" in op and op["op_id"] is not None:
+        return op["op_id"]
+    return idx_zero + 1
+
+
+def _order_operations_with_trace(
+    operations: List[Dict[str, Any]],
+) -> Tuple[List[Dict[str, Any]], List[Any], bool, List[str]]:
     """
-    Reorders operations to minimize tool changes ONLY within dependency-safe boundaries:
-    1. Stock-preparation barrier operations (e.g. 'surfacing', 'soft_jaw') and operations with
-       'lock_order=True' or explicit 'depends_on' constraints act as ordering barriers so dependent
-       operations are never hoisted ahead of stock preparation.
-    2. Within each reorderable segment, operations are grouped by the order in which each tool
-       first appears (rather than sorting by raw numeric tool_number T1 < T2), preserving the
-       operator's primary tool progression while merging repeated uses of the same tool.
+    Dependency-safe operation ordering engine (R2-001):
+    1. Default: Preserves authored operation order [1, 2, ...].
+    2. Validates explicit 'depends_on' edges as a DAG:
+       - Unknown/non-existent dependency references raise ValueError.
+       - Cycles (e.g. 1 -> 2 -> 1) or self-dependencies raise ValueError.
+       - Transitive dependencies are computed and enforced.
+    3. Hard barriers ('surfacing', 'soft_jaw', 'soft_jaw_fixture', 'lock_order=True', 'barrier=True')
+       never allow operations to cross them in either direction.
+    4. Tool-change grouping ONLY reorders operations that are explicitly marked
+       independent=True (or allow_reorder=True) AND whose intermediate predecessors are also
+       reorderable and not transitive dependencies.
     """
-    if len(operations) <= 1:
-        return list(operations)
+    n = len(operations)
+    if n == 0:
+        return [], [], False, []
 
-    # Check if any operation has explicit depends_on metadata
-    if any(op.get("depends_on") is not None for op in operations):
-        # Preserve strict topological order when explicit dependencies are declared
-        return list(operations)
+    op_ids = [_get_op_id(op, i) for i, op in enumerate(operations)]
+    id_to_idx: Dict[Any, int] = {}
+    for i, oid in enumerate(op_ids):
+        id_to_idx[oid] = i
+        if i not in id_to_idx:
+            id_to_idx[i] = i
 
-    segments: List[List[Dict[str, Any]]] = []
-    current_segment: List[Dict[str, Any]] = []
+    # Build direct dependency graph: deps[i] = set of operation indices (0..n-1) that i depends on
+    deps: Dict[int, Set[int]] = {i: set() for i in range(n)}
+    for i, op in enumerate(operations):
+        raw_dep = op.get("depends_on")
+        if raw_dep is None:
+            continue
+        dep_list = raw_dep if isinstance(raw_dep, (list, tuple, set)) else [raw_dep]
+        for d in dep_list:
+            if d not in id_to_idx:
+                raise ValueError(
+                    f"Operation '{op.get('name') or op.get('op_name') or op_ids[i]}' references "
+                    f"unknown/non-existent dependency '{d}'."
+                )
+            target_idx = id_to_idx[d]
+            if target_idx == i:
+                raise ValueError(f"Operation '{op_ids[i]}' has a self-dependency cycle.")
+            deps[i].add(target_idx)
 
-    for op in operations:
+    # Detect cycles using 3-color DFS (0=unvisited, 1=visiting, 2=visited)
+    state: Dict[int, int] = {i: 0 for i in range(n)}
+
+    def _dfs_cycle(u: int) -> None:
+        state[u] = 1
+        for v in deps[u]:
+            if state[v] == 1:
+                raise ValueError(
+                    f"Dependency cycle detected involving operations '{op_ids[u]}' and '{op_ids[v]}'."
+                )
+            if state[v] == 0:
+                _dfs_cycle(v)
+        state[u] = 2
+
+    for i in range(n):
+        if state[i] == 0:
+            _dfs_cycle(i)
+
+    # Compute transitive closure of dependencies
+    trans_deps: Dict[int, Set[int]] = {i: set() for i in range(n)}
+    for i in range(n):
+        stack = list(deps[i])
+        visited: Set[int] = set()
+        while stack:
+            curr = stack.pop()
+            if curr not in visited:
+                visited.add(curr)
+                stack.extend(deps[curr] - visited)
+        trans_deps[i] = visited
+        # Ensure authored order is respected if an operation depends on a future operation
+        for pred in visited:
+            if pred > i:
+                raise ValueError(
+                    f"Impossible dependency order: Operation '{op_ids[i]}' depends on later operation '{op_ids[pred]}'."
+                )
+
+    # Identify hard barriers and explicit independence flags
+    def _is_barrier(idx: int) -> bool:
+        op = operations[idx]
         op_type = (op.get("op_type") or "drilling").lower().strip()
-        is_barrier = op_type in BARRIER_OP_TYPES or bool(op.get("lock_order", False))
-        if is_barrier:
-            if current_segment:
-                segments.append(current_segment)
-                current_segment = []
-            segments.append([op])
-        else:
-            current_segment.append(op)
+        return (
+            op_type in BARRIER_OP_TYPES
+            or bool(op.get("lock_order", False))
+            or bool(op.get("barrier", False))
+        )
 
-    if current_segment:
-        segments.append(current_segment)
+    def _is_independent(idx: int) -> bool:
+        op = operations[idx]
+        if _is_barrier(idx):
+            return False
+        return bool(op.get("independent", False) or op.get("allow_reorder", False))
 
-    ordered: List[Dict[str, Any]] = []
-    for seg in segments:
-        if len(seg) <= 1:
-            ordered.extend(seg)
-        else:
-            tool_first_seen: Dict[int, int] = {}
-            for idx, item in enumerate(seg):
-                t_num = int(item.get("tool_number", 1))
-                if t_num not in tool_first_seen:
-                    tool_first_seen[t_num] = idx
-            ordered.extend(sorted(seg, key=lambda item: tool_first_seen[int(item.get("tool_number", 1))]))
+    # Partition sequence into barrier-free segments where ALL members are marked independent=True
+    ordered_indices: List[int] = []
+    optimization_log: List[str] = []
 
-    return ordered
+    i = 0
+    while i < n:
+        if not _is_independent(i):
+            ordered_indices.append(i)
+            i += 1
+            continue
+
+        # Collect contiguous run of independent operations
+        run: List[int] = []
+        while i < n and _is_independent(i):
+            run.append(i)
+            i += 1
+
+        if len(run) <= 1:
+            ordered_indices.extend(run)
+            continue
+
+        # Greedy deterministic tool-grouping schedule within `run` respecting `trans_deps`
+        scheduled: List[int] = []
+        scheduled_set: Set[int] = set(ordered_indices)
+        remaining: List[int] = list(run)
+
+        while remaining:
+            # Pick the earliest available operation in remaining whose dependencies are all in scheduled_set
+            ready = [idx for idx in remaining if trans_deps[idx].issubset(scheduled_set)]
+            if not ready:
+                # Fallback to authored order if constrained
+                nxt = remaining.pop(0)
+                scheduled.append(nxt)
+                scheduled_set.add(nxt)
+                continue
+
+            first_idx = ready[0]
+            active_tool = int(operations[first_idx].get("tool_number", 1))
+            scheduled.append(first_idx)
+            scheduled_set.add(first_idx)
+            remaining.remove(first_idx)
+
+            # Look for subsequent operations in remaining that use `active_tool` AND whose dependencies
+            # (and any operations they are not allowed to jump over) are satisfied
+            changed = True
+            while changed:
+                changed = False
+                for cand in list(remaining):
+                    cand_tool = int(operations[cand].get("tool_number", 1))
+                    if cand_tool == active_tool and trans_deps[cand].issubset(scheduled_set):
+                        scheduled.append(cand)
+                        scheduled_set.add(cand)
+                        remaining.remove(cand)
+                        optimization_log.append(
+                            f"Reordered operation '{op_ids[cand]}' to group Tool T{active_tool}."
+                        )
+                        changed = True
+                        break
+
+        ordered_indices.extend(scheduled)
+
+    ordered_ops = [operations[idx] for idx in ordered_indices]
+    execution_order = [op_ids[idx] for idx in ordered_indices]
+    reordered = ordered_indices != list(range(n))
+    return ordered_ops, execution_order, reordered, optimization_log
+
+
+def _order_operations_safely(operations: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    ordered_ops, _, _, _ = _order_operations_with_trace(operations)
+    return ordered_ops
 
 
 def generate_job_sequence(
@@ -131,10 +267,12 @@ def generate_job_sequence(
     optimize_tool_order: bool = False,
     park_x: Optional[float] = 0.0,
     park_y: Optional[float] = 0.0,
-    park_z: Optional[float] = 5.0,
+    park_z: Optional[float] = None,
     apply_mesh_leveling: bool = False,
     mesh_data: Optional[Dict[str, Any]] = None,
     mesh_max_segment_length: float = 3.0,
+    machine_id: str = "default_grbl",
+    work_envelope: Optional[WorkEnvelope] = None,
 ) -> Dict[str, Any]:
     """
     Stitches multiple conversational operations into a single unified .nc program.
@@ -143,8 +281,15 @@ def generate_job_sequence(
     if not operations:
         operations = []
 
+    # R2-002: Fail-closed validation on job-level units and dialect
+    units = normalize_units(units)
     post = get_postprocessor(dialect)
+    effective_park_z = park_z if park_z is not None else safe_z_retract
+
     ops_to_process = list(operations)
+    execution_order = [_get_op_id(op, i) for i, op in enumerate(ops_to_process)]
+    reordered = False
+    optimization_log: List[str] = []
 
     # CNC-011: Never silently ignore invalid mesh when mesh leveling is explicitly requested
     mesh_map_obj: Optional[WorkpieceMeshMap] = None
@@ -164,7 +309,9 @@ def generate_job_sequence(
             raise ValueError(f"Invalid workpiece surface mesh for leveling: {exc}") from exc
 
     if optimize_tool_order and len(ops_to_process) > 1:
-        ops_to_process = _order_operations_safely(ops_to_process)
+        ops_to_process, execution_order, reordered, optimization_log = _order_operations_with_trace(
+            ops_to_process
+        )
 
     full_lines: List[str] = []
 
@@ -182,7 +329,7 @@ def generate_job_sequence(
     if mesh_map_obj:
         full_lines.append(f"( Workpiece Surface Mesh Compensation: {mesh_map_obj.shape_type.upper()} )")
         full_lines.append(
-            f"( Surface Elevation Span: {mesh_map_obj.z_min:+.3f}mm to {mesh_map_obj.z_max:+.3f}mm | Delta: {mesh_map_obj.z_span:.3f}mm )"
+            f"( Surface Elevation Span: {mesh_map_obj.z_min:+.3f}{units} to {mesh_map_obj.z_max:+.3f}{units} | Delta: {mesh_map_obj.z_span:.3f}{units} )"
         )
     full_lines.append("")
 
@@ -195,15 +342,26 @@ def generate_job_sequence(
     all_pockets = []
 
     for idx, op in enumerate(ops_to_process, 1):
-        op_name = op.get("op_name", f"Op {idx}")
+        op_name = op.get("op_name") or op.get("name") or f"Op {idx}"
         op_type = (op.get("op_type") or "drilling").lower().strip()
         t_num = int(op.get("tool_number", 1))
         t_name = op.get("tool_name", f"Tool T{t_num}")
-        t_dia = float(op.get("tool_diameter", 3.175))
+        t_dia = float(op.get("tool_diameter", 3.175 if units == "mm" else 0.125))
         rpm = int(op.get("spindle_speed", 16000))
-        params = op.get("params", {}) or {}
+        params = dict(op.get("params") or op.get("parameters") or {})
         op_spindle_type = op.get("spindle_type") or spindle_type
         op_router_model = op.get("router_model") or router_model
+        op_router_dial = op.get("router_dial")
+        op_units = normalize_units(op.get("units") or params.get("units") or units)
+        op_dialect = op.get("dialect") or params.get("dialect") or dialect
+
+        if op_units != units:
+            raise SequenceGenerationError(
+                idx,
+                op_name,
+                op_type,
+                f"Operation unit '{op_units}' conflicts with job unit '{units}'. Mixed-unit jobs are not permitted.",
+            )
 
         if not any(t["tool_number"] == t_num for t in tool_list):
             tool_list.append({"tool_number": t_num, "name": t_name, "diameter": t_dia})
@@ -237,7 +395,6 @@ def generate_job_sequence(
 
         # Spindle Speed Check
         if active_spindle_rpm != rpm:
-            op_router_dial = op.get("router_dial")
             spindle_lines = post.format_spindle_start(
                 rpm=rpm,
                 clockwise=True,
@@ -250,7 +407,7 @@ def generate_job_sequence(
             full_lines.extend(spindle_lines)
             active_spindle_rpm = rpm
 
-        # Generate or extract Operation Body (CNC-005: Fail atomically on any error)
+        # Generate or extract Operation Body (CNC-005 & R2-002: Fail atomically on any error)
         if "raw_gcode" in op and op["raw_gcode"]:
             op_lines = _strip_header_and_footer(op["raw_gcode"])
             if not op_lines:
@@ -266,16 +423,30 @@ def generate_job_sequence(
                     idx, op_name, op_type, f"Unknown operation type '{op_type}'."
                 )
 
-            call_params = dict(params)
-            call_params.setdefault("tool_number", t_num)
-            call_params.setdefault("tool_name", t_name)
-            call_params.setdefault("tool_diameter", t_dia)
-            call_params.setdefault("spindle_speed", rpm)
-            call_params.setdefault("units", units)
-            call_params.setdefault("dialect", dialect)
-            call_params.setdefault("safe_z_retract", safe_z_retract)
+            try:
+                ctx = MachiningContext(
+                    machine_id=machine_id,
+                    units=op_units,
+                    dialect=op_dialect,
+                    spindle_type=op_spindle_type,
+                    router_model=op_router_model,
+                    router_dial=op_router_dial,
+                    require_pause=require_pause,
+                    safe_z_retract=safe_z_retract,
+                    spindle_speed=rpm,
+                    tool_number=t_num,
+                    tool_name=t_name,
+                    tool_diameter=t_dia,
+                    work_envelope=work_envelope,
+                    postprocessor=post,
+                )
+            except Exception as exc:
+                raise SequenceGenerationError(idx, op_name, op_type, str(exc)) from exc
 
+            call_params = dict(params)
             # Normalize common conversational UI parameter aliases
+            if "v_bit_angle_deg" in call_params and "vbit_angle_deg" not in call_params:
+                call_params["vbit_angle_deg"] = float(call_params["v_bit_angle_deg"])
             if "total_depth" in call_params and "total_depth_z" not in call_params and "target_depth_z" not in call_params:
                 val = -abs(float(call_params["total_depth"]))
                 call_params["total_depth_z"] = val
@@ -317,17 +488,7 @@ def generate_job_sequence(
                 if "thread_length" in call_params and "target_depth_z" not in call_params:
                     call_params["target_depth_z"] = -abs(float(call_params["thread_length"]))
 
-            sig = inspect.signature(gen_func)
-            accepted_keys = set(sig.parameters.keys())
-            has_var_kw = any(p.kind == inspect.Parameter.VAR_KEYWORD for p in sig.parameters.values())
-
-            if not has_var_kw:
-                filtered_params = {k: v for k, v in call_params.items() if k in accepted_keys}
-            else:
-                filtered_params = call_params
-
-            if "retract_z" in accepted_keys and "retract_z" not in filtered_params and "safe_z_retract" in call_params:
-                filtered_params["retract_z"] = call_params["safe_z_retract"]
+            filtered_params = ctx.apply_to_params(call_params, gen_func)
 
             try:
                 op_result = gen_func(**filtered_params)
@@ -369,18 +530,25 @@ def generate_job_sequence(
         full_lines.append("")
 
     # 3. Final Unified Program Footer
-    footer = post.format_footer(park_z=park_z, park_x=park_x, park_y=park_y)
+    footer = post.format_footer(park_z=effective_park_z, park_x=park_x, park_y=park_y)
     full_lines.extend(footer)
 
     full_gcode = "\n".join(full_lines)
+    job_bounds = compute_gcode_bounds(full_gcode, initial_z=safe_z_retract)
+    envelope_report = work_envelope.evaluate_envelope(job_bounds) if work_envelope else None
 
     return {
         "job_name": job_name,
         "operation_count": len(ops_to_process),
+        "execution_order": execution_order,
+        "reordered": reordered,
+        "optimization_log": optimization_log,
         "tool_change_count": tool_change_count,
         "tools_used": tool_list,
         "gcode": full_gcode,
         "line_count": len(full_lines),
+        "bounds": job_bounds.to_dict(),
+        "envelope_report": envelope_report,
         "holes": all_holes,
         "pockets": all_pockets,
         "mesh_leveling_applied": mesh_map_obj is not None,

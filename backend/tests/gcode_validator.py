@@ -1,23 +1,29 @@
 """
-Independent G-Code Modal State & Geometry Verification Oracle (CNC-013).
+Independent G-Code Modal State, GRBL Dialect & 2D Swept-Tool Geometry Verification Oracle
+(CNC-013, V2-004, V2-005, V2-006).
 Does NOT import or reuse any geometry helper from backend/app/generators.
-Independently parses G-code blocks, tracks modal state (G20/G21, G90/G91, G17/G18/G19, F, XYZ, M-codes),
+Independently parses G-code blocks, tracks modal state (G20/G21, G90/G91, G17/G18/G19, G94, F, XYZ, M-codes),
 and validates:
 - Arc start-to-center vs end-to-center radius equality (|rs - re| <= arc_tol) and rs > 0
 - Arc sweep direction validity
 - Finite numeric words (no NaN / inf)
 - Single final program termination (M2 / M02 / M30) and zero motion after termination
 - Safe Z >= expected_clearance_z before XY rapid (G0) positioning moves
-- Absence of leaked error/unknown-op pseudo-comments
+- Safe Z >= expected_clearance_z before M5 spindle stop (when require_retract_before_m5=True)
+- GRBL dialect command restrictions (no G73/G81/G82/G83 canned cycles or M6 tool changes when dialect='grbl')
+- 2D Swept-Disk Stock Interference verification (verify_contour_no_stock_gouge)
 """
 import math
 import re
 from dataclasses import dataclass, field
-from typing import List, Optional, Tuple, Dict
+from typing import List, Optional, Tuple, Dict, Any
 
 
 PAREN_COMMENT_RE = re.compile(r"\([^)]*\)")
-WORD_RE = re.compile(r"([A-Za-z])([+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?|[+-]?(?:nan|inf))", re.IGNORECASE)
+WORD_RE = re.compile(
+    r"([A-Za-z])([+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?|[+-]?(?:nan|inf))",
+    re.IGNORECASE,
+)
 
 
 @dataclass
@@ -31,6 +37,7 @@ class ArcRecord:
     r_start: float
     r_end: float
     sweep_rad: float
+    z: float = 0.0
 
 
 @dataclass
@@ -42,6 +49,8 @@ class GCodeValidationReport:
     termination_lines: List[int] = field(default_factory=list)
     moves_after_termination: List[int] = field(default_factory=list)
     unsafe_xy_rapids: List[int] = field(default_factory=list)
+    unsafe_spindle_stops: List[int] = field(default_factory=list)
+    unsupported_dialect_codes: List[str] = field(default_factory=list)
     bounds: Dict[str, float] = field(default_factory=dict)
     modal_state: Dict[str, object] = field(default_factory=dict)
 
@@ -58,6 +67,8 @@ def validate_gcode_program(
     gcode_text: str,
     expected_clearance_z: Optional[float] = None,
     arc_tol: float = 0.003,
+    dialect: Optional[str] = None,
+    require_retract_before_m5: bool = False,
 ) -> GCodeValidationReport:
     errors: List[str] = []
     warnings: List[str] = []
@@ -65,10 +76,16 @@ def validate_gcode_program(
     termination_lines: List[int] = []
     moves_after_termination: List[int] = []
     unsafe_xy_rapids: List[int] = []
+    unsafe_spindle_stops: List[int] = []
+    unsupported_dialect_codes: List[str] = []
 
-    units = "mm"
+    units: Optional[str] = None
+    unit_history: List[str] = []
     distance_mode = "G90"
+    distance_history: List[str] = []
     plane = "G17"
+    plane_history: List[str] = []
+    feed_mode = "G94"
     motion_mode: Optional[str] = None
     feed_rate: float = 0.0
 
@@ -76,11 +93,15 @@ def validate_gcode_program(
     curr_y: float = 0.0
     curr_z: float = 0.0
     z_known: bool = False
+    has_cut_below_clearance: bool = False
     terminated: bool = False
 
     min_x, max_x = float("inf"), float("-inf")
     min_y, max_y = float("inf"), float("-inf")
     min_z, max_z = float("inf"), float("-inf")
+
+    dialect_norm = dialect.lower().strip() if dialect else None
+    is_grbl_family = dialect_norm in ("grbl", "grblhal", "fluidnc", "smoothie", "smoothieware")
 
     for line_no, raw_line in enumerate(gcode_text.splitlines(), 1):
         stripped_raw = raw_line.strip()
@@ -122,25 +143,50 @@ def validate_gcode_program(
             if letter == "G":
                 g_int = int(round(val))
                 if g_int == 20:
+                    if units is not None and units != "inch":
+                        errors.append(f"Line {line_no}: Unexpected mid-program unit change from {units} to inch (G20)")
                     units = "inch"
+                    unit_history.append("G20")
                 elif g_int == 21:
+                    if units is not None and units != "mm":
+                        errors.append(f"Line {line_no}: Unexpected mid-program unit change from {units} to mm (G21)")
                     units = "mm"
+                    unit_history.append("G21")
                 elif g_int == 90:
                     distance_mode = "G90"
+                    distance_history.append("G90")
                 elif g_int == 91:
                     distance_mode = "G91"
+                    distance_history.append("G91")
                 elif g_int in (17, 18, 19):
                     plane = f"G{g_int}"
+                    plane_history.append(plane)
                 elif g_int in (0, 1, 2, 3):
                     line_g_motion = f"G{g_int}"
                     motion_mode = line_g_motion
-                elif g_int in (4, 10, 28, 38, 53, 54, 55, 56, 57, 58, 59, 73, 80, 81, 83, 94):
+                elif g_int in (73, 81, 82, 83):
+                    if is_grbl_family:
+                        code_str = f"G{g_int}"
+                        unsupported_dialect_codes.append(code_str)
+                        errors.append(f"Line {line_no}: Unsupported canned cycle {code_str} for GRBL dialect")
+                elif g_int == 94:
+                    feed_mode = "G94"
+                elif g_int in (4, 10, 28, 38, 53, 54, 55, 56, 57, 58, 59, 80):
                     pass
                 else:
                     warnings.append(f"Line {line_no}: Unrecognized G-code G{g_int}")
             elif letter == "M":
                 m_int = int(round(val))
                 line_m_codes.append(m_int)
+                if m_int == 6 and is_grbl_family:
+                    unsupported_dialect_codes.append("M6")
+                    errors.append(f"Line {line_no}: Unsupported automatic tool change M6 for GRBL dialect")
+                if m_int == 5 and require_retract_before_m5 and expected_clearance_z is not None:
+                    if has_cut_below_clearance and (not z_known or curr_z < expected_clearance_z - 1e-4):
+                        unsafe_spindle_stops.append(line_no)
+                        errors.append(
+                            f"Line {line_no}: Spindle stop M5 executed at Z={curr_z:.3f} below safe clearance {expected_clearance_z:.3f}"
+                        )
                 if m_int in (2, 30):
                     termination_lines.append(line_no)
                     terminated = True
@@ -171,6 +217,8 @@ def validate_gcode_program(
 
             if "Z" in line_words:
                 z_known = True
+                if expected_clearance_z is not None and end_z < expected_clearance_z - 1e-4:
+                    has_cut_below_clearance = True
 
             # Check safe Z clearance on non-zero lateral XY rapid moves
             if (
@@ -189,8 +237,10 @@ def validate_gcode_program(
             if active_motion in ("G1", "G2", "G3") and feed_rate <= 0:
                 errors.append(f"Line {line_no}: Cutting move {active_motion} without active feed rate")
 
-            if active_motion in ("G2", "G3") and plane == "G17":
-                if "I" in line_words or "J" in line_words:
+            if active_motion in ("G2", "G3"):
+                if plane != "G17":
+                    errors.append(f"Line {line_no}: Arc {active_motion} emitted outside G17 plane (active={plane})")
+                elif "I" in line_words or "J" in line_words:
                     i_val = line_words.get("I", 0.0)
                     j_val = line_words.get("J", 0.0)
                     cx = start_x + i_val
@@ -225,6 +275,7 @@ def validate_gcode_program(
                             r_start=rs,
                             r_end=re_dist,
                             sweep_rad=sweep,
+                            z=end_z,
                         )
                     )
                     # Include arc extrema in bounding box
@@ -276,12 +327,128 @@ def validate_gcode_program(
         termination_lines=termination_lines,
         moves_after_termination=moves_after_termination,
         unsafe_xy_rapids=unsafe_xy_rapids,
+        unsafe_spindle_stops=unsafe_spindle_stops,
+        unsupported_dialect_codes=unsupported_dialect_codes,
         bounds=bounds_dict,
         modal_state={
-            "units": units,
+            "units": units or "mm",
+            "unit_history": unit_history,
             "distance_mode": distance_mode,
+            "distance_history": distance_history,
             "plane": plane,
+            "plane_history": plane_history,
+            "feed_mode": feed_mode,
             "feed_rate": feed_rate,
             "final_xyz": (curr_x, curr_y, curr_z),
         },
     )
+
+
+def verify_contour_no_stock_gouge(
+    nominal_segments: List[Dict[str, Any]],
+    start_point: Tuple[float, float],
+    tool_diameter: float,
+    finish_allowance: float,
+    gcode_text: str,
+    samples_per_segment: int = 80,
+    gouge_tol: float = 0.005,
+) -> Dict[str, Any]:
+    """
+    Independent 2D swept-tool verification oracle (V2-005).
+    1. Densely samples the nominal workpiece contour segments (lines and arcs).
+    2. Parses all cutting moves (G1/G2/G3 at Z < 0, excluding lead-in/lead-out moves) from gcode_text
+       and densely samples the tool-center path.
+    3. Computes the minimum Euclidean distance from the tool centerpath to the nominal finished contour.
+       If min_distance < (tool_diameter / 2 + finish_allowance - gouge_tol), the cutter has gouged
+       into protected finished stock!
+    """
+    required_clearance = (tool_diameter / 2.0) + finish_allowance
+
+    # 1. Sample nominal contour
+    nom_pts: List[Tuple[float, float]] = []
+    cx, cy = float(start_point[0]), float(start_point[1])
+    for seg in nominal_segments:
+        stype = (seg.get("type") or "line").lower().strip()
+        nx, ny = float(seg["x"]), float(seg["y"])
+        if stype == "line":
+            for k in range(samples_per_segment + 1):
+                t = k / float(samples_per_segment)
+                nom_pts.append((cx + t * (nx - cx), cy + t * (ny - cy)))
+        elif stype == "arc":
+            cw = bool(seg.get("cw", False))
+            acx = cx + float(seg.get("i", 0.0))
+            acy = cy + float(seg.get("j", 0.0))
+            r = math.hypot(cx - acx, cy - acy)
+            a0 = math.atan2(cy - acy, cx - acx)
+            a1 = math.atan2(ny - acy, nx - acx)
+            sweep = (a0 - a1) % (2.0 * math.pi) if cw else (a1 - a0) % (2.0 * math.pi)
+            if sweep < 1e-6:
+                sweep = 2.0 * math.pi
+            for k in range(samples_per_segment + 1):
+                t = k / float(samples_per_segment)
+                ang = a0 - t * sweep if cw else a0 + t * sweep
+                nom_pts.append((acx + r * math.cos(ang), acy + r * math.sin(ang)))
+        cx, cy = nx, ny
+
+    # 2. Sample emitted contour cutting moves from G-code
+    tool_pts: List[Tuple[float, float]] = []
+    tx, ty, tz = 0.0, 0.0, 5.0
+    motion = "G0"
+    for raw_line in gcode_text.splitlines():
+        upper_raw = raw_line.upper()
+        is_lead = "LEAD-IN" in upper_raw or "LEAD-OUT" in upper_raw or "LEAD IN" in upper_raw or "LEAD OUT" in upper_raw
+        code_part = strip_gcode_comments(raw_line)
+        if not code_part:
+            continue
+        words = {k.upper(): float(v) for k, v in WORD_RE.findall(code_part)}
+        for k, v in WORD_RE.findall(code_part):
+            if k.upper() == "G" and int(round(float(v))) in (0, 1, 2, 3):
+                motion = f"G{int(round(float(v)))}"
+        nx = words.get("X", tx)
+        ny = words.get("Y", ty)
+        nz = words.get("Z", tz)
+
+        if motion in ("G1", "G2", "G3") and nz < -1e-4 and ("X" in words or "Y" in words) and not is_lead:
+            if motion == "G1":
+                for k in range(samples_per_segment + 1):
+                    t = k / float(samples_per_segment)
+                    tool_pts.append((tx + t * (nx - tx), ty + t * (ny - ty)))
+            else:
+                cw = motion == "G2"
+                acx = tx + words.get("I", 0.0)
+                acy = ty + words.get("J", 0.0)
+                r = math.hypot(tx - acx, ty - acy)
+                a0 = math.atan2(ty - acy, tx - acx)
+                a1 = math.atan2(ny - acy, nx - acx)
+                sweep = (a0 - a1) % (2.0 * math.pi) if cw else (a1 - a0) % (2.0 * math.pi)
+                if sweep < 1e-6:
+                    sweep = 2.0 * math.pi
+                for k in range(samples_per_segment + 1):
+                    t = k / float(samples_per_segment)
+                    ang = a0 - t * sweep if cw else a0 + t * sweep
+                    tool_pts.append((acx + r * math.cos(ang), acy + r * math.sin(ang)))
+
+        tx, ty, tz = nx, ny, nz
+
+    if not tool_pts or not nom_pts:
+        return {
+            "gouge_free": False,
+            "min_distance": 0.0,
+            "required_clearance": required_clearance,
+            "max_gouge_depth": required_clearance,
+        }
+
+    min_dist = float("inf")
+    for px, py in tool_pts:
+        for nx, ny in nom_pts:
+            d = math.hypot(px - nx, py - ny)
+            if d < min_dist:
+                min_dist = d
+
+    max_gouge = max(0.0, required_clearance - min_dist)
+    return {
+        "gouge_free": min_dist >= (required_clearance - gouge_tol),
+        "min_distance": round(min_dist, 5),
+        "required_clearance": round(required_clearance, 5),
+        "max_gouge_depth": round(max_gouge, 5),
+    }

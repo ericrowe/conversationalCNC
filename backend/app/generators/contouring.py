@@ -9,7 +9,7 @@ Supports:
 import math
 from typing import Dict, Any, List, Optional, Tuple
 from ..postprocessors import get_postprocessor
-from .base import BoundingBox
+from .base import BoundingBox, normalize_units
 
 
 def _normalize_vec(dx: float, dy: float) -> Tuple[float, float, float]:
@@ -169,6 +169,7 @@ def generate_contour_profile(
     Generates full G-code for 2.5D profile contouring with cutter compensation and multi-depth passes.
     """
     # CNC-009: Reject missing or empty geometry (never substitute a default rectangle)
+    units = normalize_units(units)
     if not segments or not isinstance(segments, list) or len(segments) == 0:
         raise ValueError("Contour segments must be a non-empty list of geometry segments.")
 
@@ -269,6 +270,15 @@ def generate_contour_profile(
                 raw_offset_segs.append(
                     {
                         "type": "line",
+                        "vx0": curr_x,
+                        "vy0": curr_y,
+                        "vx1": nx,
+                        "vy1": ny,
+                        "length": length,
+                        "orig_ox0": ox0,
+                        "orig_oy0": oy0,
+                        "t_start": 0.0,
+                        "t_end": length,
                         "ox0": ox0,
                         "oy0": oy0,
                         "x": ox1,
@@ -320,6 +330,10 @@ def generate_contour_profile(
                 raw_offset_segs.append(
                     {
                         "type": "arc",
+                        "vx0": curr_x,
+                        "vy0": curr_y,
+                        "vx1": nx,
+                        "vy1": ny,
                         "ox0": ox0,
                         "oy0": oy0,
                         "x": ox1,
@@ -344,7 +358,7 @@ def generate_contour_profile(
         else:
             effective_closed = is_closed
 
-        # Resolve line-line corner intersections or insert corner bridge segments so path is continuous
+        # Resolve line-line corner intersections or insert tangent corner-roll arcs so path is continuous and gouge-free
         n_segs = len(raw_offset_segs)
         for idx in range(n_segs):
             if not effective_closed and idx == n_segs - 1:
@@ -354,20 +368,40 @@ def generate_contour_profile(
             s2 = raw_offset_segs[nxt_idx]
             gap = math.hypot(s2["ox0"] - s1["x"], s2["oy0"] - s1["y"])
             if gap > 1e-5 and s1["type"] == "line" and s2["type"] == "line":
-                # Intersect infinite lines s1 and s2
+                # Intersect offset lines s1 and s2 using their original un-trimmed origins
                 u1x, u1y = s1["t_out"]
                 u2x, u2y = s2["t_in"]
+                cross = u1x * u2y - u1y * u2x
                 det = u1x * (-u2y) - u1y * (-u2x)
                 if abs(det) > 1e-5:
-                    rhs_x = s2["ox0"] - s1["ox0"]
-                    rhs_y = s2["oy0"] - s1["oy0"]
-                    t_param = (rhs_x * (-u2y) - rhs_y * (-u2x)) / det
-                    ix = s1["ox0"] + t_param * u1x
-                    iy = s1["oy0"] + t_param * u1y
+                    rhs_x = s2["orig_ox0"] - s1["orig_ox0"]
+                    rhs_y = s2["orig_oy0"] - s1["orig_oy0"]
+                    t1_param = (rhs_x * (-u2y) - rhs_y * (-u2x)) / det
+                    t2_param = (u1x * rhs_y - u1y * rhs_x) / det
+                    # Concave inside corner check (cutter is on the inside of the turn when active_offset * cross > 0)
+                    if active_offset * cross > 1e-6:
+                        if t1_param <= 1e-5 or t2_param >= s2["length"] - 1e-5:
+                            raise ValueError(
+                                f"Concave corner between segments {idx} and {nxt_idx} is smaller than cutter offset "
+                                f"({abs(active_offset):.3f}{units}); tool would invert segment and gouge stock."
+                            )
+                    s1["t_end"] = t1_param
+                    s2["t_start"] = t2_param
+                    ix = s1["orig_ox0"] + t1_param * u1x
+                    iy = s1["orig_oy0"] + t1_param * u1y
                     s1["x"], s1["y"] = ix, iy
                     s2["ox0"], s2["oy0"] = ix, iy
 
-        # Assemble final continuous path_segs (inserting G1 bridge if non-tangent line-arc corner exists)
+        # Re-verify that no line segment collapsed or inverted after trimming at both ends
+        for idx, s in enumerate(raw_offset_segs):
+            if s["type"] == "line":
+                if s["t_end"] - s["t_start"] <= 1e-5:
+                    raise ValueError(
+                        f"Segment {idx} collapsed or inverted after concave cutter offset compensation "
+                        f"(t_start={s['t_start']:.4f}, t_end={s['t_end']:.4f}); tool radius is too large for concave feature."
+                    )
+
+        # Assemble final continuous path_segs (rolling around convex non-tangent corners with a tangent arc)
         path_segs: List[Dict[str, Any]] = []
         min_x, max_x = float("inf"), float("-inf")
         min_y, max_y = float("inf"), float("-inf")
@@ -379,22 +413,68 @@ def generate_contour_profile(
             min_y = min(min_y, py)
             max_y = max(max_y, py)
 
+        def _make_corner_transition(
+            prev_seg: Dict[str, Any], next_seg: Dict[str, Any]
+        ) -> Dict[str, Any]:
+            sx, sy = prev_seg["x"], prev_seg["y"]
+            ex, ey = next_seg["ox0"], next_seg["oy0"]
+            vx, vy = prev_seg["vx1"], prev_seg["vy1"]
+            u1x, u1y = prev_seg["t_out"]
+            u2x, u2y = next_seg["t_in"]
+            cross = u1x * u2y - u1y * u2x
+
+            # If cutter is on the outside of a non-tangent corner (convex corner) and offset > 0,
+            # roll around vertex (vx, vy) with an arc of radius |active_offset| so distance to V is always |active_offset|
+            r_start_v = math.hypot(sx - vx, sy - vy)
+            r_end_v = math.hypot(ex - vx, ey - vy)
+            if abs(active_offset) > 1e-5 and abs(r_start_v - abs(active_offset)) < 1e-3 and abs(r_end_v - abs(active_offset)) < 1e-3:
+                if active_offset * cross > 1e-6:
+                    # Concave non-tangent transition without valid trim -> would gouge vertex V
+                    raise ValueError(
+                        f"Concave non-tangent line/arc corner at ({vx:.3f}, {vy:.3f}) would be gouged by cutter radius {abs(active_offset):.3f}."
+                    )
+                cw_roll = active_offset > 0
+                return {
+                    "type": "arc",
+                    "vx0": vx,
+                    "vy0": vy,
+                    "vx1": vx,
+                    "vy1": vy,
+                    "ox0": sx,
+                    "oy0": sy,
+                    "x": ex,
+                    "y": ey,
+                    "cw": cw_roll,
+                    "cx": vx,
+                    "cy": vy,
+                    "i": vx - sx,
+                    "j": vy - sy,
+                    "radius": abs(active_offset),
+                    "t_in": prev_seg["t_out"],
+                    "t_out": next_seg["t_in"],
+                }
+
+            return {
+                "type": "line",
+                "vx0": vx,
+                "vy0": vy,
+                "vx1": vx,
+                "vy1": vy,
+                "ox0": sx,
+                "oy0": sy,
+                "x": ex,
+                "y": ey,
+                "t_in": next_seg["t_in"],
+                "t_out": next_seg["t_in"],
+            }
+
         for idx, s in enumerate(raw_offset_segs):
             if idx > 0:
                 prev_end_x, prev_end_y = path_segs[-1]["x"], path_segs[-1]["y"]
                 if math.hypot(s["ox0"] - prev_end_x, s["oy0"] - prev_end_y) > 1e-4:
-                    path_segs.append(
-                        {
-                            "type": "line",
-                            "ox0": prev_end_x,
-                            "oy0": prev_end_y,
-                            "x": s["ox0"],
-                            "y": s["oy0"],
-                            "t_in": s["t_in"],
-                            "t_out": s["t_in"],
-                        }
-                    )
-                    _track_xy(s["ox0"], s["oy0"])
+                    bridge = _make_corner_transition(path_segs[-1], s)
+                    path_segs.append(bridge)
+                    _track_xy(bridge["x"], bridge["y"])
             path_segs.append(s)
             _track_xy(s["ox0"], s["oy0"])
             _track_xy(s["x"], s["y"])
@@ -411,20 +491,13 @@ def generate_contour_profile(
                         _track_xy(cx + r_off * math.cos(card), cy + r_off * math.sin(card))
 
         if effective_closed and len(path_segs) > 1:
+            first_ox0, first_oy0 = path_segs[0]["ox0"], path_segs[0]["ox0"]
             first_ox0, first_oy0 = path_segs[0]["ox0"], path_segs[0]["oy0"]
             last_x, last_y = path_segs[-1]["x"], path_segs[-1]["y"]
             if math.hypot(first_ox0 - last_x, first_oy0 - last_y) > 1e-4:
-                path_segs.append(
-                    {
-                        "type": "line",
-                        "ox0": last_x,
-                        "oy0": last_y,
-                        "x": first_ox0,
-                        "y": first_oy0,
-                        "t_in": path_segs[0]["t_in"],
-                        "t_out": path_segs[0]["t_in"],
-                    }
-                )
+                closing_bridge = _make_corner_transition(path_segs[-1], path_segs[0])
+                path_segs.append(closing_bridge)
+                _track_xy(closing_bridge["x"], closing_bridge["y"])
 
         bbox = BoundingBox(
             min_x=min_x if min_x != float("inf") else 0.0,
