@@ -1,315 +1,95 @@
-# 🧪 Machine Integration & Physical Commissioning Test Plan
+# 🧪 Conversational CNC Software Feature Exerciser & Bit-Saver Checklist
 
-A systematic, progressive-risk commissioning framework for bringing up a new or modified CNC machine (Grbl, Smoothieboard, FluidNC, LinuxCNC) with the **Conversational CNC Controller**.
+A practical, feature-by-feature workshop walkthrough for exercising every function of the **Conversational CNC Controller (`voltron.local`)** and verifying safe toolpaths before putting expensive carbide bits into stock.
 
----
-
-> [!CAUTION]
-> ### ⚠️ MANDATORY PHYSICAL COMMISSIONING NOTICE
-> **This software is AS OF YET UNTESTED ON LIVE PHYSICAL MACHINERY.**
->
-> Never attempt to run G-code programs on a physical CNC machine without completing this progressive commissioning protocol. Always execute **Phase 0 through Phase 3 (Spindle UNPLUGGED Air Cuts)** before powering on spindle hardware or introducing cutting tools to raw material.
+> **Printable 2-Page (Single-Sheet Front/Back) Workshop Checklist**: [`docs/Workshop_CNC_Commissioning_Checklist.pdf`](Workshop_CNC_Commissioning_Checklist.pdf)
 
 ---
 
-## 🎯 Objectives & Philosophy
+## 🛡️ Top 5 "Bit-Saver" Rules in Conversational CNC
 
-1. **Progressive Risk Escalation (Envelope Expansion)**:
-   $$\text{Static Electrical/Safety} \longrightarrow \text{Dry Air (Spindle OFF)} \longrightarrow \text{Air Run (Spindle ON / EMI Check)} \longrightarrow \text{Soft Foam/MDF Test} \longrightarrow \text{Target Material}$$
-2. **Time-Efficient Validation**: Targeted verification steps designed to achieve 100% operational confidence in under 90 minutes.
-3. **Deterministic Reversion & Regression Protocol**: A formal impact-matrix detailing exactly which test tiers must be re-run when software or firmware patches are applied.
+1. **Always Re-Zero $Z_0$ After Swapping Collet Bits**: On a manual trim router (DeWalt DWP611) without a tool-length sensor, every bit sticks out a different length. Use **Split Tools** (`/api/transform/split-tools`) for multi-tool jobs and re-probe $Z_0$ with the touch plate after every bit change.
+2. **Air-Cut New Toolpaths at $Z_0 = +20\text{ mm}$ First**: Jog $Z$ up `20 mm` in the air and click `Zero XYZ` before running unfamiliar operations. Watch the first plunge and final retract.
+3. **Never Plunge Flat Endmills Straight into Metal**: Always use **Helical Ramp** entry on pockets and **90° Tangential Arc** lead-in/lead-out on contours and circular chamfers so small bits (`1/8"`, `1/16"`, thread mills) never take a 100% radial shock load on entry.
+4. **Verify Retract-Before-Stop & Clamp Clearance**: Every generated footer retracts to `safe_z_retract` (`G0 Z5.0000`) *before* `M5`. If using tall step clamps, increase `safe_z_retract` / `retract_z` (e.g. `15.0 mm`) so rapids clear the clamps.
+5. **Mid-Air Touch Plate Tap Before Every Probe**: Always tap the touch plate to the bit in mid-air during the start of a probe descent to confirm the ground clip has continuity before the bit reaches the brass plate.
 
 ---
 
-## 📋 Commissioning Matrix Overview
+## 1. Host, Machine Profile, Tool Library & Web Serial Jog (`voltron.local`)
 
-| Phase | Description | Machine State | Risk Level | Target Time |
+- [ ] **1.1 7" Touchscreen Status HUD (`http://voltron.local/status`)**:
+  - Verify status shows `ONLINE`, normal Pi temperature, and active profile. Test **Backup Snapshot** button.
+- [ ] **1.2 Machine Profile & Tool Library (`http://voltron.local/machines` & `/tools`)**:
+  - Confirm active profile: `units = mm` (`G21`), `dialect = grbl`, `spindle_control_type = manual_switch` (`dewalt_dwp611`, `require_pause = true`), `safe_z_retract = 5.0 mm`, and calibrated touch plate thickness (`14.85 mm`).
+  - Confirm your carbide bits (`3.175 mm` 1/8" endmill, `6.35 mm` 1/4" endmill, `90°` V-bit, thread mill) have accurate diameters and conservative stepdown/plunge presets in the Tool Library.
+- [ ] **1.3 Feeds & Speeds Physics Calculator (`⚡ Feeds & Speeds`)**:
+  - Select **C360 Brass** or **6061 Aluminum** with a `3.175 mm` (1/8") 2-flute endmill, `0.3 mm` stepdown, and `0.5 mm` stepover.
+  - Confirm radial chip-thinning compensation, spindle power estimate, stickout deflection check, and DeWalt DWP611 dial recommendation (`Dial 1–2` = `16,000–18,200 RPM`).
+- [ ] **1.4 Web Serial Connection, Jog Pendant (`J`) & `Go To Origin`**:
+  - Click **Connect Machine** (`115200` baud). Press `J` to open the Jog & DRO drawer.
+  - Test `1 mm` and `10 mm` jog steps (`+X` Right, `+Y` Back, `+Z` Up) and keyboard arrow/PageUp/PageDown keys.
+  - Click **Zero XYZ** (`G10 L20 P1 X0 Y0 Z0`), jog to `X20 Y20 Z-5` (in air), and click **Go To Origin**:
+    - **Bit-Saver Check**: Confirm the software **lifts $Z$ to `Z5.0` first** before moving $XY$ to `(0, 0)`.
+
+---
+
+## 2. Probing Macros & Surface Mesh Leveling (`🎯 Probe & Zero` & `🗺️ Mesh Level`)
+
+- [ ] **2.1 Z-Touch Plate Macro (Mid-Air Tap Test $\to$ Surface Zero)**:
+  - Clip ground lead to collet. Start **Z-Touch Plate Macro** and tap plate to bit in mid-air during the `150 mm/min` search: confirm instant stop, `1.5 mm` lift, `25 mm/min` slow touch, `G10 L20 P1 Z<thickness>`, and `20 mm` retract.
+  - Place plate on stock, run macro, remove plate, and jog slowly to `Z0.000` (`F100`): confirm paper drag (`~0.10 mm`).
+- [ ] **2.2 4-Quadrant Corner XYZ & Bore/Boss Center Probing (Plan 05)**:
+  - Test **Corner XYZ** (`front_left`) with your bit diameter entered; jog to `X0 Y0 Z5` and confirm bit center sits directly over the stock corner.
+  - Test **Inside Bore Center** or **Outside Boss Center** 4-point probe inside a test ring/cylinder; confirm it rapids to the exact center at safe $Z$.
+- [ ] **2.3 Surface Mesh Leveling & G-Code Warper (`🗺️ Mesh Level`)**:
+  - Generate a `3 × 3` probe point grid over a `40 × 40 mm` area (`POST /api/mesh/generate-points` & `/probe-macro`).
+  - Load sample probe log data and warp a flat engraving toolpath (`/api/mesh/warp-gcode`).
+  - **Bit-Saver Check**: Inspect warped G-code in the 3D backplotter to confirm smooth interpolated $Z$ adjustments with no sudden negative $Z$ spikes.
+
+---
+
+## 3. Conversational Operations Walk-Through (Preview + Air-Cut at $Z_0 = +20\text{ mm}$)
+
+Set $Z_0$ at **$+20\text{ mm}$ in the air** (`Zero XYZ`). For each conversational tab below, generate the toolpath, inspect it in the **3D Backplotter** + **G-Code Hints Inspector**, and stream in air:
+
+| # | Conversational Operation | Test Parameters to Exercise | Bit-Saver Verification Check |
+|---|---|---|---|
+| **3.1** | **Straight Plunge & Peck Drilling** | 4-hole grid, `target_depth_z = -6.0 mm`, `peck_depth = 1.5 mm`, `retract_z = 5.0 mm`, `dwell = 0.5 s` | `[  ]` Grbl expands `G83` into linear `G1`/`G0` moves (no `error:20`). Tool fully retracts to `Z5.0` before every $XY$ move between holes. |
+| **3.2** | **Helical Thread Milling** | Internal `M6×1.0` (or external stud), `bottom_to_top` climb, `radial_passes = 2`, `spring_passes = 1` | `[  ]` Enters and exits hole center via `180°` tangential helical arc (`G2`/`G3 I J Z`) so thread mill teeth never clip the thread crest on retract. |
+| **3.3** | **Circular Pocket & Cylindrical Boss** | `25 mm` pocket (helical entry) & `20 mm` cylindrical boss from `25 mm` bar stock (`stepdown = 0.4 mm`) | `[  ]` Pocket ramps in helically (no straight flat-endmill plunge). Boss clears outside-in from `25 mm` stock boundary down to `20 mm` OD + finish pass. |
+| **3.4** | **Rectangular Pocket & Raised Boss** | `40 × 30 mm` pocket with `3 mm` corner fillet, `helical_ramp`, `0.2 mm` wall finish allowance | `[  ]` Concentric clearing loops respect `stepover_percent`, leave `0.2 mm` wall stock during roughing, and run a clean full-depth finish pass. |
+| **3.5** | **Linear Slotting & Surfacing** | `10 mm` wide slot (`6.35 mm` bit, `stepdown = 1.0 mm`) & `60 × 60 mm` zig-zag surfacing (`overtravel = 3 mm`) | `[  ]` Slot cuts centerline then bilateral walls at each stepdown depth. Surfacing turnaround happens outside stock edge by `overtravel`. |
+| **3.6** | **2.5D Profile / Contour Milling (`V2-005`)** | Closed profile with lines + arcs, `side = "left"` (outside), `90°` tangential arc lead-in/out (`R = 2.0 mm`) | `[  ]` Smooth quarter-circle tangent lead-in/out. Non-tangent convex corners use **constant-radius `G2`/`G3` corner-roll arcs** (zero corner gouging or load spikes). |
+| **3.7** | **Rectangular & Circular V-Bit Chamfering (`V2-004`)** | `20.0 mm` OD Circular Chamfer, `W = 0.50 mm`, `90°` V-bit (`6.35 mm`), `tip_offset = 0.40 mm` | `[  ]` Programmed path is `R_path = 9.9000 mm` at `Z_cut = -0.9000 mm`. Dead tip of V-bit stays `0.40 mm` clear of the cylinder wall while cutting on the `45°` flute. |
+| **3.8** | **Single-Line Vector Text Engraving** | Linear + curved arc text (`"VOLTRON"`), `Simplex Sans`, `4×` spline smoothing, `target_depth_z = -0.3 mm` | `[  ]` Tool lifts to `retract_z` (`Z5.0`) between every disconnected letter stroke; sharp corners ($\ge 65^\circ$) remain crisp. |
+| **3.9** | **DXF & SVG Vector CAD Importers** | Upload sample `.dxf` part outline + holes and grayscale `.svg` artwork (`max_cut_depth = -3.0 mm`) | `[  ]` DXF chains closed loops and drills `CIRCLE` entities. SVG maps grayscale luminance % to proportional stepdown depths cleanly. |
+
+---
+
+## 4. Transformations, Array Nesting, Soft Jaws & Job Sequencer
+
+- [ ] **4.1 G-Code Transformations (`Shift`, `Rotate`, `Mirror`, `Feed/Speed Override`, `Split Tools`)**:
+  - Test `Shift` (`+10, +10`), `Rotate` (`45°`), and `Mirror` (`X` axis): confirm `Mirror` automatically swaps `G2` $\leftrightarrow$ `G3` so climb milling doesn't invert.
+  - Test **Feed/Speed Override** (`75%` feed scaling for a cautious first pass in metal).
+  - Test **Multi-Tool Program Splitter** (`/api/transform/split-tools`): confirm a 2-tool program splits into two standalone `.nc` files, each with its own complete header, safe retract, and `M2` footer.
+- [ ] **4.2 Step-and-Repeat Grid Nesting & Vise Soft Jaws (`📦 Nesting & Jaws`)**:
+  - Array a single-part program across a `2 × 2` grid: confirm a full `G0 Z5.0` retract occurs between every part instance.
+  - Generate a **Soft Jaw** clamping cavity with `45°` dogbone corner reliefs: confirm the dogbone overcuts clear the inner corners so rectangular stock seats flush.
+- [ ] **4.3 Multi-Operation Job Sequencer (`📋 Job Builder` — `R2-001`–`V2-006`)**:
+  - Queue a 3-step job (`Op 1: T1 rough`, `Op 2: T2 drill`, `Op 3: T1 finish/chamfer`) with `optimize_tool_order = true`.
+  - [ ] Confirm authored sequence `[Op 1, Op 2, Op 3]` is preserved (never runs finish/chamfer before intermediate ops unless marked `independent: true`).
+  - [ ] Confirm manual router mode emits `(MANUAL ROUTER: Set DeWalt DWP611 dial to ...)` + `M0` pause before plunging, strips inner sub-op `M2`/`M30`/`M6` lines, and **retracts `G0 Z5.0000` BEFORE `M5`** at every tool change and program end.
+
+---
+
+## 5. Soft Proof & 20 mm Brass Trumpet Finger Button Checklist (Wax / Foam $\to$ Brass)
+
+Before cutting C360 brass, run a quick caliper check in **machinable wax, rigid foam, or scrap MDF** to confirm cutter-radius and V-bit chamfer offsets on your specific collet/bit setup:
+
+| Proof Cut | Operation & Tool Setup | Target Caliper Spec | Measured Value | Diagnostic Fix If Off |
 |---|---|---|---|---|
-| **Phase 0** | Static Safety & Electrical Lockout | Motors OFF / Spindle UNPLUGGED | Zero Risk | 10 min |
-| **Phase 1** | Axis Polarities, Motion Scale & Homing | Motors ON / Spindle UNPLUGGED | Very Low | 15 min |
-| **Phase 2** | Probing, Tool Setting & WCS (`G54`) | Motors ON / Spindle UNPLUGGED | Low | 15 min |
-| **Phase 3** | Full Conversational Air Verification | Motors ON / Spindle UNPLUGGED | Low | 20 min |
-| **Phase 4** | Spindle Control & EMI Immunity | Motors ON / Spindle ON (No Cut) | Medium | 10 min |
-| **Phase 5** | Soft Medium First Cuts (Foam/MDF) | Cutting Test Workpiece | Medium | 15 min |
-| **Phase 6** | Production Hard Material Validation | Full Load Machining | Standard | 10 min |
-
----
-
-## 🛡️ Phase 0: Static Safety & Electrical Lockout
-
-> **Safety Rule:** Disconnect physical mains power from the spindle/router. Wear eye protection.
-
-### Steps:
-- [ ] **0.1 Physical E-Stop Trip Test**: Press the Emergency Stop button. Verify all motor power drops instantly and the controller enters alarm mode (`[MSG:Reset to continue]` or alarm code).
-- [ ] **0.2 Controller Communication**: Connect via USB / Web. Send `?` or `$G`. Verify instant bidirectional telemetry and response.
-- [ ] **0.3 Multimeter Continuity on Touch Plate**:
-  - Connect probe clip to collet and touch plate to multimeter (continuity mode).
-  - Tap plate to endmill: Multimeter must beep cleanly without intermittent resistance.
-- [ ] **0.4 Mechanical Clearances**: Hand-jog carriage (steppers disabled) across the full travel envelope ($X_{\max}, Y_{\max}, Z_{\max}$). Verify cable chains, vacuum hoses, and wiring do not bind or snag.
-
----
-
-## 🧭 Phase 1: Axis Polarities, Motion Scale & Homing
-
-### Steps:
-- [ ] **1.1 Axis Motion Directions (Right-Hand Rule)**:
-  - Command `G91 G0 X+10 F500`: Spindle carriage MUST move **Right**.
-  - Command `G91 G0 Y+10 F500`: Gantry MUST move **Back / Away from operator**.
-  - Command `G91 G0 Z+10 F300`: Z-axis MUST move **Up (away from bed)**.
-  - *If any axis moves inverted: Invert direction pins in controller (`$3` in Grbl, `direction_pin` in Smoothieware).*
-- [ ] **1.2 Limit Switch State Verification**:
-  - Manually trigger $X, Y, Z$ limit switches by hand while observing status (`?` in Grbl).
-  - Verify switches report `Pn:XYZ` when depressed and clear when released.
-- [ ] **1.3 Homing Cycle (`$H` / `G28`)**:
-  - Jog tool to center table at safe height.
-  - Run **🎯 Probe & Zero $\rightarrow$ Homing Sequence (`$H`)**.
-  - Verify Z lifts first to hit $Z_{\max}$ switch, retracts, then $X$ and $Y$ seek limits simultaneously.
-  - Verify pull-off distance ($1\text{mm}$–$3\text{mm}$) leaves switches untriggered.
-- [ ] **1.4 Distance Calibration (100mm Test)**:
-  - Mount dial indicator or position precision ruler along X-axis.
-  - Command `G91 G0 X100 F1000`.
-  - Measure actual travel: Must equal $100.00\text{mm} \pm 0.1\text{mm}$.
-  - Repeat for Y-axis and Z-axis ($50.00\text{mm}$ on Z).
-- [ ] **1.5 Manual Jog Controller & Live DRO Verification**:
-  - Open **"🕹️ Jog & DRO"** pendant (or press `J`).
-  - Set step distance to `10.0mm`. Click `+X`, `-X`, `+Y`, `-Y`, `+Z`, `-Z`.
-  - Verify live DRO coordinates update cleanly in real-time.
-  - Test keyboard navigation: Press `ArrowUp`, `ArrowDown`, `PageUp`, `PageDown`, and `Shift` for rapid speed.
-  - Test quick zero buttons (`Zero X`, `Zero Y`, `Zero Z`, `Zero XYZ`) and verify `G10 L20 P1` executes.
-  - Test `Go To Origin`: Verify machine safely lifts Z before moving XY to part origin.
-
----
-
-
-## 🎯 Phase 2: Probing, Tool Setting & Work Coordinate Systems (`G54`)
-
-### Steps:
-- [ ] **2.1 Dry Touch Plate Trigger (Air Test)**:
-  - Attach alligator clip to tool collet. Hold touch plate in hand $10\text{mm}$ below tool bit.
-  - Run **🎯 Probe & Zero $\rightarrow$ Z-Touch Plate Macro**.
-  - While tool is feeding downward at $150\text{mm/min}$, tap plate against tool bit in mid-air.
-  - Verify tool halts instantly, lifts $1.5\text{mm}$, executes slow $25\text{mm/min}$ fine touch, sets `G10 L20 P1 Z<thickness>`, and lifts to safe clearance ($20\text{mm}$).
-- [ ] **2.2 Workpiece Z-Zero Calibration**:
-  - Place touch plate on top of scrap MDF stock.
-  - Run **Z-Touch Plate Macro**.
-  - Upon completion, command `G90 G0 Z0.000` (slowly at $F100$).
-  - Perform paper/feeler gauge test: A sheet of paper ($0.1\text{mm}$) should slide with slight friction between the tool tip and stock surface.
-- [ ] **2.3 Corner XYZ Block Calibration**:
-  - Position touch block on bottom-left corner of stock.
-  - Run **Corner XYZ Macro**.
-  - Verify 3-axis probing sequence (Z top $\rightarrow$ X outside edge with cutter radius compensation $\rightarrow$ Y outside edge).
-  - Command `G90 G0 X0.000 Y0.000 Z5.000`. Verify tool tip centers directly over the physical stock corner.
-- [ ] **2.4 Coordinate Persistence Across Soft Reset**:
-  - Issue soft reset (`Ctrl-X` / `$X`). Re-query coordinate system (`$#` or `$G`).
-  - Verify `G54` non-volatile memory retained calibrated offsets.
-
----
-
-## ⚡ Phase 3: Conversational CNC Motion Verification (Air Cuts, Spindle OFF)
-
-Generate test programs from Conversational CNC UI with workpiece origin set to $Z=0$ ($20\text{mm}$ above bed):
-
-### Test 3.1: Straight Plunge & Deep Peck Drilling
-- **Parameters**: 4-hole grid, $5.0\text{mm}$ retract, $1.0\text{mm}$ clearance, $10.0\text{mm}$ depth, $2.0\text{s}$ bottom dwell.
-- **Verification**:
-  - Visualizer and tool match exact hole coordinates.
-  - Peck cycle lifts to retract plane (full retract) or chip break lift without axis binding.
-  - Spindle dwells at hole bottom for exactly $2.0\text{s}$.
-
-### Test 3.2: Helical Thread Milling & Circular Pocketing
-- **Parameters**: Internal M10 thread and 30mm bearing pocket with helical ramp entry.
-- **Verification**:
-  - Smooth $G2/G3$ helical interpolation with continuous Z descent.
-  - No stuttering, jerky motor steps, or buffer underrun pauses during continuous arc moves.
-  - Tangential 180° semi-circular lead-in and lead-out arcs execute cleanly.
-
-### Test 3.3: Workpiece Surfacing (Facing)
-- **Parameters**: $100\text{mm} \times 100\text{mm}$, Zig-Zag raster, $10.0\text{mm}$ stepover, $10.0\text{mm}$ cutter overtravel.
-- **Verification**:
-  - Toolpath passes over stock boundaries by exactly the overtravel distance without exceeding table limits.
-  - Reversal arc / stepover rapid moves clear stock edges cleanly.
-
-### Test 3.4: Single-Line Vector Text Engraving
-- **Parameters**: Multi-line text `"CNC 2026"` with Catmull-Rom spline smoothing ($4\times$).
-- **Verification**:
-  - Tool lifts rapidly to safe Z between distinct character strokes.
-  - Spline curve moves stream with smooth motion velocity profile.
-
-### Test 3.5: Multi-Operation Job Sequencer & Tool Transition Verification
-- **Parameters**: 3-operation part program built in **📋 Job Builder** (`Op 1: Surfacing Face` with T1 $\to$ `Op 2: Rectangular Pocket` with T2 $\to$ `Op 3: Drill Holes` with T2).
-- **Verification**:
-  - Program starts with a single top-level safety header (`G21 G90 G94 G17 G54`).
-  - Transition from Op 1 (T1) to Op 2 (T2) executes safe Z-retract (`G0 Z5`), stops spindle (`M5`), and prompts tool change (`M6 T2` / `M0`).
-  - Transition from Op 2 (T2) to Op 3 (T2) recognizes identical tool number and immediately proceeds without redundant tool change pauses.
-  - Program completes with single unified footer (`M5`, `G0 Z`, `G0 X0 Y0`, `M2`).
-
-### Test 3.6: 2.5D Arbitrary Profile & Contour Milling Verification
-- **Parameters**: Custom L-Bracket or Rounded Slot contour profile with Left (Climb) cutter compensation, $5\text{mm}$ tangential arc lead-in/lead-out, $0.2\text{mm}$ finish allowance, and spring pass.
-- **Verification**:
-  - Tangential 90° circular arc lead-in engages smoothly without dwell marks or hesitation.
-  - Cutter path follows the offset trajectory on the configured side (Outside/Left vs Inside/Right).
-  - Multi-depth stepdowns plunge at configured plunge feed rate.
-  - Roughing passes respect the $0.2\text{mm}$ wall stock allowance, followed by a dedicated full-depth finish pass and optional spring pass.
-  - Tangential arc lead-out departs cleanly before retracting to safe clearance.
-
-### Test 3.7: Step-and-Repeat Array Nesting & Soft Jaw Fixturing Verification
-- **Parameters**: $2 \times 2$ matrix array of circular pocket part program with $60\text{mm} \times 50\text{mm}$ spacing pitch, and rectangular soft jaw clamping cavity ($60 \times 40\text{mm}$, depth $3\text{mm}$) with 45° dogbone corner relief overcuts.
-- **Verification**:
-  - Array toolpaths execute 4 distinct part instances with serpentine zig-zag rapid traversal without redundant tool changes.
-  - Each part instance is preceded by safe Z-retract to avoid clamp collisions during high-speed transit.
-  - Soft jaw pocket machines clean cavity across the vise centerline with 45° corner dogbone relief passes clearing corner radius interference for sharp parts.
-
-### Test 3.8: DXF 2D Vector CAD Importer & Direct Toolpath Verification
-- **Parameters**: Upload standard 2D DXF bracket geometry with perimeter outline (`LWPOLYLINE` or chained `LINE`/`ARC`) and 2 interior bolt holes (`CIRCLE`).
-- **Verification**:
-  - DXF parsing correctly extracts layer topology, chain contours, hole centers, and bounding envelope.
-  - Perimeter toolpath generates valid cutter-compensated contouring paths (Left/Climb) with smooth tangential arc lead-in and lead-out.
-  - Drilling operation converts circle entities into accurate $(X, Y)$ plunge or peck drilling coordinate points.
-
-### Test 3.9: SVG Vector CAD Importer & Grayscale Depth Verification
-- **Parameters**: Upload standard 2D SVG vector badge with multi-layer grayscale shading: 100% black perimeter ($Z = -6.0\text{mm}$), 50% gray pocket cavity ($Z = -3.0\text{mm}$), 25% gray detail ($Z = -1.5\text{mm}$), and mounting holes.
-- **Verification**:
-  - SVG XML parsing correctly tokenizes vector geometry and converts Bezier spline curves into smooth line segments.
-  - BT.601 luminance evaluates fill/stroke colors into exact percentage depths.
-  - Multi-pass G-code cuts each element to its respective proportional target depth with safe retracts between shapes.
-
----
-
-
-
-
-
-
-## 🌪️ Phase 4: Spindle Integration & EMI Noise Baseline
-
-> **Objective**: Verify that high-frequency electromagnetic interference (EMI) from the router/spindle motor brushes or VFD inverter does not corrupt USB serial communication or trigger false limit switch interrupts.
-
-### Steps:
-- [ ] **4.1 Spindle Start/Stop Verification**:
-  - Reconnect spindle power.
-  - Issue `M3 S16000` (or turn on router dial). Verify spindle spins clockwise smoothly.
-  - Issue `M5`. Verify spindle comes to a full stop.
-- [ ] **4.2 EMI Loaded Dry Run**:
-  - Mount cutter bit. Keep $Z$ origin elevated $30\text{mm}$ in the air above stock.
-  - Turn on spindle and dust collection vacuum.
-  - Run a 10-minute surfacing or pocketing toolpath.
-  - **Pass Criteria**: Zero USB disconnects, zero false limit switch interrupts (`Hard limit triggered`), zero lost steps.
-
----
-
-## 🪵 Phase 5: Soft Medium First Cuts (Dimensional & Side-of-Line Accuracy Certification)
-
-Mount a piece of high-density foam, machinable wax, or scrap MDF.
-
-```
-+-------------------------------------------------------------------------+
-|                  "PLUG & BORE" SIDE-OF-LINE GAUGE TEST                  |
-|                                                                         |
-|     (A) 40.0mm Outer Boss           (B) 40.0mm Inner Pocket             |
-|         [Outside Offset]                [Inside Offset]                 |
-|      Toolpath: D_nom + Tool_D        Toolpath: D_nom - Tool_D           |
-|          +-------------+                 +-------------+                |
-|          |    ( @ )    |                 |   (     )   |                |
-|          | 40.0mm Plug |                 | 40.0mm Bore |                |
-|          +-------------+                 +-------------+                |
-|                                                                         |
-|     (C) 50.0mm Square Check         (D) 12.0mm Wide Linear Slot         |
-|         +---------------+                +---------------+              |
-|         | 50.0mm Square |                | |===========| | (12.00mm)    |
-|         +---------------+                +---------------+              |
-+-------------------------------------------------------------------------+
-```
-
-### Critical Side-of-Line / Kerf Offset Math & Failure Modes:
-| Operation Type | Correct Tool Offset Mode | Correct Cutter Path | If Wrong Side / Centerline Error |
-|---|---|---|---|
-| **Pocket / Bore (Inside)** | **Inward by $R_{\text{tool}}$** ($D/2$) | Tool stays inside cavity boundary | Cavity will be oversized by $2R$ ($+6.35\text{mm}$) or $+R$ ($+3.175\text{mm}$) |
-| **Boss / Island (Outside)** | **Outward by $R_{\text{tool}}$** ($D/2$) | Tool stays outside feature boundary | Boss will be undersized by $2R$ ($-6.35\text{mm}$) or $-R$ ($-3.175\text{mm}$) |
-| **Linear Wide Slot** | **Bilateral Symmetrical Offset** | Tool cuts center then cleans walls | Slot width will deviate from nominal $W_{\text{slot}}$ |
-| **2D Chamfering** | **Conical Tip Offset $+ Z_{\text{depth}}$** | Chamfer edge lines up at surface | Chamfer bit will gouge wall or cut in air |
-| **Text Engraving** | **Zero Offset (Centerline)** | Tool cuts exactly along font stroke | N/A (True single-stroke centerline) |
-
----
-
-### Steps & Measurements:
-
-- [ ] **5.1 The "Plug & Bore" Mating Test (Side-of-Line Accuracy)**:
-  - Tool: $6.35\text{mm}$ (1/4") Endmill.
-  - Cut Feature A: $40.00\text{mm}$ Circular Boss (Outside clearing mode).
-  - Cut Feature B: $40.00\text{mm}$ Circular Pocket (Inside pocket mode).
-  - **Caliper Check**:
-    - Outside Boss OD: Must measure $40.00\text{mm} \pm 0.05\text{mm}$. *(If $33.65\text{mm}$, tool cut on wrong side; if $46.35\text{mm}$, offset direction inverted).*
-    - Inside Pocket ID: Must measure $40.00\text{mm} \pm 0.05\text{mm}$. *(If $46.35\text{mm}$, tool cut on wrong side).*
-  - **Mating Fit**: Insert Plug A into Bore B. The plug must slide with a smooth sliding fit ($\le 0.08\text{mm}$ clearance).
-- [ ] **5.2 50mm Square Boss (Gantry Orthogonality & Climb Milling Check)**:
-  - Cut $50.0\text{mm} \times 50.0\text{mm}$ outer square in **Climb Milling** mode (Clockwise travel).
-  - Side $X$: Must equal $50.00\text{mm} \pm 0.05\text{mm}$.
-  - Side $Y$: Must equal $50.00\text{mm} \pm 0.05\text{mm}$.
-  - Diagonals $D_1, D_2$: Must equal $70.71\text{mm}$ with $|D_1 - D_2| \le 0.05\text{mm}$ (Confirms gantry is perfectly perpendicular / 90° square).
-  - Verify wall finish: Climb milling produces smooth walls without tool chattering.
-- [ ] **5.3 Linear Slotting (Centerline vs Wide Wall Finish Pass)**:
-  - Cut Slot 1: Single-pass centerline slot at tool diameter ($6.35\text{mm}$).
-  - Cut Slot 2: Wide slot specified at $12.00\text{mm}$ width with $0.5\text{mm}$ finish passes.
-  - Measure Slot 1 width: Must equal $6.35\text{mm} \pm 0.05\text{mm}$ (Bit runout check).
-  - Measure Slot 2 width: Must equal $12.00\text{mm} \pm 0.05\text{mm}$ (Bilateral offset check).
-- [ ] **5.4 2-Hole Center-to-Center Pitch**:
-  - Drill 2 holes spaced 80.0mm apart along X.
-  - Measure center distance: Must equal $80.00\text{mm} \pm 0.05\text{mm}$.
-- [ ] **5.5 Surface Flatness (Spindle Tram Check)**:
-  - Surface a $60\text{mm} \times 60\text{mm}$ patch with $12\text{mm}$ stepover.
-  - Run fingernail across raster ridges: Surface must feel smooth with no ridging steps ($< 0.02\text{mm}$ scallop indicating zero spindle tilt/nod).
-
-
----
-
-## 🔄 Test Reversion & Regression Protocol
-
-When a test fails and a software patch, post-processor fix, or firmware update is applied, follow this **Impact-Radius Reversion Matrix** to determine which test tiers must be invalidated and re-executed.
-
-```mermaid
-flowchart TD
-    Bug[Bug Detected & Software Patch Applied] --> Impact{Determine Patch Impact Level}
-    
-    Impact -->|Level 1: UI / Visualizer Only| L1[Tier 1: Browser Refresh & Pytest]
-    Impact -->|Level 2: Generator Math / Operations| L2[Tier 2: Phase 3 Air Cut + Phase 5 Soft Cut]
-    Impact -->|Level 3: Probing / Coordinates / WCS| L3[Tier 3: Phase 2 Probing + Phase 5 Alignment]
-    Impact -->|Level 4: Post-Processor / Safety Header| L4[Tier 4: Phase 1 Motion + Phase 3 Air Cut]
-    Impact -->|Level 5: Hardware / Stepper / Wiring| L5[Tier 5: Full Re-Commissioning Phase 0 -> 6]
-
-    L1 --> ReCert[Issue Re-Certification Sign-off]
-    L2 --> ReCert
-    L3 --> ReCert
-    L4 --> ReCert
-    L5 --> ReCert
-```
-
-### Impact-Radius Reversion Matrix
-
-| Patch Category | Code Components Affected | Invalidation Scope | Mandatory Re-Execution Steps |
-|---|---|---|---|
-| **Level 1: UI / Display Only** | `visualizer.js`, `gcode_inspector.js`, CSS, templates | Zero machine risk | 1. Run automated test suite (`pytest`)<br>2. Hard-refresh browser (`Ctrl-F5`). |
-| **Level 2: Specific Operation Math** | `app/generators/<op>.py` (e.g. `thread_milling.py`, `engraving.py`) | Affected operation only | 1. Run `pytest`<br>2. Run **Phase 3 Air Cut** for that specific operation<br>3. Run **Phase 5 Soft Cut** for that specific operation. |
-| **Level 3: Probing & Coordinate Systems** | `probing.py`, `probing.js`, `G10 L20`, `G38.2` | Work coordinate offsets & Z-zero | 1. Run `pytest`<br>2. Re-run **Phase 2 (All probing steps 2.1–2.4)**<br>3. Re-verify touch plate thickness & gauge clearance. |
-| **Level 4: Post-Processor & Safety Headers** | `postprocessors/grbl.py`, `registry.py`, headers/footers | All machine operations | 1. Run `pytest`<br>2. Re-run **Phase 3 (Air verification 3.1–3.4)** across drilling, milling, surfacing. |
-| **Level 5: Physical Hardware / Microstepping / Firmware** | Stepper drivers, belts, lead screws, `config.txt`, Grbl `$$` | Full machine calibration | 1. **Complete Re-Commissioning**: Execute **Phase 0 through Phase 6** in sequence. |
-
----
-
-## 📝 Commissioning Sign-Off Record
-
-```
-Machine Name: ___________________________________
-Controller Model: [  ] Grbl v1.1   [  ] Smoothieboard v1   [  ] Other: ___________
-Operator / Lead: ________________________________
-Date Commissioned: ______________________________
-
-Phase 0: Safety & Lockout Checked:       [  ] PASS  Initials: _____
-Phase 1: Motion Scale & Homing:          [  ] PASS  Initials: _____
-Phase 2: Probing & WCS Calibration:      [  ] PASS  Initials: _____
-Phase 3: Conversational Air Cuts:        [  ] PASS  Initials: _____
-Phase 4: Spindle & EMI Noise Immunity:   [  ] PASS  Initials: _____
-Phase 5: Dimensional Cut Certification:  [  ] PASS  Initials: _____
-Phase 6: Production Material Validated:  [  ] PASS  Initials: _____
-
-Final Controller/Machine Certification:  [  ] 100% FLIGHT READY
-```
+| **5.1 Inside / Outside Offset Check** | `40.00 mm` Boss (Outside) & `40.00 mm` Pocket (Inside) with `6.35 mm` endmill | **$40.00 \pm 0.05\text{ mm}$** (sliding fit) | Boss: `________ mm`<br>Bore: `________ mm` | Off by `±6.35 mm`: wrong `side` selected.<br>Off by `±0.15 mm`: adjust `finish_allowance` or bit diameter in Tool Library. |
+| **5.2a Trumpet Button Outer OD** | **Op 2**: `20.00 mm` OD Boss/Contour with `3.175 mm` (1/8") flat endmill (`90°` arc lead-in/out) | **$20.00 \pm 0.05\text{ mm}$** | OD: `________ mm` | Witness mark on wall: increase `lead_in_radius` (`2.0 mm`) or add `spring_pass = true`. |
+| **5.2b Trumpet Button Top Chamfer** | **Op 3**: Swap to `90°` V-bit (`6.35 mm`), **re-probe $Z_0$ on top face**, run `0.50 mm` Circular Chamfer (`tip_offset = 0.40 mm`, `R_path = 9.90 mm`, `Z_cut = -0.90 mm`) | Top Land: **$19.00 \pm 0.05\text{ mm}$**<br>Bevel: **$0.50\text{ mm} \times 45^\circ$** | Top: `________ mm`<br>Bevel: `________ mm` | Top land $< 18.90\text{ mm}$: V-bit $Z_0$ was probed too low (or not re-zeroed after Tool 1). Step ridge on wall: check `vbit_angle_deg = 90`. |
+| **5.3 C360 Brass Cut** | DeWalt Dial `1–2` (`16k–18k RPM`), `0.25–0.35 mm` stepdown, `0.10 mm` finish pass + spring pass | **$20.00\text{ mm}$ OD / $19.00\text{ mm}$ Top** | OD: `________ mm`<br>Top: `________ mm` | Chatter on brass chamfer: lower feed to `250–350 mm/min` and run a zero-offset spring pass. |
