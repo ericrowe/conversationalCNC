@@ -6,9 +6,12 @@ This document serves as the asynchronous repository for raw thoughts, feature re
 
 ## 💡 Architecture & Host Optimization Ideas
 
-- [ ] **FluidNC / GRBL Serial Bridge Daemon**: Lightweight serial streaming edge agent that decouples real-time USB/UART machine communication from the web UI and heavy computational planners.
-- [ ] **Local AI Intent Parser (Workstation Bridge Integration)**: Route conversational machine commands through Workstation `agy_bridge` or Node 02 for natural-language G-code parameter extraction.
-- [ ] **Touchscreen Kiosk Mode for Workshop**: Fullscreen web interface optimized for 7" to 10" touchscreen displays with large jog and zeroing buttons.
+- [x] **Direct Universal Gcode Sender (UGS) Integration — Auto-Load & Optional Auto-Send (`Plan 12`)**:
+  - **Context**: Currently, running generated G-code requires downloading the `.nc` file from the Conversational CNC web UI and manually opening it in Universal Gcode Sender (UGS). Rather than reinventing a custom serial sender, leverage UGS's existing battle-tested streaming engine.
+  - **Proposed Solution**: Integrate `Conversational-CNC-Controller` directly with UGS (via the UGS Web Pendant REST API `/api/v1/files/uploadAndOpen` & `/api/v1/files/send` and/or local UGS launch bridge) so the web UI can push generated G-code directly to UGS with 1 click to **auto-load** the program and optionally **auto-send** (run) it.
+  - **Status**: Triaged -> Promoted to `Plan 12` (P0 in Active Execution Queue).
+- [ ] **Local AI Intent Parser (Workstation Bridge Integration)**: Route conversational machine commands through Workstation `agy_bridge` or Node 02 for natural-language G-code parameter extraction. *(Status: **ON HOLD** — Deferred due to fragility risk in CNC parameter mapping; revisit only after deterministic priorities are complete).*
+- [x] **Touchscreen Kiosk Mode for Workshop**: Completed & Archived in [`Plan 01`](complete/2026-09-07-01_barn_standalone_pi_deployment_plan.md).
 
 ---
 
@@ -57,8 +60,8 @@ This document serves as the asynchronous repository for raw thoughts, feature re
 - **Priority**: Medium (Tool Management)
 - **Status**: ON HOLD (Deferred per user triage review; [Plan 06](06_tool_life_and_wear_tracking_ledger_plan.md) placed in On-Hold Queue)
 
-- [ ] **Adaptive Trochoidal Clearing**: Add trochoidal milling generator for deep slotting and pocketing in tough materials with high feeds and low radial engagement.
-- [ ] **3D Surface Rastering (STL to Toolpath)**: Lightweight parallel finishing toolpath generation for 3D contoured reliefs.
+- [x] **Adaptive Trochoidal Clearing (`Plan 13`)**: Add deterministic trochoidal ("peel") milling generator (`G2`/`G3` overlapping circular loops with controlled radial stepover) for slotting and pocketing in brass, aluminum, and hardwood without 100%-width full-slot chatter or bit breakage. *(Status: Triaged -> Promoted to `Plan 13`).*
+- [ ] **3D Surface Rastering (STL to Toolpath)**: Lightweight parallel finishing toolpath generation for 3D contoured reliefs. *(Status: **ON HOLD** — Pi 4 is not the target hardware for general-purpose 3D STL triangle-mesh drop-cutter slicing; prefer dedicated 3D CAM or parametric geometric routines).*
 
 ---
 
