@@ -24,7 +24,7 @@ from .drilling import (
 )
 from .circular_pocket import generate_circular_pocket, generate_circular_boss
 from .rectangular_pocket import generate_rectangular_pocket, generate_rectangular_boss
-from .slotting import generate_linear_slot
+from .slotting import generate_linear_slot, generate_arc_slot
 from .chamfering import generate_rectangular_chamfer, generate_circular_chamfer
 from .surfacing import generate_surfacing
 from .thread_milling import generate_helical_thread_milling
@@ -45,6 +45,7 @@ GENERATOR_MAP = {
     "rectangular_pocket": generate_rectangular_pocket,
     "rectangular_boss": generate_rectangular_boss,
     "linear_slot": generate_linear_slot,
+    "arc_slot": generate_arc_slot,
     "slotting": generate_linear_slot,
     "rectangular_chamfer": generate_rectangular_chamfer,
     "chamfering": generate_rectangular_chamfer,

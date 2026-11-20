@@ -14,6 +14,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const bossStockInputs = document.getElementById("bossStockInputs");
   const finishAllowGroup = document.getElementById("finishAllowGroup");
   const entryStrategyGroup = document.getElementById("entryStrategyGroup");
+  const trochoidalEntryGroup = document.getElementById("trochoidalEntryGroup");
 
   const originModeSelect = document.getElementById("originMode");
   const originXInput = document.getElementById("originX");
@@ -33,6 +34,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   const finishAllowanceInput = document.getElementById("finishAllowance");
   const entryStrategySelect = document.getElementById("entryStrategy");
   const rampAngleInput = document.getElementById("rampAngle");
+  const trochoidalEntryCheckbox = document.getElementById("trochoidalEntry");
+  const trochoidalStepoverInput = document.getElementById("trochoidalStepoverPct");
 
   const toolSelect = document.getElementById("toolSelect");
   const presetSelect = document.getElementById("presetSelect");
@@ -154,12 +157,14 @@ document.addEventListener("DOMContentLoaded", async () => {
         bossStockInputs.style.display = "block";
         finishAllowGroup.style.display = "none";
         entryStrategyGroup.style.display = "none";
+        if (trochoidalEntryGroup) trochoidalEntryGroup.style.display = "none";
         generateBtn.textContent = "⚡ Generate Raised Boss G-Code";
       } else {
         geomCardTitle.textContent = "2. Pocket Geometry & Dimensions";
         bossStockInputs.style.display = "none";
         finishAllowGroup.style.display = "block";
         entryStrategyGroup.style.display = "flex";
+        if (trochoidalEntryGroup) trochoidalEntryGroup.style.display = "flex";
         generateBtn.textContent = "⚡ Generate Rectangular G-Code";
       }
       updatePreview();
@@ -289,6 +294,8 @@ document.addEventListener("DOMContentLoaded", async () => {
           finish_pass_allowance: parseFloat(finishAllowanceInput.value),
           entry_strategy: entryStrategySelect.value,
           ramp_angle_deg: parseFloat(rampAngleInput.value),
+          trochoidal_entry: trochoidalEntryCheckbox ? trochoidalEntryCheckbox.checked : false,
+          trochoidal_stepover_pct: trochoidalStepoverInput ? parseFloat(trochoidalStepoverInput.value) || 15.0 : 15.0,
           feed_rate_xy: parseFloat(feedRateXyInput.value),
           plunge_feed: parseFloat(plungeFeedInput.value),
           spindle_speed: parseInt(spindleRpmInput.value, 10),
@@ -414,6 +421,8 @@ document.addEventListener("DOMContentLoaded", async () => {
             finish_pass_allowance: parseFloat(finishAllowanceInput.value) || 0.2,
             entry_strategy: entryStrategySelect.value || "helical",
             ramp_angle_deg: parseFloat(rampAngleInput.value) || 3.0,
+            trochoidal_entry: trochoidalEntryCheckbox ? trochoidalEntryCheckbox.checked : false,
+            trochoidal_stepover_pct: trochoidalStepoverInput ? parseFloat(trochoidalStepoverInput.value) || 15.0 : 15.0,
             feed_rate_xy: parseFloat(feedRateXyInput.value) || 800,
             plunge_feed: parseFloat(plungeFeedInput.value) || 300,
             spindle_speed: parseInt(spindleRpmInput.value, 10) || 16000,

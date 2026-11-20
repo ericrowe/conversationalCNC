@@ -68,6 +68,12 @@ class RectangularPocketPayloadSchema(BaseModel):
     spindle_type: Optional[str] = Field(default=None, description="'router' or 'vfd_spindle'")
     router_model: Optional[str] = Field(default=None, description="'dewalt_611', etc.")
     router_dial: Optional[int] = Field(default=None, ge=1, le=6, description="Router speed dial 1-6")
+    trochoidal_entry: bool = Field(
+        default=False, description="Open central pocket spine with trochoidal clearing loops"
+    )
+    trochoidal_stepover_pct: float = Field(
+        default=15.0, ge=5.0, le=40.0, description="Trochoidal forward stepover (% of tool diameter)"
+    )
 
 
 class RectangularBossPayloadSchema(BaseModel):

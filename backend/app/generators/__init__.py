@@ -11,7 +11,7 @@ from .rectangular_pocket import generate_rectangular_pocket, generate_rectangula
 from .surfacing import generate_surfacing
 from .engraving import generate_text_engraving
 from .engraving_font import get_available_fonts, FONTS
-from .slotting import generate_linear_slot
+from .slotting import generate_linear_slot, generate_arc_slot
 from .chamfering import (
     generate_rectangular_chamfer,
     generate_circular_chamfer,
@@ -38,6 +38,7 @@ __all__ = [
     "generate_surfacing",
     "generate_text_engraving",
     "generate_linear_slot",
+    "generate_arc_slot",
     "generate_rectangular_chamfer",
     "generate_circular_chamfer",
     "calculate_chamfer_depth_and_offset",

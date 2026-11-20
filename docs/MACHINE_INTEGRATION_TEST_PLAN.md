@@ -64,6 +64,7 @@ Set $Z_0$ at **$+20\text{ mm}$ in the air** (`Zero XYZ`). For each conversationa
 | **3.7** | **Rectangular & Circular V-Bit Chamfering (`V2-004`)** | `20.0 mm` OD Circular Chamfer, `W = 0.50 mm`, `90°` V-bit (`6.35 mm`), `tip_offset = 0.40 mm` | `[  ]` Programmed path is `R_path = 9.9000 mm` at `Z_cut = -0.9000 mm`. Dead tip of V-bit stays `0.40 mm` clear of the cylinder wall while cutting on the `45°` flute. |
 | **3.8** | **Single-Line Vector Text Engraving** | Linear + curved arc text (`"VOLTRON"`), `Simplex Sans`, `4×` spline smoothing, `target_depth_z = -0.3 mm` | `[  ]` Tool lifts to `retract_z` (`Z5.0`) between every disconnected letter stroke; sharp corners ($\ge 65^\circ$) remain crisp. |
 | **3.9** | **DXF & SVG Vector CAD Importers** | Upload sample `.dxf` part outline + holes and grayscale `.svg` artwork (`max_cut_depth = -3.0 mm`) | `[  ]` DXF chains closed loops and drills `CIRCLE` entities. SVG maps grayscale luminance % to proportional stepdown depths cleanly. |
+| **3.10** | **Trochoidal Slotting & Pocket Core Entry (Brass / Aluminum)** | `6.0 mm` wide linear/arc slot or `40 × 25 mm` pocket with `3.175 mm` (1/8") endmill, `cutting_strategy = "trochoidal"` / `trochoidal_entry = true`, `trochoidal_stepover_pct = 15%` | `[  ]` Helical/linear Z-ramp entry (no 100% full-width vertical plunge), overlapping `G3` climb-milling loops, inward centerline retracts, and continuous CCW perimeter cleanup pass with zero wall overcut. |
 
 ---
 

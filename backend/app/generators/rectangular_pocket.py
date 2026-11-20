@@ -13,6 +13,7 @@ from typing import List, Tuple, Optional
 from ..postprocessors.base import BasePostProcessor
 from ..postprocessors.grbl import GrblPostProcessor
 from .base import BoundingBox, GCodeProgram, WorkEnvelope
+from .slotting import emit_linear_trochoidal_pass
 
 ROUTER_DIAL_MAPS = {
     "dewalt_611": {1: 16000, 2: 18200, 3: 20400, 4: 22600, 5: 24800, 6: 27000},
@@ -97,6 +98,8 @@ def generate_rectangular_pocket(
     park_x: Optional[float] = 0.0,
     park_y: Optional[float] = 0.0,
     park_z: Optional[float] = None,
+    trochoidal_entry: bool = False,
+    trochoidal_stepover_pct: float = 15.0,
 ) -> GCodeProgram:
     """
     Pure Python generator for Rectangular Pocket Machining.
@@ -113,6 +116,11 @@ def generate_rectangular_pocket(
 
     if stepdown_z <= 0:
         raise ValueError("Stepdown Z must be greater than zero.")
+
+    if trochoidal_entry and not (5.0 <= trochoidal_stepover_pct <= 40.0):
+        raise ValueError(
+            f"trochoidal_stepover_pct ({trochoidal_stepover_pct}%) must be between 5.0% and 40.0%."
+        )
 
     if postprocessor is None:
         postprocessor = GrblPostProcessor()
@@ -222,34 +230,82 @@ def generate_rectangular_pocket(
         target_pass_z = round(start_z - (p_idx * z_step), 4)
         lines.append(f"\n( --- Pass {p_idx}/{num_passes} at Z = {target_pass_z:.3f} mm --- )")
 
-        # 1. Entry Move
-        lines.append(f"G0 X{center_x:.3f} Y{center_y:.3f}")
-        lines.append(f"G0 Z{(current_z + 1.0):.3f}")
+        # 1. Entry Move (Trochoidal core spine or helical_ramp / plunge)
+        used_trochoidal = False
+        if trochoidal_entry:
+            rough_x_span = max(0.0, rough_max_x - rough_min_x)
+            rough_y_span = max(0.0, rough_max_y - rough_min_y)
+            if length_x >= width_y:
+                troch_slot_w = min(tool_diameter * 1.5, tool_diameter + rough_y_span)
+                r_loop = (troch_slot_w - tool_diameter) / 2.0
+                sx, ex = rough_min_x + r_loop, rough_max_x - r_loop
+                if troch_slot_w >= tool_diameter * 1.05 and (ex - sx) >= 0.5:
+                    emit_linear_trochoidal_pass(
+                        lines=lines,
+                        start_x=sx,
+                        start_y=center_y,
+                        end_x=ex,
+                        end_y=center_y,
+                        slot_width=troch_slot_w,
+                        tool_diameter=tool_diameter,
+                        trochoidal_stepover_pct=trochoidal_stepover_pct,
+                        cur_z=current_z,
+                        target_pass_z=target_pass_z,
+                        feed_rate_xy=feed_rate_xy,
+                        plunge_feed=plunge_feed,
+                        include_entry=True,
+                    )
+                    used_trochoidal = True
+            else:
+                troch_slot_w = min(tool_diameter * 1.5, tool_diameter + rough_x_span)
+                r_loop = (troch_slot_w - tool_diameter) / 2.0
+                sy, ey = rough_min_y + r_loop, rough_max_y - r_loop
+                if troch_slot_w >= tool_diameter * 1.05 and (ey - sy) >= 0.5:
+                    emit_linear_trochoidal_pass(
+                        lines=lines,
+                        start_x=center_x,
+                        start_y=sy,
+                        end_x=center_x,
+                        end_y=ey,
+                        slot_width=troch_slot_w,
+                        tool_diameter=tool_diameter,
+                        trochoidal_stepover_pct=trochoidal_stepover_pct,
+                        cur_z=current_z,
+                        target_pass_z=target_pass_z,
+                        feed_rate_xy=feed_rate_xy,
+                        plunge_feed=plunge_feed,
+                        include_entry=True,
+                    )
+                    used_trochoidal = True
 
-        if entry_strategy == "helical_ramp" and (rough_max_x - rough_min_x > tool_radius):
-            # Helical ramp entry at center
-            ramp_radius = min(2.5, (rough_max_x - rough_min_x) / 4.0)
-            ramp_pitch = math.tan(math.radians(ramp_angle_deg)) * (2 * math.pi * ramp_radius)
-            ramp_depth_needed = abs((current_z + 1.0) - target_pass_z)
-            ramp_turns = max(1, math.ceil(ramp_depth_needed / max(0.5, ramp_pitch)))
-            ramp_z_step = ramp_depth_needed / (ramp_turns * 2)
+        if not used_trochoidal:
+            lines.append(f"G0 X{center_x:.3f} Y{center_y:.3f}")
+            lines.append(f"G0 Z{(current_z + 1.0):.3f}")
 
-            lines.append(f"G1 X{(center_x + ramp_radius):.3f} Y{center_y:.3f} F{feed_rate_xy:.1f}")
-            ramp_z = current_z + 1.0
-            for _ in range(ramp_turns):
-                ramp_z -= ramp_z_step
-                lines.append(f"G2 X{(center_x - ramp_radius):.3f} Y{center_y:.3f} I{-ramp_radius:.3f} J0.000 Z{ramp_z:.3f} F{feed_rate_xy:.1f}")
-                ramp_z -= ramp_z_step
-                lines.append(f"G2 X{(center_x + ramp_radius):.3f} Y{center_y:.3f} I{ramp_radius:.3f} J0.000 Z{ramp_z:.3f}")
+            if entry_strategy == "helical_ramp" and (rough_max_x - rough_min_x > tool_radius):
+                # Helical ramp entry at center
+                ramp_radius = min(2.5, (rough_max_x - rough_min_x) / 4.0)
+                ramp_pitch = math.tan(math.radians(ramp_angle_deg)) * (2 * math.pi * ramp_radius)
+                ramp_depth_needed = abs((current_z + 1.0) - target_pass_z)
+                ramp_turns = max(1, math.ceil(ramp_depth_needed / max(0.5, ramp_pitch)))
+                ramp_z_step = ramp_depth_needed / (ramp_turns * 2)
 
-            # Level out at target Z
-            lines.append(f"G2 X{(center_x - ramp_radius):.3f} Y{center_y:.3f} I{-ramp_radius:.3f} J0.000 Z{target_pass_z:.3f}")
-            lines.append(f"G2 X{(center_x + ramp_radius):.3f} Y{center_y:.3f} I{ramp_radius:.3f} J0.000 Z{target_pass_z:.3f}")
-            lines.append(f"G1 X{center_x:.3f} Y{center_y:.3f} F{feed_rate_xy:.1f}")
-        else:
-            # Straight plunge entry
-            lines.append(f"G1 Z{target_pass_z:.3f} F{plunge_feed:.1f}")
-            estimated_time += abs(current_z - target_pass_z) / (plunge_feed / 60.0)
+                lines.append(f"G1 X{(center_x + ramp_radius):.3f} Y{center_y:.3f} F{feed_rate_xy:.1f}")
+                ramp_z = current_z + 1.0
+                for _ in range(ramp_turns):
+                    ramp_z -= ramp_z_step
+                    lines.append(f"G2 X{(center_x - ramp_radius):.3f} Y{center_y:.3f} I{-ramp_radius:.3f} J0.000 Z{ramp_z:.3f} F{feed_rate_xy:.1f}")
+                    ramp_z -= ramp_z_step
+                    lines.append(f"G2 X{(center_x + ramp_radius):.3f} Y{center_y:.3f} I{ramp_radius:.3f} J0.000 Z{ramp_z:.3f}")
+
+                # Level out at target Z
+                lines.append(f"G2 X{(center_x - ramp_radius):.3f} Y{center_y:.3f} I{-ramp_radius:.3f} J0.000 Z{target_pass_z:.3f}")
+                lines.append(f"G2 X{(center_x + ramp_radius):.3f} Y{center_y:.3f} I{ramp_radius:.3f} J0.000 Z{target_pass_z:.3f}")
+                lines.append(f"G1 X{center_x:.3f} Y{center_y:.3f} F{feed_rate_xy:.1f}")
+            else:
+                # Straight plunge entry
+                lines.append(f"G1 Z{target_pass_z:.3f} F{plunge_feed:.1f}")
+                estimated_time += abs(current_z - target_pass_z) / (plunge_feed / 60.0)
 
         # 2. Concentric Roughing Rings Expanding Outward
         for r_idx in range(1, num_rings + 1):

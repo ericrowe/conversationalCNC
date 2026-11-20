@@ -452,3 +452,167 @@ def verify_contour_no_stock_gouge(
         "required_clearance": round(required_clearance, 5),
         "max_gouge_depth": round(max_gouge, 5),
     }
+
+
+def _sample_cutting_xy_points(gcode_text: str, samples_per_segment: int = 24) -> List[Tuple[float, float]]:
+    """Independently samples XY positions along all G1/G2/G3 moves that cut below Z=0."""
+    pts: List[Tuple[float, float]] = []
+    tx, ty, tz = 0.0, 0.0, 5.0
+    motion = "G0"
+    for raw_line in gcode_text.splitlines():
+        code_part = strip_gcode_comments(raw_line)
+        if not code_part:
+            continue
+        words = {k.upper(): float(v) for k, v in WORD_RE.findall(code_part)}
+        for k, v in WORD_RE.findall(code_part):
+            if k.upper() == "G" and int(round(float(v))) in (0, 1, 2, 3):
+                motion = f"G{int(round(float(v)))}"
+        nx = words.get("X", tx)
+        ny = words.get("Y", ty)
+        nz = words.get("Z", tz)
+
+        if motion in ("G1", "G2", "G3") and min(tz, nz) < -1e-4 and ("X" in words or "Y" in words):
+            if motion == "G1":
+                for k in range(samples_per_segment + 1):
+                    t = k / float(samples_per_segment)
+                    pts.append((tx + t * (nx - tx), ty + t * (ny - ty)))
+            else:
+                cw = motion == "G2"
+                acx = tx + words.get("I", 0.0)
+                acy = ty + words.get("J", 0.0)
+                r = math.hypot(tx - acx, ty - acy)
+                a0 = math.atan2(ty - acy, tx - acx)
+                a1 = math.atan2(ny - acy, nx - acx)
+                sweep = (a0 - a1) % (2.0 * math.pi) if cw else (a1 - a0) % (2.0 * math.pi)
+                if sweep < 1e-6:
+                    sweep = 2.0 * math.pi
+                for k in range(samples_per_segment + 1):
+                    t = k / float(samples_per_segment)
+                    ang = a0 - t * sweep if cw else a0 + t * sweep
+                    pts.append((acx + r * math.cos(ang), acy + r * math.sin(ang)))
+
+        tx, ty, tz = nx, ny, nz
+    return pts
+
+
+def _point_to_segment_distance(px: float, py: float, ax: float, ay: float, bx: float, by: float) -> float:
+    dx, dy = bx - ax, by - ay
+    seg_len_sq = dx * dx + dy * dy
+    if seg_len_sq <= 1e-12:
+        return math.hypot(px - ax, py - ay)
+    t = max(0.0, min(1.0, ((px - ax) * dx + (py - ay) * dy) / seg_len_sq))
+    return math.hypot(px - (ax + t * dx), py - (ay + t * dy))
+
+
+def _angle_in_arc_span(angle_rad: float, start_rad: float, sweep_rad: float) -> bool:
+    """Checks whether angle_rad lies in [start_rad, start_rad + sweep_rad] (signed sweep)."""
+    if sweep_rad >= 0:
+        rel = (angle_rad - start_rad) % (2.0 * math.pi)
+        return rel <= sweep_rad + 1e-9
+    rel = (start_rad - angle_rad) % (2.0 * math.pi)
+    return rel <= abs(sweep_rad) + 1e-9
+
+
+def verify_swept_slot_containment(
+    gcode_text: str,
+    slot_width: float,
+    tool_diameter: float,
+    *,
+    start_x: Optional[float] = None,
+    start_y: Optional[float] = None,
+    end_x: Optional[float] = None,
+    end_y: Optional[float] = None,
+    center_x: Optional[float] = None,
+    center_y: Optional[float] = None,
+    radius: Optional[float] = None,
+    start_angle_deg: Optional[float] = None,
+    end_angle_deg: Optional[float] = None,
+    containment_tol: float = 0.01,
+    samples_per_segment: int = 24,
+) -> Dict[str, Any]:
+    """
+    Verifies that every swept tool disk position along cutting moves stays inside
+    the declared linear capsule slot or circular arc slot.
+    """
+    pts = _sample_cutting_xy_points(gcode_text, samples_per_segment=samples_per_segment)
+    max_center_offset = (slot_width - tool_diameter) / 2.0
+    if not pts:
+        return {
+            "contained": False,
+            "max_center_offset_seen": 0.0,
+            "allowed_center_offset": round(max_center_offset, 5),
+            "max_overcut": max_center_offset,
+            "sampled_points": 0,
+        }
+
+    is_arc = center_x is not None and center_y is not None and radius is not None
+    if is_arc:
+        a0 = math.radians(float(start_angle_deg or 0.0))
+        a1 = math.radians(float(end_angle_deg or 0.0))
+        sweep = a1 - a0
+        sx = float(center_x) + float(radius) * math.cos(a0)
+        sy = float(center_y) + float(radius) * math.sin(a0)
+        ex = float(center_x) + float(radius) * math.cos(a1)
+        ey = float(center_y) + float(radius) * math.sin(a1)
+
+    max_dist = 0.0
+    for px, py in pts:
+        if is_arc:
+            ang = math.atan2(py - float(center_y), px - float(center_x))
+            if _angle_in_arc_span(ang, a0, sweep):
+                d = abs(math.hypot(px - float(center_x), py - float(center_y)) - float(radius))
+            else:
+                d = min(math.hypot(px - sx, py - sy), math.hypot(px - ex, py - ey))
+        else:
+            d = _point_to_segment_distance(
+                px, py, float(start_x or 0.0), float(start_y or 0.0), float(end_x or 0.0), float(end_y or 0.0)
+            )
+        if d > max_dist:
+            max_dist = d
+
+    max_overcut = max(0.0, max_dist - max_center_offset)
+    return {
+        "contained": max_dist <= (max_center_offset + containment_tol),
+        "max_center_offset_seen": round(max_dist, 5),
+        "allowed_center_offset": round(max_center_offset, 5),
+        "max_overcut": round(max_overcut, 5),
+        "sampled_points": len(pts),
+    }
+
+
+def verify_swept_pocket_containment(
+    gcode_text: str,
+    min_x: float,
+    max_x: float,
+    min_y: float,
+    max_y: float,
+    tool_diameter: float,
+    containment_tol: float = 0.01,
+    samples_per_segment: int = 24,
+) -> Dict[str, Any]:
+    """
+    Verifies that every swept tool disk position along cutting moves stays inside
+    the declared rectangular pocket [min_x, max_x] x [min_y, max_y].
+    """
+    pts = _sample_cutting_xy_points(gcode_text, samples_per_segment=samples_per_segment)
+    tool_r = tool_diameter / 2.0
+    if not pts:
+        return {"contained": False, "max_overcut": tool_r, "sampled_points": 0}
+
+    max_overcut = 0.0
+    for px, py in pts:
+        over = max(
+            (min_x + tool_r) - px,
+            px - (max_x - tool_r),
+            (min_y + tool_r) - py,
+            py - (max_y - tool_r),
+            0.0,
+        )
+        if over > max_overcut:
+            max_overcut = over
+
+    return {
+        "contained": max_overcut <= containment_tol,
+        "max_overcut": round(max_overcut, 5),
+        "sampled_points": len(pts),
+    }
